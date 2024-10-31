@@ -2,38 +2,54 @@
 
 pragma solidity ^0.8.27;
 
-import {COMPACT_TYPEHASH, Compact} from "src/types/EIP712Types.sol";
+import {Compact} from "src/types/EIP712Types.sol";
+import {ITheCompact} from "src/interfaces/ITheCompact.sol";
+import {IAllocator} from "src/interfaces/IAllocator.sol";
 import {Ownable, Ownable2Step} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import {ECDSA} from "lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+import {IERC1271} from "lib/openzeppelin-contracts/contracts/interfaces/IERC1271.sol";
 
-contract ServerAllocatorNonce is Ownable2Step, EIP712 {
+contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
     using ECDSA for bytes32;
 
     struct NonceConsumption {
         address signer;
         uint256[] nonces;
+        bytes32[] attests;
     }
 
-    // keccak256("NonceConsumption(address signer,uint256[] nonces)")
+    // keccak256("Attest(address,address,address,uint256,uint256)")
+    bytes4 private constant _ATTEST_SELECTOR = 0x1a808f91;
+
+    // keccak256("Allocator(bytes32 hash)")
+    bytes32 private constant _ALLOCATOR_TYPE_HASH =
+        0xcdf324dc7c3490a07fbbb105911393dcbc0676ac7c6c1c32c786721de6179e70;
+
+    // keccak256("NonceConsumption(address signer,uint256[] nonces,bytes32[] attests)")
     bytes32 private constant _NONCE_CONSUMPTION_TYPE_HASH =
-        0x8131ea92bd36581a24ac72c3abac20376f242758e62cdeb68a74dfa4ff3bfdaa;
+        0xb06793f900067653959d9bc53299ebf6b5aa5cf5f6c1a463305891a3db695f3c;
+
     address private immutable _COMPACT_CONTRACT;
 
     mapping(address => uint256) private _signers;
     address[] private _activeSigners;
-    mapping(uint256 => bool) private _nonces;
-    mapping(uint256 => bytes32) private _registeredHashes; // TODO: register this by hash => expiration instead of nonce => hash
+    mapping(bytes32 => uint256) private _attestExpirations;
+    mapping(bytes32 => uint256) private _attestCounts;
 
     event SignerAdded(address signer_);
     event SignerRemoved(address signer_);
-    event HashRegistered(uint256 nonce_, bytes32 hash_);
-    event NonceConsumed(uint256 nonce_);
+    event AttestRegistered(bytes32 attest_, uint256 expiration_);
+    event NoncesConsumed(uint256[] nonces_);
+    event Attested(address from_, uint256 id_, uint256 amount_);
 
+    error UnregisteredAttest(bytes32 attest_);
+    error Expired(uint256 expiration_, uint256 currentTimestamp_);
+    error ExpiredAttests(bytes32 attest_);
     error InvalidCaller(address caller_, address expected_);
     error InvalidSigner(address signer_);
-    error InvalidHash(bytes32 hash_);
-    error InvalidNonce(uint256 nonce_);
+    error InvalidSignature(bytes signature_, address signer_);
+    error InvalidInput();
 
     modifier isSigner(address signer_) {
         if (!_containsSigner(signer_)) {
@@ -45,7 +61,7 @@ contract ServerAllocatorNonce is Ownable2Step, EIP712 {
     constructor(
         address owner_,
         address compactContract_
-    ) Ownable(owner_) EIP712("ServerAllocator", "1") {
+    ) Ownable(owner_) EIP712("Allocator", "1") {
         _COMPACT_CONTRACT = compactContract_;
     }
 
@@ -74,78 +90,120 @@ contract ServerAllocatorNonce is Ownable2Step, EIP712 {
         emit SignerRemoved(signer_);
     }
 
-    function registerHash(
-        bytes32 hash_,
-        uint256 nonce_
+    /// @dev There is no way to uniquely identify a transfer, so the contract relies on its own accounting of registered attests.
+    function registerAttest(
+        bytes32 attest_,
+        uint256 expiration_
     ) external isSigner(msg.sender) {
-        if (_nonceUsed(nonce_) || _registeredHashes[nonce_] != bytes32(0)) {
-            revert InvalidNonce(nonce_);
+        if (expiration_ < block.timestamp) {
+            revert Expired(expiration_, block.timestamp);
         }
-        bytes32 noncedHash = keccak256(abi.encode(hash_, nonce_));
-        _registeredHashes[nonce_] = noncedHash;
+        uint256 count = ++_attestCounts[attest_];
+        bytes32 countedAttest = keccak256(abi.encode(attest_, count));
 
-        emit HashRegistered(nonce_, hash_);
+        _attestExpirations[countedAttest] = expiration_;
+
+        emit AttestRegistered(attest_, expiration_);
     }
 
+    /// @dev There is no way to uniquely identify a transfer, so the contract relies on its own accounting of registered attests.
     function attest(
+        address, // operator_
         address from_,
+        address, // to_
         uint256 id_,
-        uint256 amount_,
-        uint256 nonce_
-    ) external {
+        uint256 amount_
+    ) external returns (bytes4) {
         if (msg.sender != _COMPACT_CONTRACT) {
             revert InvalidCaller(msg.sender, _COMPACT_CONTRACT);
         }
-        if (_nonceUsed(nonce_)) {
-            revert InvalidNonce(nonce_);
-        }
-        bytes32 cleanHash = keccak256(abi.encode(from_, id_, amount_));
-        bytes32 noncedHash = keccak256(abi.encode(cleanHash, nonce_));
+        bytes32 registeredAttest = keccak256(abi.encode(from_, id_, amount_));
+        uint256 count = _attestCounts[registeredAttest];
 
-        if (_registeredHashes[nonce_] != noncedHash) {
-            revert InvalidHash(noncedHash);
+        if (count == 0) {
+            revert UnregisteredAttest(registeredAttest);
         }
-        _consumeNonce(nonce_);
+        for (uint256 i = count; i > 0; --i) {
+            bytes32 countedAttest = keccak256(abi.encode(registeredAttest, i));
+            if (_attestExpirations[countedAttest] >= block.timestamp) {
+                // Found a valid registered attest
+                if (i == count) {
+                    // Last attest, delete
+                    delete _attestExpirations[countedAttest];
+                } else {
+                    // Shift attest and delete from the end
+                    bytes32 lastAttest = keccak256(
+                        abi.encode(registeredAttest, count)
+                    );
+                    _attestExpirations[countedAttest] = _attestExpirations[
+                        lastAttest
+                    ];
+                    delete _attestExpirations[lastAttest];
+                }
+                _attestCounts[registeredAttest] = --count;
+
+                emit Attested(from_, id_, amount_);
+                return _ATTEST_SELECTOR;
+            }
+        }
+
+        revert ExpiredAttests(registeredAttest);
     }
 
-    /// @dev Treating the nonces individually instead of sequentially
-    /// TODO: All signers can override nonces of other signers. This allows to consume nonces while attesting.
-    function consume(uint256[] calldata nonces_) external isSigner(msg.sender) {
-        _consumeNonces(nonces_);
+    /// @dev The hashes array needs to be of the same length as the nonces array.
+    /// @dev If no hash was yet registered, provide a bytes32(0) for the respective index.
+    /// @dev All signers can override nonces of other signers.
+    function consume(
+        uint256[] calldata nonces_, // TODO: STRUCT OF ONE
+        bytes32[] calldata attests_
+    ) external isSigner(msg.sender) {
+        if (attests_.length != nonces_.length) {
+            revert InvalidInput();
+        }
+        _consumeNonces(nonces_, attests_);
     }
 
     function consumeViaSignature(
         NonceConsumption calldata data_,
         bytes calldata signature_
     ) external {
+        if (data_.attests.length != data_.nonces.length) {
+            revert InvalidInput();
+        }
         address signer = _validateNonceConsumption(data_, signature_);
-        if (signer != data_.signer) {
-            // check is optional, would fail if signer is not a registered signer anyway
+        if (signer != data_.signer || !_containsSigner(signer)) {
+            // first check is optional, can be deleted for gas efficiency
             revert InvalidSigner(signer);
         }
-        if (!_containsSigner(signer)) {
-            revert InvalidSigner(signer);
-        }
-        _consumeNonces(data_.nonces);
+        _consumeNonces(data_.nonces, data_.attests);
     }
 
+    /// @dev A registered attest will be a fallback if no valid signature was provided.
+    // TODO: https://github.com/Uniswap/permit2/blob/cc56ad0f3439c502c246fc5cfcc3db92bb8b7219/src/interfaces/IERC1271.sol
     function isValidSignature(
-        Compact calldata data_,
-        bytes calldata signature_,
-        bool checkHash_
-    ) external view returns (bool) {
-        if (data_.expires < block.timestamp) {
-            return false;
-        }
-        if (_nonceUsed(data_.nonce)) {
-            return false;
-        }
-        if (checkHash_ && _registeredHashes[data_.nonce] == bytes32(0)) {
-            return false;
-        }
+        bytes32 hash_,
+        bytes calldata signature_
+    ) external view returns (bytes4 magicValue) {
+        address signer = _validateSignedHash(hash_, signature_);
+        if (!_containsSigner(signer)) {
+            // Check registered attests as fallback
+            /// TODO: This fallback must modify state to not be a source of endless verifications.
+            // uint256 count = _attestCounts[hash_];
+            // if (count != 0) {
+            //     for (uint256 i = count; i > 0; --i) {
+            //         bytes32 countedAttest = keccak256(abi.encode(hash_, i));
+            //         if (_attestExpirations[countedAttest] >= block.timestamp) {
+            //             // Found a valid registered attest
 
-        address signer = _validateData(data_, signature_);
-        return _containsSigner(signer);
+            //             // _attestCounts[hash_] = --count;
+            //             // delete _attestExpirations[countedAttest];
+            //             return IERC1271.isValidSignature.selector;
+            //         }
+            //     }
+            // }
+            revert InvalidSignature(signature_, signer);
+        }
+        return IERC1271.isValidSignature.selector;
     }
 
     function checkIfSigner(address signer_) external view returns (bool) {
@@ -156,56 +214,62 @@ contract ServerAllocatorNonce is Ownable2Step, EIP712 {
         return _activeSigners;
     }
 
-    function checkNonceConsumed(uint256 nonce_) external view returns (bool) {
-        return _nonceUsed(nonce_);
+    function checkAttestExpirations(
+        bytes32 attest_
+    ) external view returns (uint256[] memory) {
+        return _checkAttestExpirations(attest_);
     }
 
-    function checkNonceFree(uint256 nonce_) external view returns (bool) {
-        return !_nonceUsed(nonce_) && _registeredHashes[nonce_] == bytes32(0);
+    function checkAttestExpirations(
+        address sponsor_,
+        uint256 id_,
+        uint256 amount_
+    ) external view returns (uint256[] memory) {
+        return
+            _checkAttestExpirations(
+                keccak256(abi.encode(sponsor_, id_, amount_))
+            );
     }
 
     function getCompactContract() external view returns (address) {
         return _COMPACT_CONTRACT;
     }
 
-    function _consumeNonces(uint256[] calldata nonces_) internal {
-        uint256 nonceLength = nonces_.length;
+    /// Todo: This will lead to always the last registered hash being consumed.
+    function _consumeNonces(
+        uint256[] calldata nonces_,
+        bytes32[] calldata attests_
+    ) internal {
+        ITheCompact(_COMPACT_CONTRACT).consume(nonces_);
+        uint256 nonceLength = attests_.length;
         for (uint256 i = 0; i < nonceLength; ++i) {
-            _consumeNonce(nonces_[i]);
+            bytes32 hashToConsume = attests_[i];
+            if (hashToConsume != bytes32(0)) {
+                uint256 count = _attestCounts[attests_[i]];
+                if (count != 0) {
+                    // Consume the latest registered attest
+                    delete _attestExpirations[
+                        keccak256(abi.encode(attests_[i], count))
+                    ];
+                    _attestCounts[attests_[i]] = --count;
+                }
+            }
         }
+        emit NoncesConsumed(nonces_);
     }
 
-    function _consumeNonce(uint256 nonce_) internal {
-        delete _registeredHashes[nonce_];
-        _nonces[nonce_] = true;
-
-        emit NonceConsumed(nonce_);
-    }
-
-    function _validateData(
-        Compact calldata data_,
+    function _validateSignedHash(
+        bytes32 hash_,
         bytes calldata signature_
     ) internal view returns (address) {
-        bytes32 message = _hashCompact(data_);
+        bytes32 message = _hashMessage(hash_);
         return message.recover(signature_);
     }
 
-    function _hashCompact(
-        Compact calldata data_
-    ) internal view returns (bytes32) {
+    function _hashMessage(bytes32 data_) internal view returns (bytes32) {
         return
             _hashTypedDataV4(
-                keccak256(
-                    abi.encode(
-                        COMPACT_TYPEHASH,
-                        data_.arbiter,
-                        data_.sponsor,
-                        data_.nonce,
-                        data_.expires,
-                        data_.id,
-                        data_.amount
-                    )
-                )
+                keccak256(abi.encode(_ALLOCATOR_TYPE_HASH, data_))
             );
     }
 
@@ -232,11 +296,23 @@ contract ServerAllocatorNonce is Ownable2Step, EIP712 {
             );
     }
 
-    function _nonceUsed(uint256 nonce_) internal view returns (bool) {
-        return _nonces[nonce_];
-    }
-
     function _containsSigner(address signer_) internal view returns (bool) {
         return _signers[signer_] != 0;
+    }
+
+    function _checkAttestExpirations(
+        bytes32 attest_
+    ) internal view returns (uint256[] memory) {
+        uint256 count = _attestCounts[attest_];
+        if (count == 0) {
+            revert UnregisteredAttest(attest_);
+        }
+        uint256[] memory expirations = new uint256[](count);
+        for (uint256 i = count; i > 0; --i) {
+            expirations[i - 1] = _attestExpirations[
+                keccak256(abi.encode(attest_, i))
+            ];
+        }
+        return expirations;
     }
 }
