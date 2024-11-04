@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.27;
 
-import {IAllocator} from "src/interfaces/IAllocator.sol";
-import {ERC6909} from "solady/tokens/ERC6909.sol";
-import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import {IdLib} from "src/lib/IdLib.sol";
+import { IAllocator } from "src/interfaces/IAllocator.sol";
+import { ERC6909 } from "solady/tokens/ERC6909.sol";
+import { ERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import { IdLib } from "src/lib/IdLib.sol";
 
 contract TheCompactMock is ERC6909 {
     using IdLib for uint96;
@@ -14,57 +14,27 @@ contract TheCompactMock is ERC6909 {
 
     mapping(uint256 nonce => bool consumed) public consumedNonces;
 
-    function deposit(
-        address token,
-        uint256 amount,
-        address allocator
-    ) external {
+    function deposit(address token, uint256 amount, address allocator) external {
         ERC20(token).transferFrom(msg.sender, address(this), amount);
         uint256 id = _getTokenId(token, allocator);
         _mint(msg.sender, id, amount);
     }
 
-    function transfer(
-        address from,
-        address to,
-        uint256 amount,
-        address token,
-        address allocator
-    ) external {
+    function transfer(address from, address to, uint256 amount, address token, address allocator) external {
         uint256 id = _getTokenId(token, allocator);
         IAllocator(allocator).attest(msg.sender, from, to, id, amount);
         _transfer(msg.sender, from, to, id, amount);
     }
 
-    function claim(
-        address from,
-        address to,
-        address token,
-        uint256 amount,
-        address allocator,
-        bytes calldata signature
-    ) external {
+    function claim(address from, address to, address token, uint256 amount, address allocator, bytes calldata signature) external {
         uint256 id = _getTokenId(token, allocator);
-        IAllocator(allocator).isValidSignature(
-            keccak256(abi.encode(from, id, amount)),
-            signature
-        );
+        IAllocator(allocator).isValidSignature(keccak256(abi.encode(from, id, amount)), signature);
         _transfer(msg.sender, from, to, id, amount);
     }
 
-    function withdraw(
-        address token,
-        uint256 amount,
-        address allocator
-    ) external {
+    function withdraw(address token, uint256 amount, address allocator) external {
         uint256 id = _getTokenId(token, allocator);
-        IAllocator(allocator).attest(
-            msg.sender,
-            msg.sender,
-            msg.sender,
-            id,
-            amount
-        );
+        IAllocator(allocator).attest(msg.sender, msg.sender, msg.sender, id, amount);
         ERC20(token).transferFrom(address(this), msg.sender, amount);
         _burn(msg.sender, id, amount);
     }
@@ -76,10 +46,7 @@ contract TheCompactMock is ERC6909 {
         return true;
     }
 
-    function getTokenId(
-        address token,
-        address allocator
-    ) external pure returns (uint256) {
+    function getTokenId(address token, address allocator) external pure returns (uint256) {
         return _getTokenId(token, allocator);
     }
 
@@ -101,10 +68,7 @@ contract TheCompactMock is ERC6909 {
         return "";
     }
 
-    function _getTokenId(
-        address token,
-        address allocator
-    ) internal pure returns (uint256) {
+    function _getTokenId(address token, address allocator) internal pure returns (uint256) {
         return uint256(keccak256(abi.encode(token, allocator)));
     }
 }
