@@ -13,6 +13,13 @@ import {IERC1271} from "lib/openzeppelin-contracts/contracts/interfaces/IERC1271
 contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
     using ECDSA for bytes32;
 
+    struct RegisterAttest {
+        address signer;
+        bytes32 attestHash;
+        uint256 expiration;
+        uint256 nonce;
+    }
+
     struct NonceConsumption {
         address signer;
         uint256[] nonces;
@@ -21,6 +28,10 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
 
     // keccak256("Attest(address,address,address,uint256,uint256)")
     bytes4 private constant _ATTEST_SELECTOR = 0x1a808f91;
+
+    // keccak256("RegisterAttest(address signer,bytes32 attestHash,uint256 expiration,uint256 nonce)")
+    bytes32 private constant _ATTEST_TYPE_HASH =
+        0xaf2dfd3fe08723f490d203be627da2725f4ad38681e455221da2fc1a633bbb18;
 
     // keccak256("Allocator(bytes32 hash)")
     bytes32 private constant _ALLOCATOR_TYPE_HASH =
@@ -34,8 +45,10 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
 
     mapping(address => uint256) private _signers;
     address[] private _activeSigners;
+
     mapping(bytes32 => uint256) private _attestExpirations;
     mapping(bytes32 => uint256) private _attestCounts;
+    mapping(bytes32 => bool) private _attestSignatures;
 
     event SignerAdded(address signer_);
     event SignerRemoved(address signer_);
@@ -49,6 +62,7 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
     error InvalidCaller(address caller_, address expected_);
     error InvalidSigner(address signer_);
     error InvalidSignature(bytes signature_, address signer_);
+    error AlreadyUsedSig(bytes32 attest_, uint256 nonce);
     error InvalidInput();
 
     modifier isSigner(address signer_) {
@@ -95,15 +109,34 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
         bytes32 attest_,
         uint256 expiration_
     ) external isSigner(msg.sender) {
-        if (expiration_ < block.timestamp) {
-            revert Expired(expiration_, block.timestamp);
+        _registerAttest(attest_, expiration_);
+    }
+
+    /// @dev Nonce management in the RegisterAttest is only required for multiple registers of the same attest with the same expiration.
+    function registerAttestViaSignature(
+        RegisterAttest calldata attest_,
+        bytes calldata signature_
+    ) external {
+        bytes32 _attestWithNonce = keccak256(
+            abi.encode(attest_.attestHash, attest_.expiration, attest_.nonce)
+        );
+        if (_attestSignatures[_attestWithNonce]) {
+            revert AlreadyUsedSig(attest_.attestHash, attest_.nonce);
         }
-        uint256 count = ++_attestCounts[attest_];
-        bytes32 countedAttest = keccak256(abi.encode(attest_, count));
+        address signer = _validateSignedAttest(
+            attest_.signer,
+            attest_.attestHash,
+            attest_.expiration,
+            attest_.nonce,
+            signature_
+        );
+        if (signer != attest_.signer || !_containsSigner(signer)) {
+            revert InvalidSignature(signature_, signer);
+        }
 
-        _attestExpirations[countedAttest] = expiration_;
-
-        emit AttestRegistered(attest_, expiration_);
+        // Invalidate signature
+        _attestSignatures[_attestWithNonce] = true;
+        _registerAttest(attest_.attestHash, attest_.expiration);
     }
 
     /// @dev There is no way to uniquely identify a transfer, so the contract relies on its own accounting of registered attests.
@@ -186,21 +219,6 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
     ) external view returns (bytes4 magicValue) {
         address signer = _validateSignedHash(hash_, signature_);
         if (!_containsSigner(signer)) {
-            // Check registered attests as fallback
-            /// TODO: This fallback must modify state to not be a source of endless verifications.
-            // uint256 count = _attestCounts[hash_];
-            // if (count != 0) {
-            //     for (uint256 i = count; i > 0; --i) {
-            //         bytes32 countedAttest = keccak256(abi.encode(hash_, i));
-            //         if (_attestExpirations[countedAttest] >= block.timestamp) {
-            //             // Found a valid registered attest
-
-            //             // _attestCounts[hash_] = --count;
-            //             // delete _attestExpirations[countedAttest];
-            //             return IERC1271.isValidSignature.selector;
-            //         }
-            //     }
-            // }
             revert InvalidSignature(signature_, signer);
         }
         return IERC1271.isValidSignature.selector;
@@ -235,6 +253,18 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
         return _COMPACT_CONTRACT;
     }
 
+    function _registerAttest(bytes32 attest_, uint256 expiration_) internal {
+        if (expiration_ < block.timestamp) {
+            revert Expired(expiration_, block.timestamp);
+        }
+        uint256 count = ++_attestCounts[attest_];
+        bytes32 countedAttest = keccak256(abi.encode(attest_, count));
+
+        _attestExpirations[countedAttest] = expiration_;
+
+        emit AttestRegistered(attest_, expiration_);
+    }
+
     /// Todo: This will lead to always the last registered hash being consumed.
     function _consumeNonces(
         uint256[] calldata nonces_,
@@ -256,6 +286,37 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
             }
         }
         emit NoncesConsumed(nonces_);
+    }
+
+    function _validateSignedAttest(
+        address signer_,
+        bytes32 hash_,
+        uint256 expiration_,
+        uint256 nonce,
+        bytes calldata signature_
+    ) internal view returns (address) {
+        bytes32 message = _hashAttest(signer_, hash_, expiration_, nonce);
+        return message.recover(signature_);
+    }
+
+    function _hashAttest(
+        address signer_,
+        bytes32 hash_,
+        uint256 expiration_,
+        uint256 nonce_
+    ) internal view returns (bytes32) {
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        _ATTEST_TYPE_HASH,
+                        signer_,
+                        hash_,
+                        expiration_,
+                        nonce_
+                    )
+                )
+            );
     }
 
     function _validateSignedHash(
@@ -290,7 +351,8 @@ contract ServerAllocator is Ownable2Step, EIP712, IAllocator {
                     abi.encode(
                         _NONCE_CONSUMPTION_TYPE_HASH,
                         data_.signer,
-                        data_.nonces
+                        data_.nonces,
+                        data_.attests
                     )
                 )
             );
