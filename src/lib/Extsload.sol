@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+/**
+ * @title Extsload
+ * @notice Contract implementing external functions for reading values from
+ * storage or transient storage directly.
+ */
 contract Extsload {
     function exttload(bytes32 slot) external view returns (bytes32) {
         assembly ("memory-safe") {

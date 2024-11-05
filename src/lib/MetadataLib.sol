@@ -3,12 +3,17 @@ pragma solidity ^0.8.27;
 
 import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
-// TODO: add scope to metadata
+import { Scope } from "../types/Scope.sol";
 import { IdLib } from "./IdLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { LibString } from "solady/utils/LibString.sol";
 import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
 
+/**
+ * @title MetadataLib
+ * @notice Libray contract implementing logic for deriving and displaying
+ * ERC6909 metadata as well as metadata specific to various underlying tokens.
+ */
 library MetadataLib {
     using MetadataLib for address;
     using MetadataLib for string;
@@ -18,17 +23,52 @@ library MetadataLib {
     using LibString for uint256;
     using LibString for address;
     using MetadataReaderLib for address;
+    using MetadataLib for ResetPeriod;
+    using MetadataLib for Scope;
+
+    function toString(ResetPeriod resetPeriod) internal pure returns (string memory) {
+        if (resetPeriod == ResetPeriod.OneSecond) {
+            return "One second";
+        } else if (resetPeriod == ResetPeriod.FifteenSeconds) {
+            return "Fifteen seconds";
+        } else if (resetPeriod == ResetPeriod.OneMinute) {
+            return "One minute";
+        } else if (resetPeriod == ResetPeriod.TenMinutes) {
+            return "Ten minutes";
+        } else if (resetPeriod == ResetPeriod.OneHourAndFiveMinutes) {
+            return "One hour and five minutes";
+        } else if (resetPeriod == ResetPeriod.OneDay) {
+            return "One day";
+        } else if (resetPeriod == ResetPeriod.SevenDaysAndOneHour) {
+            return "Seven days and one hour";
+        } else if (resetPeriod == ResetPeriod.ThirtyDays) {
+            return "Thirty days";
+        } else {
+            revert("Unknown reset period");
+        }
+    }
+
+    function toString(Scope scope) internal pure returns (string memory) {
+        if (scope == Scope.Multichain) {
+            return "Multichain";
+        } else if (scope == Scope.ChainSpecific) {
+            return "Chain-specific";
+        } else {
+            revert("Unknown scope");
+        }
+    }
 
     function toURI(Lock memory lock, uint256 id) internal view returns (string memory uri) {
         string memory tokenAddress = lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
         string memory allocator = lock.allocator.toHexStringChecksummed();
-        string memory resetPeriod = string.concat(lock.resetPeriod.toSeconds().toString(), " seconds"); // TODO: return minutes / hours / days
+        string memory resetPeriod = lock.resetPeriod.toString();
+        string memory scope = lock.scope.toString();
         string memory tokenName = lock.token.readNameWithDefaultValue();
         string memory tokenSymbol = lock.token.readSymbolWithDefaultValue();
         string memory tokenDecimals = uint256(lock.token.readDecimals()).toString();
 
         string memory name = string.concat("{\"name\": \"Compact ", tokenSymbol, "\",");
-        string memory description = string.concat("\"description\": \"Compact ", tokenName, " (", tokenAddress, ") with allocator ", allocator, " and reset period of ", resetPeriod, "\",");
+        string memory description = string.concat("\"description\": \"Compact ", tokenName, " (", tokenAddress, ") resource lock with allocator ", allocator, " and reset period of ", resetPeriod, "\",");
         string memory attributes = string.concat(
             "\"attributes\": [",
             toAttributeString("ID", id.toString(), false),
@@ -37,6 +77,7 @@ library MetadataLib {
             toAttributeString("Token Symbol", tokenSymbol, false),
             toAttributeString("Token Decimals", tokenDecimals, false),
             toAttributeString("Allocator", allocator, false),
+            toAttributeString("Scope", scope, false),
             toAttributeString("Reset Period", resetPeriod, true),
             "]}"
         );

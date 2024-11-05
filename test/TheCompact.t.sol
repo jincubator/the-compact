@@ -1051,8 +1051,7 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        bytes32 claimHash =
-            keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
@@ -1140,8 +1139,7 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        bytes32 claimHash =
-            keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
@@ -1180,8 +1178,7 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        bytes32 claimHash =
-            keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
 
         bytes32 qualificationTypehash = keccak256("ExampleQualifiedClaim(bytes32 claimHash,uint256 qualifiedClaimArgument)");
 
@@ -1288,8 +1285,7 @@ contract TheCompactTest is Test {
         uint256 witnessArgument = 234;
         bytes32 witness = keccak256(abi.encode(keccak256(bytes("CompactWitness(uint256 witnessArgument)")), witnessArgument));
 
-        string memory compactTypestring =
-            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        string memory compactTypestring = "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
 
         bytes32 typehash = keccak256(bytes(compactTypestring));
 
@@ -1321,8 +1317,7 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, vs);
 
-        uint256 returnedId =
-            theCompact.depositAndRegister(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, claimHash, CompactCategory.Compact, witnessTypestring, signature);
+        uint256 returnedId = theCompact.depositAndRegister(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, claimHash, CompactCategory.Compact, witnessTypestring, signature);
         vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
         assertEq(returnedId, id);
 
@@ -1408,9 +1403,8 @@ contract TheCompactTest is Test {
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorSignature = abi.encodePacked(r, vs);
 
-        QualifiedClaimWithWitness memory claim = QualifiedClaimWithWitness(
-            allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, qualificationTypehash, qualificationPayload, id, amount, claimant, amount
-        );
+        QualifiedClaimWithWitness memory claim =
+            QualifiedClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, qualificationTypehash, qualificationPayload, id, amount, claimant, amount);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
@@ -1442,8 +1436,7 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        bytes32 claimHash =
-            keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
@@ -1495,8 +1488,7 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        bytes32 claimHash =
-            keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
 
         bytes32 qualificationTypehash = keccak256("ExampleQualifiedClaim(bytes32 claimHash,uint256 qualifiedClaimArgument)");
 
@@ -1666,9 +1658,8 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        QualifiedSplitClaimWithWitness memory claim = QualifiedSplitClaimWithWitness(
-            allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, qualificationTypehash, qualificationPayload, id, amount, recipients
-        );
+        QualifiedSplitClaimWithWitness memory claim =
+            QualifiedSplitClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, qualificationTypehash, qualificationPayload, id, amount, recipients);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
@@ -1717,12 +1708,7 @@ contract TheCompactTest is Test {
 
         bytes32 claimHash = keccak256(
             abi.encode(
-                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts))
+                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"), arbiter, swapper, nonce, expires, keccak256(abi.encodePacked(idsAndAmounts))
             )
         );
 
@@ -1849,12 +1835,7 @@ contract TheCompactTest is Test {
 
         claimHash = keccak256(
             abi.encode(
-                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts))
+                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"), arbiter, swapper, nonce, expires, keccak256(abi.encodePacked(idsAndAmounts))
             )
         );
 
@@ -1910,8 +1891,7 @@ contract TheCompactTest is Test {
         uint256 witnessArgument = 234;
         bytes32 witness = keccak256(abi.encode(keccak256(bytes("CompactWitness(uint256 witnessArgument)")), witnessArgument));
 
-        string memory compactTypestring =
-            "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        string memory compactTypestring = "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
 
         bytes32 typehash = keccak256(bytes(compactTypestring));
 
@@ -1968,9 +1948,8 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, vs);
 
-        uint256[] memory returnedIds = theCompact.depositAndRegister{ value: amount }(
-            swapper, tokenPermissions, nonce, deadline, allocator, resetPeriod, scope, claimHash, CompactCategory.BatchCompact, witnessTypestring, signature
-        );
+        uint256[] memory returnedIds =
+            theCompact.depositAndRegister{ value: amount }(swapper, tokenPermissions, nonce, deadline, allocator, resetPeriod, scope, claimHash, CompactCategory.BatchCompact, witnessTypestring, signature);
         vm.snapshotGasLastCall("batchDepositAndRegisterWithWitnessViaPermit2");
         assertEq(returnedIds.length, 3);
         assertEq(returnedIds[0], id);
@@ -2060,12 +2039,7 @@ contract TheCompactTest is Test {
 
         bytes32 claimHash = keccak256(
             abi.encode(
-                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts))
+                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"), arbiter, swapper, nonce, expires, keccak256(abi.encodePacked(idsAndAmounts))
             )
         );
 
@@ -2309,12 +2283,7 @@ contract TheCompactTest is Test {
 
         bytes32 claimHash = keccak256(
             abi.encode(
-                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts))
+                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"), arbiter, swapper, nonce, expires, keccak256(abi.encodePacked(idsAndAmounts))
             )
         );
 
@@ -2482,12 +2451,7 @@ contract TheCompactTest is Test {
 
         bytes32 claimHash = keccak256(
             abi.encode(
-                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts))
+                keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"), arbiter, swapper, nonce, expires, keccak256(abi.encodePacked(idsAndAmounts))
             )
         );
 
@@ -2664,8 +2628,7 @@ contract TheCompactTest is Test {
         uint256[2][] memory idsAndAmountsTwo = new uint256[2][](1);
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -2725,9 +2688,8 @@ contract TheCompactTest is Test {
         additionalChains[0] = allocationHashOne;
         uint256 chainIndex = 0;
 
-        ExogenousMultichainClaim memory anotherClaim = ExogenousMultichainClaim(
-            exogenousAllocatorSignature, sponsorSignature, swapper, nonce, expires, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, claimant, anotherAmount
-        );
+        ExogenousMultichainClaim memory anotherClaim =
+            ExogenousMultichainClaim(exogenousAllocatorSignature, sponsorSignature, swapper, nonce, expires, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, claimant, anotherAmount);
 
         vm.prank(arbiter);
         (bool exogenousStatus) = theCompact.claim(anotherClaim);
@@ -2769,8 +2731,7 @@ contract TheCompactTest is Test {
         uint256[2][] memory idsAndAmountsTwo = new uint256[2][](1);
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -2980,20 +2941,7 @@ contract TheCompactTest is Test {
         uint256 chainIndex = 0;
 
         ExogenousMultichainClaimWithWitness memory anotherClaim = ExogenousMultichainClaimWithWitness(
-            exogenousAllocatorSignature,
-            sponsorSignature,
-            swapper,
-            nonce,
-            expires,
-            witness,
-            witnessTypestring,
-            additionalChains,
-            chainIndex,
-            notarizedChainId,
-            anotherId,
-            anotherAmount,
-            claimant,
-            anotherAmount
+            exogenousAllocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, claimant, anotherAmount
         );
 
         vm.prank(arbiter);
@@ -3191,8 +3139,7 @@ contract TheCompactTest is Test {
         uint256[2][] memory idsAndAmountsTwo = new uint256[2][](1);
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -3309,8 +3256,7 @@ contract TheCompactTest is Test {
         uint256[2][] memory idsAndAmountsTwo = new uint256[2][](1);
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -3763,8 +3709,7 @@ contract TheCompactTest is Test {
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
         idsAndAmountsTwo[1] = [aThirdId, aThirdAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -3888,8 +3833,7 @@ contract TheCompactTest is Test {
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
         idsAndAmountsTwo[1] = [aThirdId, aThirdAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -4345,8 +4289,7 @@ contract TheCompactTest is Test {
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
         idsAndAmountsTwo[1] = [aThirdId, aThirdAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
@@ -4490,8 +4433,7 @@ contract TheCompactTest is Test {
         idsAndAmountsTwo[0] = [anotherId, anotherAmount];
         idsAndAmountsTwo[1] = [aThirdId, aThirdAmount];
 
-        bytes32 allocationHashOne =
-            keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+        bytes32 allocationHashOne = keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
 
         bytes32 allocationHashTwo =
             keccak256(abi.encode(keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));

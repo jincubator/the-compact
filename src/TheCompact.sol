@@ -11,9 +11,7 @@ import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 
-import { AllocatorLogic } from "./lib/AllocatorLogic.sol";
-import { ClaimProcessor } from "./lib/ClaimProcessor.sol";
-import { Extsload } from "./lib/Extsload.sol";
+import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
@@ -26,7 +24,7 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
  *         formation and mediation of reusable "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ITheCompact, AllocatorLogic, ClaimProcessor, ERC6909, Extsload {
+contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function deposit(address allocator) external payable returns (uint256) {
         return _performBasicNativeTokenDeposit(allocator);
     }

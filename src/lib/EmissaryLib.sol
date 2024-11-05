@@ -9,7 +9,8 @@ import { EMISSARY_ASSIGNMENT_TYPEHASH } from "../types/EIP712Types.sol";
 // It works kind of like setApprovalForAll and applies to all locks. One caveat
 // is that allocators still have to authorize any claims, which reduces the risk
 // of a fully rogue emissary depending on the allocator in question.
-// NOTE: this idea is inherently risky; think about whether it's worth it!
+// NOTE: this idea is inherently risky; think about whether it's worth it! Right
+// now this functionality is not included in The Compact.
 abstract contract EmissaryLib {
     using ValidityLib for uint256;
     using ValidityLib for address;

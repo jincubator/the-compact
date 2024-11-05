@@ -8,7 +8,7 @@
 ## Summary
 The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of reusable resource locks.
 
-Resource locks are entered into by ERC20 or native token holders, called the _**sponsor**_. Once a resource lock has been established, sponsors can create a compact, or a commitment allowing interested parties to claim their tokens through an _**arbiter**_ indicated by the sponsor that attests to the specified conditions of the compact having been met.
+Resource locks are entered into by ERC20 or native token holders, called the _**depositor**_. Once a resource lock has been established, the owner of the ERC6909 token representing a resource lock can act as a _**sponsor**_ and create a _**compact**_. A compact is a commitment allowing interested parties to claim their tokens through the sponsor's indicated _**arbiter**_. The arbiter is then responsible for processing the claim once it has attested to the specified conditions of the compact having been met.
 
 Each resource lock is mediated by an _**allocator**_, tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to; in other words, an allocator ensures that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific compact.
 
@@ -22,7 +22,7 @@ The Compact effectively "activates" any deposited tokens to be instantly spent o
 
 Sponsors have recourse from potential censorship in the form of a "forced withdrawal." When depositing tokens into a resource lock, the sponsor provides a "reset period" as a parameter. Then, the sponsor can initiate a forced withdrawal at any point; after the reset period has elapsed, the full token balance can be withdrawn regardless of any pending claims on their balance. In the case of cross-chain swaps, reset periods only need to be long enough for the claim to finalize (generally some multiple of the slowest blockchain involved in the swap).
 
-Claimants must bear varying degrees of trust assumptions with regards to allocators, with the potential design space including reputation-based systems, trusted execution environments, smart-contract-based systems, or even dedicated rollups. The Compact takes a neutral stance on implementations of both allocators and arbiters, and instead treats them both as a "black box" but each with a simple and consistent interface.
+Claimants must bear varying degrees of trust assumptions with regards to allocators, with the potential design space including reputation-based systems, trusted execution environments, smart-contract-based systems, or even dedicated rollups. The Compact takes a neutral stance on implementations of both allocators and arbiters, enabling support for a wide variety of potential applications while ensuring adherence to a consistent interface when integrating with the system as a whole.
 
 ## Setup
 ```
@@ -655,7 +655,7 @@ interface ICompactMultichainClaims {
 ### 4d) Multiple Resource Lock Claim on Multiple Chains
 Finally, there are thirty-two claim endpoints to cover cases where the sponsor is utilizing multiple resource locks against multiple chains where one or more chains contain more than one resource lock; these also utilize a `MultichainCompact` EIP-712 payload, but the `Allocation` structs can contain `idsAndAmounts` arrays of arbitrary length.
 
-```
+```solidity
 struct BatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
@@ -713,3 +713,22 @@ In addition to standard ERC6909 view functions, The Compact includes the followi
  - `check` determines if a given nonce has been consumed for a given allocator (note that nonces are scoped to allocators, not sponsors).
  - `DOMAIN_SEPARATOR` returns the hash of the EIP-712 domain data for the chain in question.
  - `name` returns the name of the contract.
+
+
+## Contract Layout
+The Compact is primarily represented by a single deployed contract, with the exception of a metadata renderer that it calls to retrieve information on ERC6909 tokenURI metadata for resource locks. The deployed contract is comprised of multiple inherited logic contracts which in turn make extensive use of various library contracts. A shared set of struct and enum types are utilized throughout the codebase and as a component in many function interfaces.
+
+![TheCompact Inheritance Graph](images/TheCompact-Inheritance-Graph.png)
+
+The core interface is divided into two parts: one designed to be called by depositors, allocators, and other general-purpose entities, and one designed to be called by arbiters as part of processing claims.
+
+## The Path to V1
+The Compact is currently in _**Version 0**_ — this version is meant to serve as a fully-featured proof-of-concept so that development of contracts and infrastructure related to arbiters and allocators can commence in earnest.
+
+> Important reminder: Version 0 lacks rigorous testing, review, or audits. Exercise caution and prudence when interacting with it until it has reached a more mature state. Version 1 will incorporate various bugfixes and improvements informed by integration with additional actors in the system and by more extensive scrutiny of its security.
+
+Candidate features for Version 1 to consider when reviewing or integrating with Version 0 include:
+ - Revising the interface between The Compact and allocators — currently, allocators authorize claims via direct calls (i.e. arbiter == allocator), ECDSA signatures, or EIP-1271 `isValidSignature(bytes32 domainHash, bytes signature) external view` calls. This may prove overly restrictive for many use-cases, including fully onchain varieties of allocator (especially when the allocator and the arbiter are not the same entity). Alternatives to consider include a stateful callback and/or the use of transient storage to register key details concerning the claim so that allocators and other actors can access them when needed.
+ - Revisiting function dispatch and reentrancy guard mechanics — in Version 0, function dispatch and standard solidity function ABI decoding consumes a significant amount of total gas expenditure and available contract size due to the sheer number of external functions supported. Furthermore, reentrancy guards are set and cleared on an as-needed basis, and not at the initial entrypoint to the contract. One alternative is to include a top-level fallback function with a global reentrancy lock and custom dispatch for processing claims or other external calls based on detected properties of the call.
+ - Reworking metadata — Version 0 implements relatively rudimentary metadata rendering. Version 1 should improve on this metadata, particularly as it relates to images and other rich metadata, without compromising on the core autonomy and reproducibility present in Version 0.
+ - General optimization: Version 0 already contains a significant amount of low-level code in order to succintly represent the necessary logic. Version 1 could improve on overall efficiency by implementing further optimizations and by bringing the codesize down further to allow for dialing up compiler optimization.

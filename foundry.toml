@@ -15,6 +15,6 @@ extra_output_files = ["irOptimized"]
 # TODO: use default with everything but FunctionSpecializer (F)
 
 [fmt]
-line_length = 200
+line_length = 210
 tab_width = 4
 bracket_spacing = true

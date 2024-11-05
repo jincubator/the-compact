@@ -55,6 +55,12 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
 
+/**
+ * @title ClaimProcessor
+ * @notice Inherited contract implementing external functions for processing claims against
+ * a signed or registered compact. Each of these functions is only callable by the arbiter
+ * indicated by the respective compact.
+ */
 contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
     function claim(BasicClaim calldata claimPayload) external returns (bool) {
         return _processBasicClaim(claimPayload, _release);

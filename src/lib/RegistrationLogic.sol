@@ -1,64 +1,63 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { RegistrationLib } from "./RegistrationLib.sol";
 
+/**
+ * @title RegistrationLogic
+ * @notice Inherited contract implementing logic for registering compact claim hashes
+ * and typehashes and querying for whether given claim hashes and typehashes have
+ * been registered.
+ */
 contract RegistrationLogic {
-    using EfficiencyLib for uint256;
+    using RegistrationLib for address;
+    using RegistrationLib for bytes32;
+    using RegistrationLib for bytes32[2][];
 
-    /// @dev `keccak256(bytes("CompactRegistered(address,bytes32,bytes32,uint256)"))`.
-    uint256 private constant _COMPACT_REGISTERED_SIGNATURE = 0xf78a2f33ff80ef4391f7449c748dc2d577a62cd645108f4f4069f4a7e0635b6a;
-
-    // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires
-    uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
-
+    /**
+     * @notice Internal function for registering a claim hash with a specific duration. The
+     * claim hash and its associated typehash will remain valid until the specified duration
+     * has elapsed. Reverts if the duration would result in an expiration earlier than an
+     * existing registration or if it exceeds 30 days.
+     * @param sponsor   The account registering the claim hash.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     * @param duration  The duration for which the registration remains valid.
+     */
     function _register(address sponsor, bytes32 claimHash, bytes32 typehash, uint256 duration) internal {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
-
-            let expires := add(timestamp(), duration)
-            if or(lt(expires, sload(cutoffSlot)), gt(duration, 0x278d00)) {
-                // revert InvalidRegistrationDuration(uint256 duration)
-                mstore(0, 0x1f9a96f4)
-                mstore(0x20, duration)
-                revert(0x1c, 0x24)
-            }
-
-            sstore(cutoffSlot, expires)
-            mstore(add(m, 0x74), expires)
-            log2(add(m, 0x34), 0x60, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
-        }
+        sponsor.registerCompactWithSpecificDuration(claimHash, typehash, duration);
     }
 
+    /**
+     * @notice Internal function for registering a claim hash using the default duration
+     * (10 minutes) and the caller as the sponsor.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     */
     function _registerWithDefaults(bytes32 claimHash, bytes32 typehash) internal {
-        _register(msg.sender, claimHash, typehash, uint256(0x258).asStubborn());
+        claimHash.registerAsCallerWithDefaultDuration(typehash);
     }
 
+    /**
+     * @notice Internal function for registering multiple claim hashes in a single call. All
+     * claim hashes will be registered with the same duration using the caller as the sponsor.
+     * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
+     * @param duration                 The duration for which the claim hashes remain valid.
+     * @return                         Whether all claim hashes were successfully registered.
+     */
     function _registerBatch(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) internal returns (bool) {
-        unchecked {
-            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
-            for (uint256 i = 0; i < totalClaimHashes; ++i) {
-                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _register(msg.sender, claimHashAndTypehash[0], claimHashAndTypehash[1], duration);
-            }
-        }
-
-        return true;
+        return claimHashesAndTypehashes.registerBatchAsCaller(duration);
     }
 
+    /**
+     * @notice Internal view function for retrieving the expiration timestamp of a
+     * registration.
+     * @param sponsor   The account that registered the claim hash.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     * @return expires  The timestamp at which the registration expires.
+     */
     function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 expires) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-            expires := sload(keccak256(add(m, 0x1c), 0x58))
-        }
+        return sponsor.toRegistrationExpiration(claimHash, typehash);
     }
 }
