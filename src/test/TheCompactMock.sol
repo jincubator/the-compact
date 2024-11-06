@@ -14,6 +14,10 @@ contract TheCompactMock is ERC6909 {
 
     mapping(uint256 nonce => bool consumed) public consumedNonces;
 
+    function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96) {
+        return 0;
+    }
+
     function deposit(address token, uint256 amount, address allocator) external {
         ERC20(token).transferFrom(msg.sender, address(this), amount);
         uint256 id = _getTokenId(token, allocator);
