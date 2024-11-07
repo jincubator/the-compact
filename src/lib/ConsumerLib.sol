@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 /**
  * @title ConsumerLib
- * @notice Libray contract implementing logic for consuming bitpacked nonces scoped to
+ * @notice Library contract implementing logic for consuming bitpacked nonces scoped to
  * specific accounts and for querying for the state of those nonces. Note that only the
  * allocator nonce scope is currently in use in The Compact.
  */
