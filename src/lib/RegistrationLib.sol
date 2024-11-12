@@ -8,7 +8,7 @@ import { IdLib } from "./IdLib.sol";
 
 /**
  * @title RegistrationLib
- * @notice Libray contract implementing logic for registering compact claim hashes
+ * @notice Library contract implementing logic for registering compact claim hashes
  * and typehashes and querying for whether given claim hashes and typehashes have
  * been registered.
  */

@@ -31,7 +31,7 @@ import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 
 /**
  * @title HashLib
- * @notice Libray contract implementing logic for deriving hashes as part of processing
+ * @notice Library contract implementing logic for deriving hashes as part of processing
  * claims, allocated transfers, and withdrawals, including deriving typehashes when
  * witness data is utilized and qualification hashes when claims have been qualified by
  * the allocator.

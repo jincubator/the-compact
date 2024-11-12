@@ -7,7 +7,7 @@ import { TransferComponent, SplitByIdComponent } from "../types/Components.sol";
 
 /**
  * @title TransferFunctionCastLib
- * @notice Libray contract implementing function casts used in TransferLogic as well as
+ * @notice Library contract implementing function casts used in TransferLogic as well as
  * in HashLib. The input function operates on a function that takes some argument that
  * differs from what is currently available. The output function modifies one or more
  * argument types so that they match the arguments that are being used to call the

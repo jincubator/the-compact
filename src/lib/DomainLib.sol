@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 /**
  * @title DomainLib
- * @notice Libray contract implementing logic for deriving domain hashes.
+ * @notice Library contract implementing logic for deriving domain hashes.
  */
 library DomainLib {
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
