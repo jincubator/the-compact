@@ -11,7 +11,7 @@ import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
 
 /**
  * @title MetadataLib
- * @notice Libray contract implementing logic for deriving and displaying
+ * @notice Library contract implementing logic for deriving and displaying
  * ERC6909 metadata as well as metadata specific to various underlying tokens.
  */
 library MetadataLib {

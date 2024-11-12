@@ -76,7 +76,7 @@ import { HashLib } from "./HashLib.sol";
 
 /**
  * @title ClaimHashLib
- * @notice Libray contract implementing logic for deriving hashes as part of processing
+ * @notice Library contract implementing logic for deriving hashes as part of processing
  * claims, allocated transfers, and withdrawals.
  */
 library ClaimHashLib {

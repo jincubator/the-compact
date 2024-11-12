@@ -11,7 +11,7 @@ import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
 /**
  * @title ValidityLib
- * @notice Libray contract implementing logic for validating expirations,
+ * @notice Library contract implementing logic for validating expirations,
  * signatures, nonces (including consuming unused nonces), and token addresses.
  */
 library ValidityLib {
