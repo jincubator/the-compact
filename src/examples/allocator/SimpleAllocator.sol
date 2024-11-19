@@ -43,8 +43,6 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
     error InsufficientBalance(address sponsor, uint256 id);
     error InvalidExpiration(uint256 expires);
     error InvalidLock(bytes32 digest, uint256 expiration);
-    // error InvalidSignature(bytes32 expectedHash, bytes32 actualHash);
-    // error InvalidSigner(address signer, address sponsor);
 
     event Locked(address sponsor, uint256 id, uint256 amount, uint256 expires);
 
@@ -55,10 +53,7 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         _MAX_WITHDRAWAL_DELAY = maxWithdrawalDelay_;
     }
 
-    /// TODO: locking for a specific COMPACT struct, and not allowing multiple allocations at the same time per sponsor. Check the compact if the nonce was consumed for replay attack.
-    /// Locking will always lock ALL of your tokens (for a specific id)
-
-    /// @dev locks tokens for a sponsor and an id, updates previous expiration if needed.
+    /// @dev locks all tokens of a sponsor for an id
     function lock(Compact calldata compact_) external {
         // Check msg.sender is sponsor
         if (msg.sender != compact_.sponsor) {
@@ -136,9 +131,8 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         return 0x1a808f91;
     }
 
+    /// @dev we trust the compact contract to check the nonce is not already consumed
     function isValidSignature(bytes32 hash, bytes calldata) external view returns (bytes4 magicValue) {
-        // TODO: Do we trust the compact contract to check the nonce is not already consumed (replay attack)?
-
         bytes32 tokenHash = _sponsor[hash];
         if (tokenHash == bytes32(0) || _claim[tokenHash] <= block.timestamp) {
             revert InvalidLock(hash, _claim[tokenHash]);
@@ -158,6 +152,7 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
     }
 
     function checkCompactLocked(Compact calldata compact_) external view returns (bool locked_, uint256 expires_) {
+        // TODO: Check the force unlock time in the compact contract and adapt expires_ if needed
         if (compact_.arbiter != _ARBITER) {
             revert InvalidArbiter(compact_.arbiter);
         }
