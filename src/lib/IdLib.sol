@@ -38,7 +38,7 @@ library IdLib {
     error AllocatorAlreadyRegistered(uint96 allocatorId, address allocator);
 
     // Storage slot seed for mapping allocator IDs to allocator addresses.
-    uint256 private constant _ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED = 0x000044036fc77deaed2300000000000000000000000;
+    uint256 private constant _ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED = 0x000044036fc77deaed2300000000000000000000000; // WHERE IS THIS COMING FROM?
 
     // keccak256(bytes("AllocatorRegistered(uint96,address)")).
     uint256 private constant _ALLOCATOR_REGISTERED_EVENT_SIGNATURE = 0xc54dcaa67a8fd7b4a9aa6fd57351934c792613d5ec1acbd65274270e6de8f7e4;
@@ -96,11 +96,20 @@ library IdLib {
      * @return id         The derived resource lock ID.
      */
     function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
-        // Derive the allocator ID for the provided allocator address.
+        // Derive the allocator ID for the provided allocator address. Revert if not registered
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
 
         // Derive resource lock ID (pack scope, reset period, allocator ID, & token).
         id = ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160) | token.asUint256());
+        // [ 1 bit ][   3 bits   ][    92 bits  ][ 160 bits ]
+        // [ scope ][resetPeriod ][ allocatorId ][  token   ]
+        //
+        // The scope is an enum with two choices, so 1 bit in size
+        // The reset period is an enum with eight choices, so 3 bits in size
+        // The allocator id is compacted to 92 bits (the first 4 bits of the uint96 are not set)
+        // The token is an address (160 bits)
+        //
+        // Combined this fits in 256 bits
     }
 
     /**
@@ -164,6 +173,7 @@ library IdLib {
         assembly ("memory-safe") {
             // NOTE: consider an SLOAD bypass for a fully compact allocator
             if iszero(sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
+                // ARE WE FINE TO JUST CHECK IF NON ZERO, IF PREVIOUSLY WE CHECK FOR THE ACTUAL VALUE?
                 mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
                 mstore(0x20, allocatorId)
                 revert(0x1c, 0x24)
@@ -277,7 +287,7 @@ library IdLib {
      * allocator, but is represented by a uint96 as solidity only supports uint values
      * for multiples of 8 bits.
      * @param id           The resource lock ID to extract from.
-     * @return allocatorId The allocator ID (bits 160-251).
+     * @return allocatorId The allocator ID (bits 4-96).
      */
     function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
         assembly ("memory-safe") {
@@ -344,12 +354,57 @@ library IdLib {
 
             // Look up final value in the sequence.
             compactFlag := and(shr(and(sub(72, and(y, 127)), not(3)), 0xfedcba9876543210000), 15)
+
+            // Example allocator address:   0x00000000044442D64A0BE733A5f2a3187BFA8234
+            // including 32 bytes padding:  0x000000000000000000000000|00000000044442D64A0BE733A5f2a3187BFA8234
+            // shl(96, allocator)           0x00000000044442D64A0BE733A5f2a3187BFA8234|000000000000000000000000
+            // x := shr(168, [...])         0x000000000000000000000000000000000000000000|00000000044442D64A0BE7 // => THIS IS WRONG, WE EXTRACT THE UPPERMOST 88 BITS, INSTEAD OF 72
+            // => CAN INPUT IN AN INTERNAL FUNCTION BE DIRTY IN SOLIDITY?
+
+            // We now have the uppermost 88 (? SHOULD BE 72) bits of the address as "x". We now work with these, and propagate the highest set bit
+            // These are the orig bits:     0000 0000 0000 0000 0000 0000 0000 0000 0000 0100 0100 0100 0100 0010 1101 0110 0100 1010 0000 1011 (1110 0111 - Beccause 88 Bits instead of 72)
+            // shr(1, x)                    0000 0000 0000 0000 0000 0000 0000 0000 0000 0010 0010 0010 0010 0001 0110 1011 0010 0101 0000 0101
+            // x := or(x, [...])            0000 0000 0000 0000 0000 0000 0000 0000 0000 0110 0110 0110 0110 0011 1111 1111 0110 1111 0000 1111
+            // shr(2, x)                    0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 1001 1001 1001 1000 1111 1111 1101 1011 1100 0011
+            // x := or(x, [...])            0000 0000 0000 0000 0000 0000 0000 0000 0000 0111 1111 1111 1111 1011 1111 1111 1111 1111 1100 1111
+            // ...
+            // x := or(x, shr(32, x))       0000 0000 0000 0000 0000 0000 0000 0000 0000 0111 1111 1111 1111 1111 1111 1111 1111 1111 1111 1111
+            // => THE 32 BIT SHIFT IS NOT SUFFICIENT FOR ADDRESSES LIKE: 0x800000000000000000|3BE733A5f2a3187BFA8234
+
+            // We now count the set bits to derive the most significant bit in the last byte (using the parallel bit counting SWAR ?? algorithm)
+            // shr(1, x)                    0000 0000 0000 0000 0000 0000 0000 0000 0000 0011 1111 1111 1111 1111 1111 1111 1111 1111 1111 1111
+            // now adding 0x5555...555      0x5555555555555555 in bits is:
+            //                              0000 0000 0000 0000 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101
+            // and([...], 0x5555...555)     0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 |
+            // y := sub(x, [...])           0000 0000 0000 0000 0000 0000 0000 0000 0000 0110 1010 1010 1010 1010 1010 1010 1010 1010 1010 1010 | (1010 1010)
+            //
+            // shr(2, y)                    0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 1010 1010 1010 1010 1010 1010 1010 1010 1010 1010 |
+            // now adding 0x3333...333      0x3333333333333333 in bits is:
+            //                              0000 0000 0000 0000 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011
+            // and([...], 0x3333...333)     0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 0010 0010 0010 0010 0010 0010 0010 0010 0010 0010 |
+            // ...
+            // y :=                         0000 0000 0000 0000 0000 0000 0000 0000 0000 0011 0100 0100 0100 0100 0100 0100 0100 0100 0100 0100 | (0100 0100)
+            //
+            // ...
+            // y :=                         0000 0000 0000 0000 0000 0000 0000 0000 0000 0011 0000 1000 0000 1000 0000 1000 0000 1000 0000 1000 | (0000 1000)
+            //
+            // ...
+            // y :=                         0000 0000 0000 0000 0000 0000 0000 0000 0000 0011 0000 1011 0001 0000 0001 0000 0001 0000 0001 0000 | (0001 0000)
+            //
+            // ...
+            // y :=                         0000 0000 0000 0000 0000 0000 0000 0000 0000 0011 0000 1011 0001 0011 0001 1011 0010 0000 0010 0000 | (0010 0000)
+            //
+            // ...
+            // y :=                         0000 0000 0000 0000 0000 0000 0000 0000 0000 0011 0000 1011 0001 0011 0001 1011 0010 0011 0010 1011 | (0011 0011)
+            //
+            // ...
+            // Final compact flag:   uint8(2) (FALSE), FIXING THE FIRST LINE (shr 168 -> 184) FIXED IT, RESULT IS NOW 6
         }
     }
 
     /**
      * @notice Internal pure function for computing an allocator's ID from their address.
-     * Combines the compact flag (4 bits) with the last 88 bits of the address.
+     * Combines the compact flag (4 bits) with the last 88 bits of the address. // WHY IS THE LAST 88 BITS OF THE ADDRESS + THE compactFlag SUFFICIENT TO BE UNIQUE?
      * @param allocator    The address to compute the ID for.
      * @return allocatorId The computed allocator ID.
      */

@@ -25,36 +25,54 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
+    // NOTIFY READERS OF THE NATSPEC FOR THE FUNCTIONS IN THE INTERFACE
     function deposit(address allocator) external payable returns (uint256) {
-        return _performBasicNativeTokenDeposit(allocator);
+        // COMPLETED PR
+        return _performBasicNativeTokenDeposit(allocator); // DirectDepositLogic.sol
     }
 
+    // THE CLAIM REGISTERED IS NOT A SECRET IN THIS CASE, SO COULD WE VERIFY THE CLAIMHASH?
     function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash) external payable returns (uint256 id) {
-        id = _performBasicNativeTokenDeposit(allocator);
+        // COMPLETED PR
+        id = _performBasicNativeTokenDeposit(allocator); // DirectDepositLogic.sol
 
-        _registerWithDefaults(claimHash, typehash);
+        _registerWithDefaults(claimHash, typehash); // RegistrationLogic.sol
     }
 
+    // COULD ALSO BE USED FOR NATIVE TOKENS TO REDUCE NUMBER OF FUNCTIONS - 'AMOUNT' COULD BE USED TO VERIFY THE INTENDED AMOUNT OF NATIVE TOKENS TO BE DEPOSITED
     function deposit(address token, address allocator, uint256 amount) external returns (uint256) {
-        return _performBasicERC20Deposit(token, allocator, amount);
+        // Completed PR
+        return _performBasicERC20Deposit(token, allocator, amount); // DirectDepositLogic.sol
     }
 
+    // THE CLAIM REGISTERED IS NOT A SECRET IN THIS CASE, SO COULD WE VERIFY THE CLAIMHASH?
     function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
-        id = _performBasicERC20Deposit(token, allocator, amount);
+        // Completed PR
+        id = _performBasicERC20Deposit(token, allocator, amount); // DirectDepositLogic.sol
 
-        _registerWithDefaults(claimHash, typehash);
+        _registerWithDefaults(claimHash, typehash); // RegistrationLogic.sol
     }
 
+    // HAVING THE RECIPIENT AS A PARAMETER ALLOWS US TO OUTSOURCE depositAndRegister FUNCTIONS TO HELPER CONTRACTS
+    // IF WE USE A CALLBACK FOR THE USER TO SEND IN THE TOKENS (LIKE IN UNISWAP V3), WE SAVE ON GAS BY SKIPPING APPROVAL FOR THIS CONTRACT.
+    // THE CONTRACT FEELS A LITTLE LIKE UNISWAP V3 CORE AND PERIPHERY CONTRACTS WERE COMBINED IN ONE. COULD BE INTERESTING TO EXPLORE
+    // WHERE TO SEPERATE THE LOGIC TO KEEP IT EASY TO READ AND MODULAR AT THE SAME TIME.
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256) {
-        return _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
+        // Completed PR
+        // COULD ELIMINATE A LOT OF THE FUNCTIONS IN THE DEPOSIT CONTRACTS BY HANDELING DEFAULT PARAMETERS IN THIS CONTRACT. COULD INCREASE READABILITY.
+        return _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient); // DirectDepositLogic.sol
     }
 
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256) {
-        return _performCustomERC20Deposit(token, allocator, resetPeriod, scope, amount, recipient);
+        // Completed PR
+        // COULD ELIMINATE A LOT OF THE FUNCTIONS IN THE DEPOSIT CONTRACTS BY HANDELING DEFAULT PARAMETERS IN THIS CONTRACT. COULD INCREASE READABILITY.
+        return _performCustomERC20Deposit(token, allocator, resetPeriod, scope, amount, recipient); // DirectDepositLogic.sol
     }
 
-    function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
-        _processBatchDeposit(idsAndAmounts, recipient);
+    // IN HERE, WE ARE ACTUALLY COMBINING NATIVE AND ERC20 TOKENS IN THE SAME FUNCTION, WE CAN DO THE SAME ABOVE.
+    function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) { 
+        // Completed PR
+        _processBatchDeposit(idsAndAmounts, recipient); // DirectDepositLogic.sol
 
         return true;
     }
@@ -62,10 +80,10 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external payable returns (bool) {
         _processBatchDeposit(idsAndAmounts, msg.sender);
 
-        return _registerBatch(claimHashesAndTypehashes, duration);
+        return _registerBatch(claimHashesAndTypehashes, duration); // NEED TO LOOK INTO THIS
     }
 
-    function deposit(
+    function deposit( // RENAME TO depositViaPermit2 FOR CLEAR SEPARATION?
         address token,
         uint256, // amount
         uint256, // nonce
@@ -76,11 +94,12 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         Scope, //scope
         address recipient,
         bytes calldata signature
-    ) external returns (uint256) {
-        return _depositViaPermit2(token, recipient, signature);
+    ) external returns (uint256) { // Completed PR
+        return _depositViaPermit2(token, recipient, signature); // DepositViaPermit2Logic.sol
     }
 
-    function depositAndRegister(
+    // ITS HARD TO FOLLOW A PATTERN HERE... DEPOSIT AND REGISTER VIA PERMIT2 HAS SUCH A DIFFERENT INTERNAL PROCESS COMPARED TO ONLY DEPOSITING (NOT JUST THE REGISTERING PART ADDED).
+    function depositAndRegister( // RENAME TO depositAndRegisterViaPermit2 FOR CLEAR SEPARATION?
         address token,
         uint256, // amount
         uint256, // nonce

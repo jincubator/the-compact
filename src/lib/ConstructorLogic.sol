@@ -26,7 +26,7 @@ contract ConstructorLogic is Tstorish {
     using IdLib for uint256;
 
     // Address of the Permit2 contract, optionally used for depositing ERC20 tokens.
-    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3; // BETTER AS IMMUTABLE TO BE MORE FLEXIBLE WITH OTHER CHAINS 
 
     // Storage slot used for the reentrancy guard, whether using TSTORE or SSTORE.
     uint256 private constant _REENTRANCY_GUARD_SLOT = 0x929eee149b4bd21268;
@@ -41,7 +41,7 @@ contract ConstructorLogic is Tstorish {
     MetadataRenderer private immutable _METADATA_RENDERER;
 
     // Whether Permit2 was deployed on the chain at construction time.
-    bool private immutable _PERMIT2_INITIALLY_DEPLOYED;
+    bool private immutable _PERMIT2_INITIALLY_DEPLOYED; // IF WE MAKE _PERMIT2 AN IMMUTABLE, WE CAN JUST CHECK IF _PERMIT2 IS NOT ADDRESS ZERO
 
     /**
      * @notice Constructor that initializes immutable variables and deploys the metadata

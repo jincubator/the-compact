@@ -40,19 +40,20 @@ library RegistrationLib {
             let m := mload(0x40)
 
             // Pack data for deriving active registration storage slot.
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
+            mstore(add(m, 0x14), sponsor) // 160 bits length at 160 bits + 96 empty bits  = 256-416 bits
+            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE) // 32 bits  length at 0 bits   + 224 empty bits = 224-256 bits
+            mstore(add(m, 0x34), claimHash) // 256 bits length at 416 bits + 0 empty bits   = 416-672 bits
+            mstore(add(m, 0x54), typehash) // 256 bits length at 672 bits + 0 empty bits   = 672-928 bits
 
             // Derive and load active registration storage slot to get current expiration.
-            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
+            let cutoffSlot := keccak256(add(m, 0x1c), 0x58) // hash bits 224-928
 
             // Compute new expiration based on current timestamp and supplied duration.
             let expires := add(timestamp(), duration)
 
-            // Ensure new expiration does not exceed current and duration does not exceed 30 days.
+            // Ensure new expiration is not earlier than current and duration does not exceed 30 days.
             if or(lt(expires, sload(cutoffSlot)), gt(duration, 0x278d00)) {
+                // LETS MAYBE MOVE THE HARDCODED 30 days max EXPIRATION TO A CONSTANT FOR EASY ADAPTATION?
                 // revert InvalidRegistrationDuration(uint256 duration)
                 mstore(0, 0x1f9a96f4)
                 mstore(0x20, duration)
@@ -69,6 +70,23 @@ library RegistrationLib {
             mstore(add(m, 0x74), expires)
             log2(add(m, 0x34), 0x60, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
         }
+
+        // // SOLIDITY CODE:
+        // // gas efficiency assembly code: 25_259 gas
+        // // gas efficiency solidity code: 26_537 gas
+        // bytes32 cutoffSlot = keccak256(abi.encodePacked(bytes4(bytes32(_ACTIVE_REGISTRATIONS_SCOPE)), sponsor, claimHash, typehash));
+        // uint256 currentExpiration;
+        // assembly ("memory-safe") {
+        //     currentExpiration := sload(cutoffSlot)
+        // }
+        // uint256 expires = block.timestamp + duration;
+        // if (expires < currentExpiration || duration > 30 days) {
+        //     revert InvalidRegistrationDuration(duration);
+        // }
+        // assembly ("memory-safe") {
+        //     sstore(cutoffSlot, expires)
+        // }
+        // emit CompactRegistered(sponsor, claimHash, typehash, expires);
     }
 
     /**
@@ -90,7 +108,7 @@ library RegistrationLib {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      */
     function registerAsCallerWithDefaultDuration(bytes32 claimHash, bytes32 typehash) internal {
-        msg.sender.registerCompactWithSpecificDuration(claimHash, typehash, uint256(0x258).asStubborn());
+        msg.sender.registerCompactWithSpecificDuration(claimHash, typehash, uint256(0x258).asStubborn()); // LETS MAYBE MOVE THE HARDCODED 10 MINUTES DEFAULT TO A CONSTANT FOR EASY ADAPTATION?
     }
 
     /**

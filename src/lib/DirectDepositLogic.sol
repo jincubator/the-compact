@@ -33,6 +33,7 @@ contract DirectDepositLogic is DepositLogic {
      * default reset period (ten minutes) and scope (multichain) will be used for the resource
      * lock. The ERC6909 token amount received by the caller will match the amount of native
      * tokens sent with the transaction.
+     * @dev will revert if the allocator address was not previously registered
      * @param allocator The address of the allocator.
      * @return id The ERC6909 token identifier of the associated resource lock.
      */
@@ -46,7 +47,7 @@ contract DirectDepositLogic is DepositLogic {
 
     /**
      * @notice Internal function for depositing multiple tokens in a single transaction. The
-     * first entry in idsAndAmounts can optionally represent native tokens by providing the null
+     * first entry (and ONLY the first entry) in idsAndAmounts can optionally represent native tokens by providing the null
      * address and an amount matching msg.value. For ERC20 tokens, the caller must directly
      * approve The Compact to transfer sufficient amounts on its behalf. The ERC6909 token amounts
      * received by the recipient are derived from the differences between starting and ending
@@ -74,14 +75,29 @@ contract DirectDepositLogic is DepositLogic {
             // Load the first ID from idsAndAmounts.
             id := calldataload(idsAndAmountsOffset)
 
+            // Example of how the calldata is structured and the difference between the array pointer and .offset in assembly.
+            //
+            // The example calldata for this function has the following inputs:
+            // idsAndAmounts = [[1, 2],[3, 4]], recipient = 0x3482f06bbd1cc4ae5b13b3f63a5373752a7819e0
+            //
+            // 0x5943672c|                                      Function selector
+            // 0...0000000000000000000000000000000000000040|    Pointer to idsAndAmounts
+            // 0...3482f06bbd1cc4ae5b13b3f63a5373752a7819e0|    Recipient
+            // 0...0000000000000000000000000000000000000002|    Length of idsAndAmounts <--- Pointer to idsAndAmounts
+            // 0...0000000000000000000000000000000000000001|    First ID <--- idsAndAmounts.offset points here
+            // 0...0000000000000000000000000000000000000002|    First Amount
+            // 0...0000000000000000000000000000000000000003|    Second ID
+            // 0...0000000000000000000000000000000000000004|    Second Amount
+
             // Determine if token encoded in first ID is the null address.
             firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, id)))
+            // shift 96 to left to clear [1 bit scope][3 bits resetPeriod][92 bits allocatorId], so only [160 bits token] remains
 
             // Revert if:
             //  * the array is empty
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
-            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            //  * the first token is native and the callvalue doesn't equal the first amount
             if or(iszero(totalIds), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20))))))) {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
@@ -103,12 +119,22 @@ contract DirectDepositLogic is DepositLogic {
         // Iterate over remaining IDs and amounts.
         unchecked {
             for (uint256 i = firstUnderlyingTokenIsNative.asUint256(); i < totalIds; ++i) {
+                // LOVE THAT BOOL TO UINT USAGE
                 // Navigate to the current ID and amount pair in calldata.
                 uint256[2] calldata idAndAmount = idsAndAmounts[i];
 
                 // Retrieve the current ID and amount.
                 id = idAndAmount[0];
                 amount = idAndAmount[1];
+
+                // ADDITIONAL CHECK TO REVERT IF ID OR AMOUNT IS 0
+                assembly ("memory-safe") {
+                    if or(iszero(id), iszero(amount)) {
+                        // revert InvalidBatchDepositStructure()
+                        mstore(0, 0xca0fc08e)
+                        revert(0x1c, 0x04)
+                    }
+                }
 
                 // Derive new allocator ID from current resource lock ID.
                 newAllocatorId = id.toAllocatorId();
@@ -138,6 +164,8 @@ contract DirectDepositLogic is DepositLogic {
      * default reset period (ten minutes) and scope (multichain) will be used for the resource
      * lock. The ERC6909 token amount received by the caller will match the amount of native
      * tokens sent with the transaction.
+     * @dev will revert if the allocator address was not previously registered
+     * @dev will revert if the token is address 0 (which is used to represent native tokens)
      * @param allocator The address of the allocator.
      * @return id The ERC6909 token identifier of the associated resource lock.
      */

@@ -57,6 +57,8 @@ interface ITheCompact {
      */
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
+    // COULD WE ADD ALL THE CUSTOM ERRORS HERE FOR CLARITY, (EVEN THOUGH THE CONTRACT REVERTS IN ASSEMBLY)?
+
     /**
      * @notice External payable function for depositing native tokens into a resource lock
      * and receiving back ERC6909 tokens representing the underlying locked balance controlled
@@ -143,7 +145,7 @@ interface ITheCompact {
 
     /**
      * @notice External payable function for depositing multiple tokens in a single transaction.
-     * The first entry in idsAndAmounts can optionally represent native tokens by providing the
+     * The first entry (and ONLY the first entry) in idsAndAmounts can optionally represent native tokens by providing the
      * null address and an amount matching msg.value. For ERC20 tokens, the caller must directly
      * approve The Compact to transfer sufficient amounts on its behalf. The ERC6909 token amounts
      * received by the recipient are derived from the differences between starting and ending

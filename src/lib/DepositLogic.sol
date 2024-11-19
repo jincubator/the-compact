@@ -14,7 +14,7 @@ contract DepositLogic is ConstructorLogic {
     using SafeTransferLib for address;
 
     // Storage slot seed for ERC6909 state, used in computing balance slots.
-    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
+    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940; // WHERE IS THIS COMING FROM?
 
     // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
@@ -36,7 +36,7 @@ contract DepositLogic is ConstructorLogic {
         // Revert if the balance hasn't increased.
         assembly ("memory-safe") {
             if iszero(lt(initialBalance, tokenBalance)) {
-                // revert InvalidDepositBalanceChange()
+                // revert InvalidDepositBalanceChange() // COULD PROVIDE INFORMATION ABOUT INIT AND NEW TOKEN BALANCE IN THE ERROR
                 mstore(0, 0x426d8dcf)
                 revert(0x1c, 0x04)
             }
@@ -60,9 +60,14 @@ contract DepositLogic is ConstructorLogic {
     function _deposit(address to, uint256 id, uint256 amount) internal {
         assembly ("memory-safe") {
             // Compute the recipient's balance slot using the master slot seed.
-            mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
-            mstore(0x14, to)
-            mstore(0x00, id)
+            mstore(0x20, _ERC6909_MASTER_SLOT_SEED) // length of 64 bits
+            mstore(0x14, to) // Length of 160 bits
+            mstore(0x00, id) // length of 256 bits
+            //           -----------SLOT 1-----------   -----------SLOT 2-----------
+            // master:  |        - 256 bytes -         | [0000000000000000000][--64 bits--]
+            // to:      |    - 160 bytes -     [[0000] | [---160 bits---]]
+            // id:      | [---------256 bits---------] |        - 256 bytes -
+
             let toBalanceSlot := keccak256(0x00, 0x40)
 
             // Load current balance and compute new balance.
@@ -87,6 +92,7 @@ contract DepositLogic is ConstructorLogic {
             mstore(0x00, caller())
             mstore(0x20, amount)
             log4(0, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, shr(0x60, shl(0x60, to)), id)
+            // IS IT REQUIRED TO SANITIZE AN INTERNAL INPUT?
         }
     }
 }
