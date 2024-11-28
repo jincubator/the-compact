@@ -15,6 +15,8 @@ library EventLib {
     // keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)")).
     uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE = 0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
 
+    // I FEEL LIKE WE ARE MISSING A LITTLE BIT OF CONSISTENCY WITH THIS LIBRARY, WHY DO WE NOT DEPLOY ALL EVENTS WITH IT?
+
     /**
      * @notice Internal function for emitting claim events. The sponsor and allocator
      * addresses are sanitized before emission.

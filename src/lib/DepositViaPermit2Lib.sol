@@ -139,13 +139,21 @@ library DepositViaPermit2Lib {
         pure
         returns (bytes32 activationTypehash, bytes32 compactTypehash)
     {
+        // memory location is 352
+
+        // Memory looks now as follows:
+        // -> memory pointer offset
+        // [ 32 bytes ][ 32 bytes ][ 32 bytes ][ 32 bytes ][ 32 bytes  ][ 32 bytes  ][ 32 bytes ][ 32 bytes  ][ 32 bytes  ][ 32 bytes  ] <- memory content
+        // [ selector ][ token    ][ amount   ][ nonce    ][ deadline  ][ this addr ][ amount   ][ depositor ][    ---    ][    320    ]
+        // [ 0 bytes  ][ 32 bytes ][ 64 bytes ][ 96 bytes ][ 128 bytes ][ 160 bytes ][ 192 bytes][ 224 bytes ][ 256 bytes ][ 288 bytes ] <- memory offset
+
         assembly ("memory-safe") {
             // Internal assembly function for writing the witness and typehashes.
             // Used to enable leaving the inline assembly scope early when the
             // witness is empty (no-witness case).
             function writeWitnessAndGetTypehashes(memLocation, c, witnessOffset, witnessLength, usesBatch) -> derivedActivationTypehash, derivedCompactTypehash {
                 // Derive memory offset for the witness typestring data.
-                let memoryOffset := add(memLocation, 0x20)
+                let memoryOffset := add(memLocation, 0x20) // memoryOffset = 352 + 32 = 384
 
                 // Declare variables for start of Activation and Category-specific data.
                 let activationStart
@@ -154,67 +162,115 @@ library DepositViaPermit2Lib {
                 // Handle non-batch cases.
                 if iszero(usesBatch) {
                     // Prepare initial Activation witness typestring fragment.
-                    mstore(add(memoryOffset, 0x09), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
-                    mstore(memoryOffset, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(memoryOffset, 0x09), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO) // length of 9 bytes
+                    mstore(memoryOffset, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE) // overrides empty bits of fragment two
 
                     // Set memory pointers for Activation and Category-specific data start.
-                    activationStart := add(memoryOffset, 0x13)
-                    categorySpecificStart := add(memoryOffset, 0x29)
+                    activationStart := add(memoryOffset, 0x13)          // activationStart = 384 + 19 = 403
+                    categorySpecificStart := add(memoryOffset, 0x29)    // categorySpecificStart = 384 + 41 = 425
+
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ] <- memory offset
                 }
 
                 // Proceed with batch case if preparation of activation has not begun.
                 if iszero(activationStart) {
                     // Prepare initial BatchActivation witness typestring fragment.
-                    mstore(add(memoryOffset, 0x16), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
-                    mstore(memoryOffset, PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(memoryOffset, 0x16), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO) // length of 22 bytes
+                    mstore(memoryOffset, PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE) // overrides empty bits of fragment two
 
                     // Set memory pointers for Activation and Category-specific data.
-                    activationStart := add(memoryOffset, 0x18)
-                    categorySpecificStart := add(memoryOffset, 0x36)
+                    activationStart := add(memoryOffset, 0x18) // activationStart = 384 + 24 = 408
+                    categorySpecificStart := add(memoryOffset, 0x36) // categorySpecificStart = 384 + 54 = 438
+
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  22 bytes ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ] <- memory offset
                 }
 
                 // Declare variable for end of Category-specific data.
                 let categorySpecificEnd
 
-                // Handle Compact (non-batch, single-chain) case.
+                // Handle CompactCategory.Compact (non-batch, single-chain) case.
                 if iszero(c) {
                     // Prepare next typestring fragment using Compact witness typestring.
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(categorySpecificStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR) // length of 16 bytes
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE) // overrides empty bits of fragment four
 
                     // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0x70)
-                    categorySpecificStart := add(categorySpecificStart, 0x10)
+                    categorySpecificEnd := add(categorySpecificStart, 0x70) // categorySpecificEnd = 425/438 + 112 = 537/550
+                    categorySpecificStart := add(categorySpecificStart, 0x10) // categorySpecificStart = 425/438 + 16 = 441/454
+
+                    // if 'usesBatch' is false, memory looks like this:
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  425 bytes  ][  457 bytes  ][  489 bytes  ][  521 bytes  ] <- memory offset
+
+                    // if 'usesBatch' is true, memory looks like this:
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  22 bytes ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  438 bytes  ][  470 bytes  ][  502 bytes  ][  534 bytes  ] <- memory offset
                 }
 
-                // Handle BatchCompact (single-chain) case.
+                // Handle CompactCategory.BatchCompact (single-chain) case.
                 if iszero(sub(c, 1)) {
                     // Prepare next typestring fragment using BatchCompact witness typestring.
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(categorySpecificStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR) // length of 27 bytes
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE) // overrides empty bits of fragment four
 
                     // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0x7b)
-                    categorySpecificStart := add(categorySpecificStart, 0x15)
+                    categorySpecificEnd := add(categorySpecificStart, 0x7b) // categorySpecificEnd = 425/438 + 123 = 548/561
+                    categorySpecificStart := add(categorySpecificStart, 0x15) // categorySpecificStart = 425/438 + 21 = 446/459
+
+                    // if 'usesBatch' is false, memory looks like this:
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  27 bytes   ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  425 bytes  ][  457 bytes  ][  489 bytes  ][  521 bytes  ] <- memory offset
+
+                    // if 'usesBatch' is true, memory looks like this:
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  22 bytes ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  27 bytes   ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  438 bytes  ][  470 bytes  ][  502 bytes  ][  534 bytes  ] <- memory offset
                 }
 
-                // Handle MultichainCompact case if preparation of compact fragment has not begun.
+                // Handle CompactCategory.MultichainCompact case if preparation of compact fragment has not begun.
                 if iszero(categorySpecificEnd) {
                     // Prepare next typestring fragment using Multichain & Segment witness typestring.
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
                     mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
                     mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(categorySpecificStart, 0x70), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
-                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                    mstore(add(categorySpecificStart, 0x90), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX) // length of 16 bytes
+                    mstore(add(categorySpecificStart, 0x80), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE) // overrides empty bits of fragment six
+                    // FRAGMENT FIVE NEEDS TO BE STARTING AT 0x80 TO NOT OVERRIDE FRAGMENT FOUR AND SIX NEEDS TO BE STARTING AT 0x90
 
                     // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0x90)
-                    categorySpecificStart := add(categorySpecificStart, 0x1a)
+                    categorySpecificEnd := add(categorySpecificStart, 0xb0) // categorySpecificEnd = 425/438 + 176 = 601/614
+                    categorySpecificStart := add(categorySpecificStart, 0x1a) // categorySpecificStart = 425/438 + 26 = 451/464
+                    // ENDS BASED ON WRONG 0x60 VALUE CALCULATION, SO 0xb0 INSTEAD OF 0x90
+
+                    // if 'usesBatch' is false, memory looks like this:
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ][ c fragment5 ][ c fragment6 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  425 bytes  ][  457 bytes  ][  489 bytes  ][  521 bytes  ][  553 bytes  ][  585 bytes  ] <- memory offset (601)
+
+                    // if 'usesBatch' is true, memory looks like this:
+                    // ...
+                    // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  22 bytes ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                    // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ][ c fragment5 ][ c fragment6 ]
+                    // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  438 bytes  ][  470 bytes  ][  502 bytes  ][  534 bytes  ][  566 bytes  ][  598 bytes  ] <- memory offset (614)
                 }
 
                 // Handle no-witness cases.
@@ -268,23 +324,83 @@ library DepositViaPermit2Lib {
                     // Leave the inline assembly scope early.
                     leave
                 }
+                // NEED TO CHECK NO-WITNESS CASES
+
 
                 // Copy the supplied compact witness from calldata.
-                calldatacopy(categorySpecificEnd, witnessOffset, witnessLength)
+                calldatacopy(categorySpecificEnd, witnessOffset, witnessLength) // add the witness after the typestring in memory
+
+                // Memory example for non-batch, single-chain compact:
+                // ...
+                // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  425 bytes  ][  457 bytes  ][  489 bytes  ][  521 bytes  ] <- memory offset
+                // ...
+                // [  xx bytes ] <- memory content
+                // [  witness  ]
+                // [ 537 bytes ] <- memory offset
 
                 // Insert tokenPermissions typestring fragment.
                 let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
-                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
-                mstore(sub(tokenPermissionsFragmentStart, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
+                // we skip the first byte of fragment one, so the offset is 0x0e (14 bytes) instead of 0x0f (15 bytes)
+                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO) // length of 15 bytes
+                mstore(sub(tokenPermissionsFragmentStart, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE) // overrides empty bits of fragment two
 
-                // Derive total length of typestring and store at start of memory.
+                // THIS WILL OVERRIDE THE LAST BYTE OF THE WITNESS DATA, WHICH IS ALSO SUPPOSED TO BE A ')', SO IT WOULD NOT CHANGE ANYTHING.
+                // AFTER TALKING TO 0age ABOUT THIS, A SOLUTION FOR VERSION 1 WOULD BE TO LIMIT THE WITNESSDATA TO THE INPUT OF THE STRUCT.
+                //
+                // EXAMPLE OF A PREVIOUS WITNESS:
+                // Witness witness)Witness(uint256 witnessArgument)
+                // THE NEW WITNESS WOULD LOOK LIKE THIS:
+                // uint256 witnessArgument
+                // 
+                // THIS WOULD LEAD TO SMALLER CALLDATA. IT ALSO ENSURES THE REQUIREMENT OF EIP-712 THAT ALL STRUCT DEFINITIONS 
+                // ARE ALPHANUMERICALLY ORDERED IN THE TYPESTRING, SO LESS PRONE TO ERRORS BY OTHER DEVELOPERS.
+
+
+                // Memory example for non-batch, single-chain compact:
+                // ...
+                // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                // [   ---     ][     ---     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  425 bytes  ][  457 bytes  ][  489 bytes  ][  521 bytes  ] <- memory offset
+                // ...
+                // [  ?? bytes ][   31 bytes   ][   15 bytes   ] <- memory content
+                // [  witness  ][ tknFragment1 ][ tknFragment2 ]
+                // [ 537 bytes ][ 569(?) bytes ][ 600 (?) bytes] <- memory offset
+
+
+                // Derive total length of typestring and store at start (352 bytes) of memory. (0x2e (46 bytes) = 32 bytes - 1 byte + 15 bytes)
                 mstore(memLocation, sub(add(tokenPermissionsFragmentStart, 0x2e), memoryOffset))
+                // Example calculation for non-batch, single-chain compact: (569 + 46) - 384 = 231
+
+                // Memory example for non-batch, single-chain compact:
+                // ...
+                // [ 32 bytes  ][  32 bytes   ][ 32 bytes  ][  9 bytes  ][  32 bytes   ][  32 bytes   ][  32 bytes   ][  16 bytes   ] <- memory content
+                // [   ---     ][     231     ][ fragment1 ][ fragment2 ][ c fragment1 ][ c fragment2 ][ c fragment3 ][ c fragment4 ]
+                // [ 320 bytes ][  352 bytes  ][ 384 bytes ][ 416 bytes ][  425 bytes  ][  457 bytes  ][  489 bytes  ][  521 bytes  ] <- memory offset
+                // ...
+                // [  ?? bytes ][   31 bytes   ][   15 bytes   ] <- memory content
+                // [  witness  ][ tknFragment1 ][ tknFragment2 ]
+                // [ 537 bytes ][ 569(?) bytes ][ 600 (?) bytes] <- memory offset
 
                 // Derive activation typehash.
                 derivedActivationTypehash := keccak256(activationStart, sub(tokenPermissionsFragmentStart, activationStart))
+                // Data hashed:
+                // PERMIT2_(BATCH_)DEPOSIT_WITH_ACTIVATION_TYPESTRING (minus the first 19/24 bytes)
+                // PERMIT2_ACTIVATION_(BATCH/MULTICHAIN_)COMPACT_TYPESTRING
+                // witness calldata
 
                 // Derive compact typehash.
                 derivedCompactTypehash := keccak256(categorySpecificStart, sub(tokenPermissionsFragmentStart, categorySpecificStart))
+                // Data hashed:
+                // PERMIT2_ACTIVATION_(BATCH/MULTICHAIN_)COMPACT_TYPESTRING
+                // witness calldata
+
+                // Example of the full witness typestring for a non-batch deposit with a single-chained compact 
+                // registration with an witness input of "Witness witness)Witness(uint256 witnessArgument)":
+                // Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)
+                // -------------------[ activation witness typestring .....................................................................................................................................................]
+                // ---------------------------------------------------------[ compact witness typestring ..................................................................................................................]
             }
 
             // Execute internal assembly function and store derived typehashes.
@@ -311,7 +427,7 @@ library DepositViaPermit2Lib {
             mstore(0x20, idOrIdsHash)
             mstore(0x40, claimHash)
 
-            // Derive activation witness hash and write it to specified memory location.
+            // Derive activation witness hash and write it to specified (256 bytes offset) memory location.
             mstore(add(memoryPointer, offset), keccak256(0, 0x60))
 
             // Restore the free memory pointer.
@@ -336,10 +452,29 @@ library DepositViaPermit2Lib {
             // NOTE: none of these arguments are sanitized; the assumption is that they have to
             // match the signed values anyway, so *should* be fine not to sanitize them but could
             // optionally check that there are no dirty upper bits on any of them.
-            calldatacopy(add(m, 0x20), calldataOffset, 0x80)
+            calldatacopy(add(m, 0x20), calldataOffset, 0x80) 
+            // offset of 0xa4 = 164 bytes
+            // length of 0x80 = 128 bytes
 
             // Derive the CompactDeposit witness hash from the prepared data.
-            witnessHash := keccak256(m, 0xa0)
+            witnessHash := keccak256(m, 0xa0) // length of 0xa0 = 160 bytes
+            // [witness type hash - 32 bytes][calldata copy - 128 bytes]
+
+            // Example calldata to prove locations:
+            //
+            // 0x10d82672| 4 bytes
+            // 0...0c36442b4a4522e871399cd717abdd847ab11fe88| 32 bytes token        
+            // 0...00000000000000000000000000000000000000001| 32 bytes amount       
+            // 0...00000000000000000000000000000000000000002| 32 bytes nonce        
+            // 0...00000000000000000000000000000000000000003| 32 bytes deadline     
+            // 0...0c36442b4a4522e871399cd717abdd847ab11fe88| 32 bytes depositor    
+            // 0...0c36442b4a4522e871399cd717abdd847ab11fe88| 32 bytes allocator    <- offset of calldata
+            // 0...00000000000000000000000000000000000000004| 32 bytes resetPeriod  
+            // 0...00000000000000000000000000000000000000001| 32 bytes scope        
+            // 0...0c36442b4a4522e871399cd717abdd847ab11fe88| 32 bytes recipient    <- length of calldatacopy
+            // 0...00000000000000000000000000000000000000140| 32 bytes signature offset
+            // 0...00000000000000000000000000000000000000002| 32 bytes signature length
+            // 12340000000000000000000000000000000000000...0| 32 bytes signature data
         }
     }
 
@@ -350,15 +485,15 @@ library DepositViaPermit2Lib {
      */
     function insertCompactDepositTypestring(uint256 memoryLocation) internal pure {
         assembly ("memory-safe") {
-            // Write the length of the typestring.
+            // Store the length (150 bytes) of the typestring.
             mstore(memoryLocation, 0x96)
 
             // Write the data for the typestring.
-            mstore(add(memoryLocation, 0x20), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_ONE)
-            mstore(add(memoryLocation, 0x40), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_TWO)
-            mstore(add(memoryLocation, 0x60), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_THREE)
-            mstore(add(memoryLocation, 0x96), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FIVE)
-            mstore(add(memoryLocation, 0x80), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FOUR)
+            mstore(add(memoryLocation, 0x20), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_ONE) // offset of 32 bytes
+            mstore(add(memoryLocation, 0x40), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_TWO) // offset of 64 bytes
+            mstore(add(memoryLocation, 0x60), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_THREE) // offset of 96 bytes
+            mstore(add(memoryLocation, 0x96), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FIVE) // offset of 150 bytes (length only 22 bytes), so first 10 bytes are empty
+            mstore(add(memoryLocation, 0x80), COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FOUR) // offset of 128 bytes (overrides first 10 empty bytes of fragment 5)
         }
     }
 }

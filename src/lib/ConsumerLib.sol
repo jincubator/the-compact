@@ -9,8 +9,8 @@ pragma solidity ^0.8.27;
  */
 library ConsumerLib {
     // Storage scope identifiers for nonce buckets.
-    uint256 private constant _ALLOCATOR_NONCE_SCOPE = 0x03f37b1a;
-    uint256 private constant _SPONSOR_NONCE_SCOPE = 0x8ccd9613;
+    uint256 private constant _ALLOCATOR_NONCE_SCOPE = 0x03f37b1a; // WHERE IS THIS COMING FROM?
+    uint256 private constant _SPONSOR_NONCE_SCOPE = 0x8ccd9613; // WHERE IS THIS COMING FROM?
 
     // Error thrown when attempting to consume an already-consumed nonce.
     error InvalidNonce(address account, uint256 nonce);
@@ -74,21 +74,37 @@ library ConsumerLib {
 
             // derive the nonce bucket slot:
             // keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])
-            mstore(0x20, account)
-            mstore(0x0c, scope)
-            mstore(0x40, nonce)
-            let bucketSlot := keccak256(0x28, 0x37)
+            mstore(0x20, account) // 32 bytes offset
+            mstore(0x0c, scope) // 12 bytes offset
+            mstore(0x40, nonce) // 64 bytes offset
+
+            // Memory looks now as follows:
+            //
+            // [ 40 bytes ][  4 bytes  ][  20 bytes  ][  32 bytes  ] <- memory content
+            // [    ---   ][   scope   ][   account  ][    nonce   ]
+            // [  0 bytes ][ 40 bytes  ][  44 bytes  ][  64 bytes  ] <- memory offset
+            //            _ALOC_NCE_SCPE  allocator           
+
+            // WE COULD SAFELY USE THE FIRST 56 BYTES, THIS WAY WE DO NOT HAVE TO STORE AND REWRITE THE FREE MEMORY POINTER
+
+            let bucketSlot := keccak256(0x28, 0x37) // hash from 40 bytes (0x28) to 95 bytes (55 bytes length (0x37))
 
             // Retrieve nonce bucket and check if nonce has been consumed.
             let bucketValue := sload(bucketSlot)
             let bit := shl(and(0xff, nonce), 1)
+            // We first mask the nonce with 0xff (000...0000 1111 1111) to get the last 8 bits
+            // The last 8 bits can have a value between 0 and 255.
+            // We now shift 1 (0000...0001) to the left by this value.
+            // This will result in a storage slot to be filled with up to 256 bits / nonces, rather then requiring a single slot per nonce.
+
+            // check if the bit has already been set in the bucket
             if and(bit, bucketValue) {
                 // `InvalidNonce(address,uint256)` with padding for `account`.
                 mstore(0x0c, 0xdbc205b1000000000000000000000000)
                 revert(0x1c, 0x44)
             }
 
-            // Invalidate the nonce by setting its bit.
+            // Invalidate the nonce by setting its bit. We use 'or' to set the bit additional to the existing bits/nonces.
             sstore(bucketSlot, or(bucketValue, bit))
 
             // Restore the free memory pointer.

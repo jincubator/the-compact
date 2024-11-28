@@ -31,8 +31,12 @@ contract AllocatorLogic {
      * @return       Whether all nonces were successfully marked as consumed.
      */
     function _consume(uint256[] calldata nonces) internal returns (bool) {
+        // NATSPEC COMMENT STATES THIS FUNCTION IS USED IN THE CLAIM PROCESS, BUT I CAN'T FIND ANY OTHER CALLS TO IT THEN FROM TheCompact.consume()
+
         // NOTE: this may not be necessary, consider removing
         msg.sender.usingAllocatorId().mustHaveARegisteredAllocator();
+
+        // THE CALL INDEED DOES NOT SEEM TO BE NECESSARY, BUT IT IS NICE TO PREVENT SPONSORS FROM CALLING THIS FUNCTION BY MISTAKE.
 
         unchecked {
             uint256 i;
@@ -41,9 +45,9 @@ contract AllocatorLogic {
                 i := nonces.offset
             }
 
-            uint256 end = i + (nonces.length << 5);
+            uint256 end = i + (nonces.length << 5); // nonces.length << 5 = nonces.length * 32
             uint256 nonce;
-            for (; i < end; i += 0x20) {
+            for (; i < end; i += 0x20) { // loop over each nonce in the array
                 assembly ("memory-safe") {
                     nonce := calldataload(i)
                 }

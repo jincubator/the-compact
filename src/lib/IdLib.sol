@@ -264,6 +264,11 @@ library IdLib {
         assembly ("memory-safe") {
             // extract 2nd, 3rd & 4th uppermost bits
             resetPeriod := and(shr(252, id), 7)
+
+            // shift 252 bits to the right, now only the uppermost 4 bits remain.
+            // The first, uppermost bit is the scope, which we don't need in this case.
+            // To get rid of the first bit, we run the value through a bitwise AND operation with 7 (0000...0000 0111).
+            // Now, only the 3 bits of the reset period remain.
         }
     }
 
@@ -334,7 +339,7 @@ library IdLib {
     function toCompactFlag(address allocator) internal pure returns (uint8 compactFlag) {
         assembly ("memory-safe") {
             // Extract the uppermost 72 bits of the address.
-            let x := shr(168, shl(96, allocator))
+            let x := shr(184, shl(96, allocator))
 
             // Propagate the highest set bit.
             x := or(x, shr(1, x))

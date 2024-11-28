@@ -48,6 +48,8 @@ library RegistrationLib {
             // Derive and load active registration storage slot to get current expiration.
             let cutoffSlot := keccak256(add(m, 0x1c), 0x58) // hash bits 224-928
 
+            // LETS MOVE THE SLOT CREATION CODE TO ANOTHER INTERNAL FUNCTION, SINCE IT IS USED IN MULTIPLE PLACES.
+
             // Compute new expiration based on current timestamp and supplied duration.
             let expires := add(timestamp(), duration)
 
@@ -59,6 +61,8 @@ library RegistrationLib {
                 mstore(0x20, duration)
                 revert(0x1c, 0x24)
             }
+
+            // WHY DO WE NOT LIMIT THE DURATION TO THE RESET PERIOD OF THE TOKEN? THIS WAY, EVERYONE KNOWS THAT A REGISTERED CLAIM IS ACTUALLY VALID.
 
             // Store new expiration in active registration storage slot.
             sstore(cutoffSlot, expires)
@@ -154,6 +158,8 @@ library RegistrationLib {
             mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
             mstore(add(m, 0x34), claimHash)
             mstore(add(m, 0x54), typehash)
+
+            // LETS MOVE THE SLOT CREATION CODE TO ANOTHER INTERNAL FUNCTION, SINCE IT IS USED IN MULTIPLE PLACES.
 
             // Derive and load active registration storage slot to get current expiration.
             expires := sload(keccak256(add(m, 0x1c), 0x58))

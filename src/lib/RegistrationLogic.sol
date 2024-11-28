@@ -25,6 +25,8 @@ contract RegistrationLogic {
      * @param duration  The duration for which the registration remains valid.
      */
     function _register(address sponsor, bytes32 claimHash, bytes32 typehash, uint256 duration) internal {
+        // WHY CAN A USER REGISTER A CLAIM FOR A TOKEN THAT THEY ENABLED A FORCE WITHDRAWAL FOR?
+
         sponsor.registerCompactWithSpecificDuration(claimHash, typehash, duration);
     }
 

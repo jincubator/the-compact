@@ -312,6 +312,7 @@ interface ITheCompact {
 
     /**
      * @notice Transfers ERC6909 tokens to a single recipient with allocator approval.
+     * @dev The sponsor for this transfer will always be the msg.sender.
      * @param transfer A BasicTransfer struct containing the following:
      *  -  allocatorSignature Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.

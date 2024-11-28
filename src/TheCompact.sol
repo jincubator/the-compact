@@ -112,7 +112,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
-    ) external returns (uint256) {
+    ) external returns (uint256) { // Completed PR
         return _depositAndRegisterViaPermit2(token, depositor, resetPeriod, claimHash, compactCategory, witness, signature);
     }
 
@@ -146,12 +146,16 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositBatchAndRegisterViaPermit2(depositor, permitted, resetPeriod, claimHash, compactCategory, witness, signature);
     }
 
-    function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) {
-        return _processBasicTransfer(transfer, _release);
+    // THIS REQUIRES ALWAYS THE MSG.SENDER TO BE THE SPONSOR. WHY DO WE NOT WORK WITH A 'FROM' INPUT AND CHECK FOR AN APPROVAL?
+    function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) { // Completed PR
+        // _release is a function pointer to the _release function in the SharedLogic.sol contract
+        return _processBasicTransfer(transfer, _release); // TransferLogic.sol
     }
 
-    function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool) {
-        return _processBasicTransfer(withdrawal, _withdraw);
+    // THIS REQUIRES ALWAYS THE MSG.SENDER TO BE THE SPONSOR. WHY DO WE NOT WORK WITH A 'FROM' INPUT AND CHECK FOR AN APPROVAL?
+    function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool) { // Completed PR
+        // _withdraw is a function pointer to the _withdraw function in the SharedLogic.sol contract
+        return _processBasicTransfer(withdrawal, _withdraw); // TransferLogic.sol
     }
 
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool) {
@@ -178,34 +182,34 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _processSplitBatchTransfer(withdrawal, _withdraw);
     }
 
-    function enableForcedWithdrawal(uint256 id) external returns (uint256) {
-        return _enableForcedWithdrawal(id);
+    function enableForcedWithdrawal(uint256 id) external returns (uint256) { // Completed PR
+        return _enableForcedWithdrawal(id); // WithdrawalLogic.sol
     }
 
-    function disableForcedWithdrawal(uint256 id) external returns (bool) {
-        return _disableForcedWithdrawal(id);
+    function disableForcedWithdrawal(uint256 id) external returns (bool) { // Completed PR
+        return _disableForcedWithdrawal(id); // WithdrawalLogic.sol
     }
 
-    function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) {
-        return _processForcedWithdrawal(id, recipient, amount);
+    function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) { // Completed PR
+        return _processForcedWithdrawal(id, recipient, amount); // WithdrawalLogic.sol
     }
 
-    function register(bytes32 claimHash, bytes32 typehash, uint256 duration) external returns (bool) {
-        _register(msg.sender, claimHash, typehash, duration);
+    function register(bytes32 claimHash, bytes32 typehash, uint256 duration) external returns (bool) { // Completed PR
+        _register(msg.sender, claimHash, typehash, duration); // RegistrationLogic.sol
         return true;
     }
 
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires) {
-        expires = _getRegistrationStatus(sponsor, claimHash, typehash);
+        expires = _getRegistrationStatus(sponsor, claimHash, typehash); // RegistrationLogic.sol
         isActive = expires > block.timestamp;
-    }
+    } // Completed PR
 
     function register(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external returns (bool) {
         return _registerBatch(claimHashesAndTypehashes, duration);
     }
 
     function consume(uint256[] calldata nonces) external returns (bool) {
-        return _consume(nonces);
+        return _consume(nonces); // AllocatorLogic.sol
     }
 
     function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96) {
@@ -216,6 +220,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getForcedWithdrawalStatus(account, id);
     }
 
+    // CAN WE NAME THE OUTPUT OF THIS FUNCTION TO MAKE IT CLEAR WHAT ADDRESS IS THE ALLOCATOR AND WHICH IS THE TOKEN?
     function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope) {
         return _getLockDetails(id);
     }

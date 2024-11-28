@@ -16,7 +16,7 @@ contract SharedLogic is ConstructorLogic {
     using SafeTransferLib for address;
 
     // Storage slot seed for ERC6909 state, used in computing balance slots.
-    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
+    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940; // WE HAVE THIS TWICE, LETS STICK TO ONE SOURCE OF TRUTH
 
     // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
@@ -35,10 +35,14 @@ contract SharedLogic is ConstructorLogic {
     function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
-            mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
-            mstore(0x14, from)
-            mstore(0x00, id)
+            mstore(0x20, _ERC6909_MASTER_SLOT_SEED) // length of 32 bytes (offset of 20 bytes)
+            mstore(0x14, from) // length of 20 bytes (offset of 20 bytes)
+            mstore(0x00, id) // length of 32 bytes (offset of 0 bytes)
             let fromBalanceSlot := keccak256(0x00, 0x40)
+
+            // WE HAVE THE SAME LOGIC FOR THE BALANCE IN MULTIPLE PLACES AND CONTRACTS (DEPOSITLOGIC.SOL), POSSIBLE TO HAVE THIS COMING FROM ONE INTERNAL FUNCTION?
+            // ESPECIALLY BECAUSE THE LOGIC IS HUGELY RELEVANT FOR THE CONTRACT AND WITH THE GAP BETWEEN FROM AND THE MASTER SLOT SEED,
+            // IT IS EASY TO END UP WITH ONE VERSION WITH THE GAP AND ONE WITHOUT.
 
             // Load from sender's current balance.
             let fromBalance := sload(fromBalanceSlot)
@@ -53,6 +57,7 @@ contract SharedLogic is ConstructorLogic {
             sstore(fromBalanceSlot, sub(fromBalance, amount))
 
             // Compute the recipient's balance slot and update balance.
+            // The _ERC6909_MASTER_SLOT_SEED is still available from previously
             mstore(0x14, to)
             mstore(0x00, id)
             let toBalanceSlot := keccak256(0x00, 0x40)
@@ -118,6 +123,7 @@ contract SharedLogic is ConstructorLogic {
             }
         }
 
+        // Balance checks are done after the token transfer to use an amount that reflects the real change in balance.
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -127,6 +133,8 @@ contract SharedLogic is ConstructorLogic {
 
             // Load from sender's current balance.
             let fromBalance := sload(fromBalanceSlot)
+
+            // SAME COMMENT AS ABOVE, LETS UNIFY THIS BALANCE / SLOT RETRIEVAL LOGIC INTO ONE INTERNAL FUNCTION.
 
             // Revert if insufficient balance.
             if gt(amount, fromBalance) {

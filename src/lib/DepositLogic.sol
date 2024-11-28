@@ -14,7 +14,7 @@ contract DepositLogic is ConstructorLogic {
     using SafeTransferLib for address;
 
     // Storage slot seed for ERC6909 state, used in computing balance slots.
-    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940; // WHERE IS THIS COMING FROM?
+    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940; // WHERE IS THIS COMING FROM? // WE HAVE THIS TWICE, LETS STICK TO ONE SOURCE OF TRUTH
 
     // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
@@ -64,9 +64,9 @@ contract DepositLogic is ConstructorLogic {
             mstore(0x14, to) // Length of 160 bits
             mstore(0x00, id) // length of 256 bits
             //           -----------SLOT 1-----------   -----------SLOT 2-----------
-            // master:  |        - 256 bytes -         | [0000000000000000000][--64 bits--]
-            // to:      |    - 160 bytes -     [[0000] | [---160 bits---]]
-            // id:      | [---------256 bits---------] |        - 256 bytes -
+            // master:  |        - 256 bits  -         | [0000000000000000000][--64 bits--]
+            // to:      |    - 160 bits  -     [[0000] | [---160 bits---]]
+            // id:      | [---------256 bits---------] |        - 256 bits  -
 
             let toBalanceSlot := keccak256(0x00, 0x40)
 

@@ -62,8 +62,33 @@ library HashLib {
             // Remaining data copied from calldata: nonce, expires, id & amount.
             calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80)
 
+            // Explaining the 'transfer' struct pointer:
+            // Example calldata: 
+            //
+            // 0xdd589cfc
+            // 0...00000000000000000000000000000000000000020 <- offset 0    <- 0x00  <- transfer struct pointer
+            // 0...000000000000000000000000000000000000000c0 <- offset 32   <- 0x20  <- allocatorSig pointer
+            // 0...00000000000000000000000000000000000000001 <- offset 64   <- 0x40  <- uint256 nonce
+            // 0...00000000000000000000000000000000000000002 <- offset 96   <- 0x60  <- uint256 expires
+            // 0...00000000000000000000000000000000000000003 <- offset 128  <- 0x80  <- uint256 id
+            // 0...00000000000000000000000000000000000000004 <- offset 160  <- 0xa0  <- uint256 amount
+            // 0...071159a834d69273cca5c9404c3d549ae7c67b2ea <- offset 192  <- 0xc0  <- address recipient
+            // 0...00000000000000000000000000000000000000002 <- offset 224  <- 0xe0  <- allocatorSig length <- allocatorSig pointer points here
+            // 12340000000000000000000000000000000000000...0 <- offset 256  <- 0x100 <- allocatorSig data
+            // 
+            // add(transfer, 0x20) => transfer used within assembly references the transfer struct pointer.
+            // So add(transfer, 0x20) equals to: add((0x20), 0x20) => 0x40 which is the offset of the nonce in the calldata. 
+
+
+            // Memory looks now as follows:
+            // -> memory pointer offset
+            // [ 32 bytes ][  32 bytes  ][  32 bytes  ][ 32 bytes ][ 32 bytes  ][ 32 bytes  ][ 32 bytes ] <- memory content
+            // [ typeHash ][ msg.sender ][ msg.sender ][   nonce  ][  expires  ][     id    ][  amount  ]
+            // [ 0 bytes  ][  32 bytes  ][  64 bytes  ][ 96 bytes ][ 128 bytes ][ 160 bytes ][ 192 bytes] <- memory offset
+            //                arbiter       sponsor    
+
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
+            messageHash := keccak256(m, 0xe0) // hash from 0 to 224 bytes (0xe0)
         }
     }
 
