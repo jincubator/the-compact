@@ -115,7 +115,13 @@ contract SimpleAllocator is ISimpleAllocator {
         uint256 balance = ERC6909(_COMPACT_CONTRACT).balanceOf(from_, id_);
         // Check unlocked balance
         bytes32 tokenHash = _getTokenHash(id_, from_);
-        if (_claim[tokenHash] > block.timestamp ? (balance < amount_ + _amount[tokenHash]) : (balance < amount_)) {
+
+        uint256 fullAmount = amount_;
+        if(_claim[tokenHash] > block.timestamp) {
+            // Lock is still active, add the locked amount if the nonce has not yet been consumed
+            fullAmount += ITheCompact(_COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this)) ? 0 : _amount[tokenHash];
+        }
+        if( balance < fullAmount) {
             revert InsufficientBalance(from_, id_);
         }
 
