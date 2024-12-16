@@ -13,6 +13,7 @@ import { ITheCompactClaims } from "src/interfaces/ITheCompactClaims.sol";
 import { ITheCompact } from "src/interfaces/ITheCompact.sol";
 import { BasicClaim } from "src/types/Claims.sol";
 import { Compact } from "src/types/EIP712Types.sol";
+import { ResetPeriod } from "src/lib/IdLib.sol";
 
 contract SimpleAllocator is Ownable2Step, IAllocator {
     struct LockedAllocation {
@@ -42,6 +43,7 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
     error NonceAlreadyConsumed(uint256 nonce);
     error InsufficientBalance(address sponsor, uint256 id);
     error InvalidExpiration(uint256 expires);
+    error ForceWithdrawalAvailable(uint256 expires, uint256 forcedWithdrawalExpiration);
     error InvalidLock(bytes32 digest, uint256 expiration);
 
     event Locked(address sponsor, uint256 id, uint256 amount, uint256 expires);
@@ -75,6 +77,16 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         // Check expiration is not too soon or too late
         if (compact_.expires < block.timestamp + _MIN_WITHDRAWAL_DELAY || compact_.expires > block.timestamp + _MAX_WITHDRAWAL_DELAY) {
             revert InvalidExpiration(compact_.expires);
+        }
+        // Check expiration is not longer then the tokens forced withdrawal time
+        (,, ResetPeriod resetPeriod, ) = ITheCompact(_COMPACT_CONTRACT).getLockDetails(compact_.id);
+        if(compact_.expires > block.timestamp + _resetPeriodToSeconds(resetPeriod) ){
+            revert ForceWithdrawalAvailable(compact_.expires, block.timestamp + _resetPeriodToSeconds(resetPeriod));
+        }
+        // Check expiration is not past an active force withdrawal
+        (, uint256 forcedWithdrawalExpiration) = ITheCompact(_COMPACT_CONTRACT).getForcedWithdrawalStatus(compact_.sponsor, compact_.id);
+        if(forcedWithdrawalExpiration != 0 &&  forcedWithdrawalExpiration < compact_.expires) {
+            revert ForceWithdrawalAvailable(compact_.expires, forcedWithdrawalExpiration);
         }
         // Check nonce is not yet consumed
         if (ITheCompact(_COMPACT_CONTRACT).hasConsumedAllocatorNonce(compact_.nonce, address(this))) {
@@ -180,5 +192,19 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
 
     function _getTokenHash(uint256 id_, address sponsor_) internal pure returns (bytes32) {
         return keccak256(abi.encode(id_, sponsor_));
+    }
+
+    /// @dev copied from IdLib.sol
+    function _resetPeriodToSeconds(ResetPeriod resetPeriod_) internal pure returns (uint256 duration) {
+        assembly ("memory-safe") {
+            // Bitpacked durations in 24-bit segments:
+            // 278d00  094890  015180  000f3c  000258  00003c  00000f  000001
+            // 30 days 7 days  1 day   1 hour  10 min  1 min   15 sec  1 sec
+            let bitpacked := 0x278d00094890015180000f3c00025800003c00000f000001
+
+            // Shift right by period * 24 bits & mask the least significant 24 bits.
+            duration := and(shr(mul(resetPeriod_, 24), bitpacked), 0xffffff)
+        }
+        return duration;
     }
 }
