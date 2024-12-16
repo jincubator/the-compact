@@ -3,59 +3,37 @@
 pragma solidity ^0.8.27;
 
 import { ERC6909 } from "lib/solady/src/tokens/ERC6909.sol";
-import { ERC6909 } from "lib/solady/src/tokens/ERC6909.sol";
 import { IERC1271 } from "openzeppelin-contracts/contracts/interfaces/IERC1271.sol";
-import { Ownable } from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import { Ownable2Step } from "openzeppelin-contracts/contracts/access/Ownable2Step.sol";
-import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import { IAllocator } from "src/interfaces/IAllocator.sol";
-import { ITheCompactClaims } from "src/interfaces/ITheCompactClaims.sol";
 import { ITheCompact } from "src/interfaces/ITheCompact.sol";
-import { BasicClaim } from "src/types/Claims.sol";
+import { ISimpleAllocator } from "src/interfaces/ISimpleAllocator.sol";
 import { Compact } from "src/types/EIP712Types.sol";
 import { ResetPeriod } from "src/lib/IdLib.sol";
 
-contract SimpleAllocator is Ownable2Step, IAllocator {
-    struct LockedAllocation {
-        uint216 amount;
-        uint40 expires;
-    }
+contract SimpleAllocator is ISimpleAllocator {
 
-    // The slot holding the current active claim, transiently. bytes32(uint256(keccak256("ActiveClaim")) - 1)
-    uint256 private constant _ACTIVE_CLAIM_SLOT = 0x52878b5aadd152a1719f94d6380573e67df5b5f15153bef7af957f0c05d2a1bf;
-    // The slot holding the current active claim sponsor, transiently. bytes32(uint256(keccak256("ActiveClaimSponsor")) - 1)
-    uint256 private constant _ACTIVE_CLAIM_SPONSOR_SLOT = 0x5c0cba9a91a791e685f0a43b1ceba6e6670ab2d235795af4fe5350bca1423e19;
     address private immutable _COMPACT_CONTRACT;
     address private immutable _ARBITER;
     uint256 private immutable _MIN_WITHDRAWAL_DELAY;
     uint256 private immutable _MAX_WITHDRAWAL_DELAY;
 
-    // mapping(bytes32 tokenHash => LockedAllocation allocation) private _locked;
-
+    /// @dev mapping of tokenHash to the expiration of the lock
     mapping(bytes32 tokenHash => uint256 expiration) private _claim;
+    /// @dev mapping of tokenHash to the amount of the lock
     mapping(bytes32 tokenHash => uint256 amount) private _amount;
+    /// @dev mapping of tokenHash to the nonce of the lock
     mapping(bytes32 tokenHash => uint256 nonce) private _nonce;
+    /// @dev mapping of the lock digest to the tokenHash of the lock
     mapping(bytes32 digest => bytes32 tokenHash) private _sponsor;
 
-    error ClaimActive(address sponsor);
-    error InvalidCaller(address caller, address expected);
-    error InvalidArbiter(address arbiter);
-    error NonceAlreadyConsumed(uint256 nonce);
-    error InsufficientBalance(address sponsor, uint256 id);
-    error InvalidExpiration(uint256 expires);
-    error ForceWithdrawalAvailable(uint256 expires, uint256 forcedWithdrawalExpiration);
-    error InvalidLock(bytes32 digest, uint256 expiration);
-
-    event Locked(address sponsor, uint256 id, uint256 amount, uint256 expires);
-
-    constructor(address compactContract_, address arbiter_, uint256 minWithdrawalDelay_, uint256 maxWithdrawalDelay_, address owner_) Ownable(owner_) {
+    constructor(address compactContract_, address arbiter_, uint256 minWithdrawalDelay_, uint256 maxWithdrawalDelay_) {
         _COMPACT_CONTRACT = compactContract_;
         _ARBITER = arbiter_;
         _MIN_WITHDRAWAL_DELAY = minWithdrawalDelay_;
         _MAX_WITHDRAWAL_DELAY = maxWithdrawalDelay_;
     }
 
-    /// @dev locks all tokens of a sponsor for an id
+    /// @inheritdoc ISimpleAllocator
     function lock(Compact calldata compact_) external {
         // Check msg.sender is sponsor
         if (msg.sender != compact_.sponsor) {
@@ -125,6 +103,7 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         emit Locked(compact_.sponsor, compact_.id, compact_.amount, compact_.expires);
     }
 
+    /// @inheritdoc IAllocator
     function attest(address operator_, address from_, address, uint256 id_, uint256 amount_) external view returns (bytes4) {
         if (msg.sender != _COMPACT_CONTRACT) {
             revert InvalidCaller(msg.sender, _COMPACT_CONTRACT);
@@ -143,8 +122,10 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         return 0x1a808f91;
     }
 
+    /// @inheritdoc IERC1271
     /// @dev we trust the compact contract to check the nonce is not already consumed
     function isValidSignature(bytes32 hash, bytes calldata) external view returns (bytes4 magicValue) {
+        // The hash is the digest of the compact
         bytes32 tokenHash = _sponsor[hash];
         if (tokenHash == bytes32(0) || _claim[tokenHash] <= block.timestamp) {
             revert InvalidLock(hash, _claim[tokenHash]);
@@ -153,7 +134,8 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         return IERC1271.isValidSignature.selector;
     }
 
-    function checkTokensLocked(uint256 id_, address sponsor_) internal view returns (uint256 amount_, uint256 expires_) {
+    /// @inheritdoc ISimpleAllocator
+    function checkTokensLocked(uint256 id_, address sponsor_) external view returns (uint256 amount_, uint256 expires_) {
         bytes32 tokenHash = _getTokenHash(id_, sponsor_);
         uint256 expires = _claim[tokenHash];
         if (expires <= block.timestamp) {
@@ -163,6 +145,7 @@ contract SimpleAllocator is Ownable2Step, IAllocator {
         return (_amount[tokenHash], expires);
     }
 
+    /// @inheritdoc ISimpleAllocator
     function checkCompactLocked(Compact calldata compact_) external view returns (bool locked_, uint256 expires_) {
         // TODO: Check the force unlock time in the compact contract and adapt expires_ if needed
         if (compact_.arbiter != _ARBITER) {
