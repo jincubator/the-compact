@@ -26,7 +26,8 @@ contract ServerAllocator is Ownable2Step, EIP712, IServerAllocator {
 
     address private immutable _COMPACT_CONTRACT;
 
-    mapping(address => uint256) private _signers;
+    /// @dev mapping of a signer to their index (incremented to skip 0) in _activeSigners
+    mapping(address signer => uint256 index) private _signers;
     address[] private _activeSigners;
 
     mapping(bytes32 => uint256) private _attestExpirations;
