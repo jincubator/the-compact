@@ -3,7 +3,7 @@
 pragma solidity ^0.8.27;
 
 import { IAllocator } from "src/interfaces/IAllocator.sol";
-import { ERC6909 } from "solady/tokens/ERC6909.sol";
+import { ERC6909 } from "lib/solady/src/tokens/ERC6909.sol";
 import { ERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IdLib } from "src/lib/IdLib.sol";
 
@@ -13,8 +13,10 @@ contract TheCompactMock is ERC6909 {
     using IdLib for address;
 
     mapping(uint256 nonce => bool consumed) public consumedNonces;
+    mapping(address allocator => bool registered) public registeredAllocators;
 
-    function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96) {
+    function __registerAllocator(address allocator, bytes calldata) external returns (uint96) {
+        registeredAllocators[allocator] = true;
         return 0;
     }
 
