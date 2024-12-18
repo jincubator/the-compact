@@ -21,7 +21,7 @@ interface ISimpleAllocator is IAllocator {
     error NonceAlreadyConsumed(uint256 nonce);
 
     /// @notice Thrown if the sponsor does not have enough balance to lock the amount
-    error InsufficientBalance(address sponsor, uint256 id);
+    error InsufficientBalance(address sponsor, uint256 id, uint256 balance, uint256 expectedBalance);
 
     /// @notice Thrown if the provided expiration is not valid
     error InvalidExpiration(uint256 expires);
@@ -38,7 +38,7 @@ interface ISimpleAllocator is IAllocator {
     /// @param id The id of the token
     /// @param amount The amount of the token that was available for locking (the full balance of the token will get locked)
     /// @param expires The expiration of the lock
-    event Locked(address sponsor, uint256 id, uint256 amount, uint256 expires);
+    event Locked(address indexed sponsor, uint256 indexed id, uint256 amount, uint256 expires);
 
     /// @notice Locks the tokens of an id for a claim
     /// @dev Locks all tokens of a sponsor for an id

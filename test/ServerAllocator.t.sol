@@ -60,7 +60,7 @@ abstract contract CreateHash is Test {
     //     return keccak256(
     //         abi.encodePacked(
     //             "\x19\x01", // backslash is needed to escape the character
-    //             _domainSeperator(verifyingContract),
+    //             _domainSeparator(verifyingContract),
     //             keccak256(abi.encode(keccak256(bytes(ALLOCATOR_TYPE)), data.hash))
     //         )
     //     );
@@ -71,7 +71,7 @@ abstract contract CreateHash is Test {
         return keccak256(
             abi.encodePacked(
                 "\x19\x01", // backslash is needed to escape the character
-                _domainSeperator(verifyingContract),
+                _domainSeparator(verifyingContract),
                 keccak256(abi.encode(COMPACT_TYPEHASH, data.arbiter, data.sponsor, data.nonce, data.expires, data.id, data.amount))
             )
         );
@@ -81,7 +81,7 @@ abstract contract CreateHash is Test {
         return keccak256(
             abi.encodePacked(
                 "\x19\x01", // backslash is needed to escape the character
-                _domainSeperator(verifyingContract),
+                _domainSeparator(verifyingContract),
                 keccak256(abi.encode(keccak256(bytes(REGISTER_ATTESTATION_TYPE)), data.signer, data.attestationHash, data.expiration, data.nonce))
             )
         );
@@ -92,13 +92,13 @@ abstract contract CreateHash is Test {
         return keccak256(
             abi.encodePacked(
                 "\x19\x01", // backslash is needed to escape the character
-                _domainSeperator(verifyingContract),
+                _domainSeparator(verifyingContract),
                 keccak256(abi.encode(keccak256(bytes(NONCE_CONSUMPTION_TYPE)), data.signer, data.nonces, data.attestations))
             )
         );
     }
 
-    function _domainSeperator(address verifyingContract) internal view returns (bytes32) {
+    function _domainSeparator(address verifyingContract) internal view returns (bytes32) {
         return keccak256(abi.encode(keccak256(bytes(EIP712_DOMAIN_TYPE)), keccak256(bytes(name)), keccak256(bytes(version)), block.chainid, verifyingContract));
     }
 

@@ -12,10 +12,10 @@ import { ResetPeriod } from "src/lib/IdLib.sol";
 
 contract SimpleAllocator is ISimpleAllocator {
 
-    address private immutable _COMPACT_CONTRACT;
-    address private immutable _ARBITER;
-    uint256 private immutable _MIN_WITHDRAWAL_DELAY;
-    uint256 private immutable _MAX_WITHDRAWAL_DELAY;
+    address public immutable COMPACT_CONTRACT;
+    address public immutable ARBITER;
+    uint256 public immutable MIN_WITHDRAWAL_DELAY;
+    uint256 public immutable MAX_WITHDRAWAL_DELAY;
 
     /// @dev mapping of tokenHash to the expiration of the lock
     mapping(bytes32 tokenHash => uint256 expiration) private _claim;
@@ -27,10 +27,12 @@ contract SimpleAllocator is ISimpleAllocator {
     mapping(bytes32 digest => bytes32 tokenHash) private _sponsor;
 
     constructor(address compactContract_, address arbiter_, uint256 minWithdrawalDelay_, uint256 maxWithdrawalDelay_) {
-        _COMPACT_CONTRACT = compactContract_;
-        _ARBITER = arbiter_;
-        _MIN_WITHDRAWAL_DELAY = minWithdrawalDelay_;
-        _MAX_WITHDRAWAL_DELAY = maxWithdrawalDelay_;
+        COMPACT_CONTRACT = compactContract_;
+        ARBITER = arbiter_;
+        MIN_WITHDRAWAL_DELAY = minWithdrawalDelay_;
+        MAX_WITHDRAWAL_DELAY = maxWithdrawalDelay_;
+
+        ITheCompact(COMPACT_CONTRACT).__registerAllocator(address(this), "");
     }
 
     /// @inheritdoc ISimpleAllocator
@@ -40,47 +42,43 @@ contract SimpleAllocator is ISimpleAllocator {
             revert InvalidCaller(msg.sender, compact_.sponsor);
         }
         bytes32 tokenHash = _getTokenHash(compact_.id, msg.sender);
-        // Check if the claim is already active
-        if (_claim[tokenHash] > block.timestamp && !ITheCompact(_COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this))) {
-            revert ClaimActive(compact_.sponsor);
-        }
-        // Check no lock is active for this sponsor
-        if (_claim[tokenHash] > block.timestamp) {
+        // Check no lock is already active for this sponsor
+        if (_claim[tokenHash] > block.timestamp && !ITheCompact(COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this))) {
             revert ClaimActive(compact_.sponsor);
         }
         // Check arbiter is valid
-        if (compact_.arbiter != _ARBITER) {
+        if (compact_.arbiter != ARBITER) {
             revert InvalidArbiter(compact_.arbiter);
         }
         // Check expiration is not too soon or too late
-        if (compact_.expires < block.timestamp + _MIN_WITHDRAWAL_DELAY || compact_.expires > block.timestamp + _MAX_WITHDRAWAL_DELAY) {
+        if (compact_.expires < block.timestamp + MIN_WITHDRAWAL_DELAY || compact_.expires > block.timestamp + MAX_WITHDRAWAL_DELAY) {
             revert InvalidExpiration(compact_.expires);
         }
         // Check expiration is not longer then the tokens forced withdrawal time
-        (,, ResetPeriod resetPeriod, ) = ITheCompact(_COMPACT_CONTRACT).getLockDetails(compact_.id);
+        (,, ResetPeriod resetPeriod, ) = ITheCompact(COMPACT_CONTRACT).getLockDetails(compact_.id);
         if(compact_.expires > block.timestamp + _resetPeriodToSeconds(resetPeriod) ){
             revert ForceWithdrawalAvailable(compact_.expires, block.timestamp + _resetPeriodToSeconds(resetPeriod));
         }
         // Check expiration is not past an active force withdrawal
-        (, uint256 forcedWithdrawalExpiration) = ITheCompact(_COMPACT_CONTRACT).getForcedWithdrawalStatus(compact_.sponsor, compact_.id);
+        (, uint256 forcedWithdrawalExpiration) = ITheCompact(COMPACT_CONTRACT).getForcedWithdrawalStatus(compact_.sponsor, compact_.id);
         if(forcedWithdrawalExpiration != 0 &&  forcedWithdrawalExpiration < compact_.expires) {
             revert ForceWithdrawalAvailable(compact_.expires, forcedWithdrawalExpiration);
         }
         // Check nonce is not yet consumed
-        if (ITheCompact(_COMPACT_CONTRACT).hasConsumedAllocatorNonce(compact_.nonce, address(this))) {
+        if (ITheCompact(COMPACT_CONTRACT).hasConsumedAllocatorNonce(compact_.nonce, address(this))) {
             revert NonceAlreadyConsumed(compact_.nonce);
         }
 
-        uint256 balance = ERC6909(_COMPACT_CONTRACT).balanceOf(msg.sender, compact_.id);
+        uint256 balance = ERC6909(COMPACT_CONTRACT).balanceOf(msg.sender, compact_.id);
         // Check balance is enough
         if (balance < compact_.amount) {
-            revert InsufficientBalance(msg.sender, compact_.id);
+            revert InsufficientBalance(msg.sender, compact_.id, balance, compact_.amount);
         }
 
         bytes32 digest = keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
-                ITheCompact(_COMPACT_CONTRACT).DOMAIN_SEPARATOR(),
+                ITheCompact(COMPACT_CONTRACT).DOMAIN_SEPARATOR(),
                 keccak256(
                     abi.encode(
                         keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"),
@@ -97,32 +95,32 @@ contract SimpleAllocator is ISimpleAllocator {
 
         _claim[tokenHash] = compact_.expires;
         _amount[tokenHash] = compact_.amount;
+        _nonce[tokenHash] = compact_.nonce;
         _sponsor[digest] = tokenHash;
-        _nonce[digest] = compact_.nonce;
 
         emit Locked(compact_.sponsor, compact_.id, compact_.amount, compact_.expires);
     }
 
     /// @inheritdoc IAllocator
     function attest(address operator_, address from_, address, uint256 id_, uint256 amount_) external view returns (bytes4) {
-        if (msg.sender != _COMPACT_CONTRACT) {
-            revert InvalidCaller(msg.sender, _COMPACT_CONTRACT);
+        if (msg.sender != COMPACT_CONTRACT) {
+            revert InvalidCaller(msg.sender, COMPACT_CONTRACT);
         }
         // For a transfer, the sponsor is the arbiter
         if (operator_ != from_) {
             revert InvalidCaller(operator_, from_);
         }
-        uint256 balance = ERC6909(_COMPACT_CONTRACT).balanceOf(from_, id_);
+        uint256 balance = ERC6909(COMPACT_CONTRACT).balanceOf(from_, id_);
         // Check unlocked balance
         bytes32 tokenHash = _getTokenHash(id_, from_);
 
         uint256 fullAmount = amount_;
         if(_claim[tokenHash] > block.timestamp) {
             // Lock is still active, add the locked amount if the nonce has not yet been consumed
-            fullAmount += ITheCompact(_COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this)) ? 0 : _amount[tokenHash];
+            fullAmount += ITheCompact(COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this)) ? 0 : _amount[tokenHash];
         }
         if( balance < fullAmount) {
-            revert InsufficientBalance(from_, id_);
+            revert InsufficientBalance(from_, id_, balance, fullAmount);
         }
 
         return 0x1a808f91;
@@ -144,7 +142,7 @@ contract SimpleAllocator is ISimpleAllocator {
     function checkTokensLocked(uint256 id_, address sponsor_) external view returns (uint256 amount_, uint256 expires_) {
         bytes32 tokenHash = _getTokenHash(id_, sponsor_);
         uint256 expires = _claim[tokenHash];
-        if (expires <= block.timestamp) {
+        if (expires <= block.timestamp || ITheCompact(COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this))) {
             return (0, 0);
         }
 
@@ -154,14 +152,14 @@ contract SimpleAllocator is ISimpleAllocator {
     /// @inheritdoc ISimpleAllocator
     function checkCompactLocked(Compact calldata compact_) external view returns (bool locked_, uint256 expires_) {
         // TODO: Check the force unlock time in the compact contract and adapt expires_ if needed
-        if (compact_.arbiter != _ARBITER) {
+        if (compact_.arbiter != ARBITER) {
             revert InvalidArbiter(compact_.arbiter);
         }
         bytes32 tokenHash = _getTokenHash(compact_.id, compact_.sponsor);
         bytes32 digest = keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
-                ITheCompact(_COMPACT_CONTRACT).DOMAIN_SEPARATOR(),
+                ITheCompact(COMPACT_CONTRACT).DOMAIN_SEPARATOR(),
                 keccak256(
                     abi.encode(
                         keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"),
@@ -176,7 +174,8 @@ contract SimpleAllocator is ISimpleAllocator {
             )
         );
         uint256 expires = _claim[tokenHash];
-        return (_sponsor[digest] == tokenHash && expires > block.timestamp && !ITheCompact(_COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this)), expires);
+        bool active = _sponsor[digest] == tokenHash && expires > block.timestamp && !ITheCompact(COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this));
+        return (active, active ? expires : 0);
     }
 
     function _getTokenHash(uint256 id_, address sponsor_) internal pure returns (bytes32) {
