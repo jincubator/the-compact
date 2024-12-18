@@ -29,6 +29,7 @@ abstract contract MocksSetup is Test {
     uint256 defaultAmount = 1000;
     uint256 defaultNonce = 1;
     uint256 defaultExpiration;
+
     function setUp() public virtual {
         arbiter = makeAddr("arbiter");
         usdc = new ERC20Mock("USDC", "USDC");
@@ -81,7 +82,7 @@ abstract contract Deposited is MocksSetup {
         usdc.mint(user, defaultAmount);
         usdc.approve(address(compactContract), defaultAmount);
         compactContract.deposit(address(usdc), defaultAmount, address(simpleAllocator));
-        
+
         vm.stopPrank();
     }
 }
@@ -93,14 +94,7 @@ abstract contract Locked is Deposited {
         vm.startPrank(user);
 
         defaultExpiration = vm.getBlockTimestamp() + defaultResetPeriod;
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
 
         vm.stopPrank();
     }
@@ -110,15 +104,9 @@ contract SimpleAllocator_Lock is MocksSetup {
     function test_revert_InvalidCaller() public {
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidCaller.selector, user, attacker));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: attacker,
-            nonce: 1,
-            id: usdcId,
-            expires: block.timestamp + 1,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: attacker, nonce: 1, id: usdcId, expires: block.timestamp + 1, amount: 1000 }));
     }
+
     function test_revert_ClaimActive() public {
         vm.startPrank(user);
 
@@ -128,68 +116,37 @@ contract SimpleAllocator_Lock is MocksSetup {
         compactContract.deposit(address(usdc), defaultAmount, address(simpleAllocator));
 
         // Successfully locked
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: block.timestamp + defaultResetPeriod,
-            amount: defaultAmount
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: block.timestamp + defaultResetPeriod, amount: defaultAmount }));
 
         vm.warp(block.timestamp + defaultResetPeriod - 1);
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.ClaimActive.selector, user));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce + 1,
-            id: usdcId,
-            expires: block.timestamp + defaultResetPeriod,
-            amount: defaultAmount
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce + 1, id: usdcId, expires: block.timestamp + defaultResetPeriod, amount: defaultAmount }));
     }
+
     function test_revert_InvalidArbiter(address falseArbiter_) public {
         vm.assume(falseArbiter_ != arbiter);
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidArbiter.selector, falseArbiter_));
-        simpleAllocator.lock(Compact({
-            arbiter: falseArbiter_,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: block.timestamp + 1,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: falseArbiter_, sponsor: user, nonce: 1, id: usdcId, expires: block.timestamp + 1, amount: 1000 }));
     }
+
     function test_revert_InvalidExpiration_tooShort(uint128 delay_) public {
         vm.assume(delay_ < simpleAllocator.MIN_WITHDRAWAL_DELAY());
         uint256 expiration = vm.getBlockTimestamp() + delay_;
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidExpiration.selector, expiration));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: vm.getBlockTimestamp() + delay_,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: 1, id: usdcId, expires: vm.getBlockTimestamp() + delay_, amount: 1000 }));
     }
+
     function test_revert_InvalidExpiration_tooLong(uint128 delay_) public {
         vm.assume(delay_ > simpleAllocator.MAX_WITHDRAWAL_DELAY());
         uint256 expiration = vm.getBlockTimestamp() + delay_;
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidExpiration.selector, expiration));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: vm.getBlockTimestamp() + delay_,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: 1, id: usdcId, expires: vm.getBlockTimestamp() + delay_, amount: 1000 }));
     }
+
     function test_revert_ForceWithdrawalAvailable_ExpirationLongerThenResetPeriod(uint32 delay_) public {
         vm.assume(delay_ > simpleAllocator.MIN_WITHDRAWAL_DELAY());
         vm.assume(delay_ < simpleAllocator.MAX_WITHDRAWAL_DELAY());
@@ -199,17 +156,10 @@ contract SimpleAllocator_Lock is MocksSetup {
         uint256 maxExpiration = vm.getBlockTimestamp() + defaultResetPeriod;
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.ForceWithdrawalAvailable.selector, expiration, maxExpiration));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: expiration,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: 1, id: usdcId, expires: expiration, amount: 1000 }));
     }
-    function test_revert_ForceWithdrawalAvailable_ScheduledForceWithdrawal() public {
 
+    function test_revert_ForceWithdrawalAvailable_ScheduledForceWithdrawal() public {
         vm.startPrank(user);
         compactContract.enableForceWithdrawal(usdcId);
 
@@ -224,15 +174,9 @@ contract SimpleAllocator_Lock is MocksSetup {
         assertEq(expires, expiration - 1);
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.ForceWithdrawalAvailable.selector, expiration, expiration - 1));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: expiration,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: 1, id: usdcId, expires: expiration, amount: 1000 }));
     }
+
     function test_revert_ForceWithdrawalAvailable_ActiveForceWithdrawal() public {
         vm.startPrank(user);
         compactContract.enableForceWithdrawal(usdcId);
@@ -249,15 +193,9 @@ contract SimpleAllocator_Lock is MocksSetup {
         assertEq(expires, forceWithdrawalTimestamp);
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.ForceWithdrawalAvailable.selector, expiration, forceWithdrawalTimestamp));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: expiration,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: 1, id: usdcId, expires: expiration, amount: 1000 }));
     }
+
     function test_revert_NonceAlreadyConsumed(uint256 nonce_) public {
         vm.startPrank(user);
         uint256[] memory nonces = new uint256[](1);
@@ -266,16 +204,10 @@ contract SimpleAllocator_Lock is MocksSetup {
         assertEq(compactContract.hasConsumedAllocatorNonce(nonce_, address(simpleAllocator)), true);
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.NonceAlreadyConsumed.selector, nonce_));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: nonce_,
-            id: usdcId,
-            expires: block.timestamp + defaultResetPeriod,
-            amount: 1000
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: nonce_, id: usdcId, expires: block.timestamp + defaultResetPeriod, amount: 1000 }));
     }
-    function test_revert_InsufficientBalance(uint256 balance_,uint256 amount_) public {
+
+    function test_revert_InsufficientBalance(uint256 balance_, uint256 amount_) public {
         vm.assume(balance_ < amount_);
 
         vm.startPrank(user);
@@ -289,27 +221,20 @@ contract SimpleAllocator_Lock is MocksSetup {
         assertEq(compactContract.balanceOf(user, usdcId), balance_);
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InsufficientBalance.selector, user, usdcId, balance_, amount_));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: 1,
-            id: usdcId,
-            expires: block.timestamp + defaultResetPeriod,
-            amount: amount_
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: 1, id: usdcId, expires: block.timestamp + defaultResetPeriod, amount: amount_ }));
     }
+
     function test_successfullyLocked(uint256 nonce_, uint128 amount_, uint32 delay_) public {
         vm.assume(delay_ > simpleAllocator.MIN_WITHDRAWAL_DELAY());
         vm.assume(delay_ < simpleAllocator.MAX_WITHDRAWAL_DELAY());
         vm.assume(delay_ <= defaultResetPeriod);
-        
+
         vm.startPrank(user);
 
         // Mint, approve and deposit
         usdc.mint(user, amount_);
         usdc.approve(address(compactContract), amount_);
         compactContract.deposit(address(usdc), amount_, address(simpleAllocator));
-
 
         // Check no lock exists
         (uint256 amountBefore, uint256 expiresBefore) = simpleAllocator.checkTokensLocked(usdcId, user);
@@ -320,14 +245,7 @@ contract SimpleAllocator_Lock is MocksSetup {
         uint256 expiration = vm.getBlockTimestamp() + delay_;
         vm.expectEmit(true, true, false, true);
         emit ISimpleAllocator.Locked(user, usdcId, amount_, expiration);
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: nonce_,
-            id: usdcId,
-            expires: expiration,
-            amount: amount_
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: nonce_, id: usdcId, expires: expiration, amount: amount_ }));
 
         // Check lock exists
         (uint256 amountAfter, uint256 expiresAfter) = simpleAllocator.checkTokensLocked(usdcId, user);
@@ -335,12 +253,13 @@ contract SimpleAllocator_Lock is MocksSetup {
         assertEq(amountAfter, amount_);
         assertEq(expiresAfter, expiration);
     }
+
     function test_successfullyLocked_AfterNonceConsumption(uint256 nonce_, uint256 noncePrev_, uint128 amount_, uint32 delay_) public {
         vm.assume(delay_ > simpleAllocator.MIN_WITHDRAWAL_DELAY());
         vm.assume(delay_ < simpleAllocator.MAX_WITHDRAWAL_DELAY());
         vm.assume(delay_ <= defaultResetPeriod);
         vm.assume(noncePrev_ != nonce_);
-        
+
         vm.startPrank(user);
 
         // Mint, approve and deposit
@@ -352,33 +271,18 @@ contract SimpleAllocator_Lock is MocksSetup {
         uint256 expirationPrev = vm.getBlockTimestamp() + delay_;
         vm.expectEmit(true, true, false, true);
         emit ISimpleAllocator.Locked(user, usdcId, amount_, expirationPrev);
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: noncePrev_,
-            id: usdcId,
-            expires: expirationPrev,
-            amount: amount_
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: noncePrev_, id: usdcId, expires: expirationPrev, amount: amount_ }));
 
         // Check a previous lock exists
         (uint256 amountBefore, uint256 expiresBefore) = simpleAllocator.checkTokensLocked(usdcId, user);
         assertEq(amountBefore, amount_);
         assertEq(expiresBefore, expirationPrev);
 
-
         // Check for revert if previous nonce not consumed
         uint256 expiration = vm.getBlockTimestamp() + delay_;
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.ClaimActive.selector, user));
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: nonce_,
-            id: usdcId,
-            expires: expiration,
-            amount: amount_
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: nonce_, id: usdcId, expires: expiration, amount: amount_ }));
 
         // Consume previous nonce
         uint256[] memory nonces = new uint256[](1);
@@ -391,14 +295,7 @@ contract SimpleAllocator_Lock is MocksSetup {
 
         vm.expectEmit(true, true, false, true);
         emit ISimpleAllocator.Locked(user, usdcId, amount_, expiration);
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: nonce_,
-            id: usdcId,
-            expires: expiration,
-            amount: amount_
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: nonce_, id: usdcId, expires: expiration, amount: amount_ }));
 
         // Check lock exists
         (uint256 amountAfter, uint256 expiresAfter) = simpleAllocator.checkTokensLocked(usdcId, user);
@@ -414,11 +311,13 @@ contract SimpleAllocator_Attest is Deposited {
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidCaller.selector, attacker, address(compactContract)));
         simpleAllocator.attest(address(user), address(user), address(usdc), usdcId, defaultAmount);
     }
+
     function test_revert_InvalidCaller_FromNotOperator() public {
         vm.prank(attacker);
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidCaller.selector, attacker, user));
         compactContract.transfer(user, attacker, defaultAmount, address(usdc), address(simpleAllocator));
     }
+
     function test_revert_InsufficientBalance_NoActiveLock(uint128 falseAmount_) public {
         vm.assume(falseAmount_ > defaultAmount);
 
@@ -426,19 +325,13 @@ contract SimpleAllocator_Attest is Deposited {
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InsufficientBalance.selector, user, usdcId, defaultAmount, falseAmount_));
         compactContract.transfer(user, attacker, falseAmount_, address(usdc), address(simpleAllocator));
     }
+
     function test_revert_InsufficientBalance_ActiveLock() public {
         vm.startPrank(user);
 
         // Lock a single token
         uint256 defaultExpiration = vm.getBlockTimestamp() + defaultResetPeriod;
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: 1
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: 1 }));
 
         // At this point, the deposited defaultAmount is not fully available anymore, because one of the tokens was locked
 
@@ -446,22 +339,16 @@ contract SimpleAllocator_Attest is Deposited {
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InsufficientBalance.selector, user, usdcId, defaultAmount, defaultAmount + 1));
         compactContract.transfer(user, attacker, defaultAmount, address(usdc), address(simpleAllocator));
     }
+
     function test_successfullyAttested(uint32 lockedAmount_, uint32 transferAmount_) public {
         vm.assume(uint256(transferAmount_) + uint256(lockedAmount_) <= defaultAmount);
-        
+
         address otherUser = makeAddr("otherUser");
 
         vm.startPrank(user);
         // Lock tokens
         uint256 defaultExpiration = vm.getBlockTimestamp() + defaultResetPeriod;
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: lockedAmount_
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: lockedAmount_ }));
 
         vm.expectEmit(true, true, true, true);
         emit ERC6909.Transfer(address(0), user, otherUser, usdcId, transferAmount_);
@@ -470,82 +357,48 @@ contract SimpleAllocator_Attest is Deposited {
         // Check that the other user has the tokens
         assertEq(compactContract.balanceOf(otherUser, usdcId), transferAmount_);
         assertEq(compactContract.balanceOf(user, usdcId), defaultAmount - transferAmount_);
-
     }
 }
 
 contract SimpleAllocator_IsValidSignature is Deposited, CreateHash {
     function test_revert_InvalidLock_NoActiveLock() public {
-        bytes32 digest = _hashCompact(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: block.timestamp + defaultResetPeriod,
-            amount: defaultAmount
-        }), address(compactContract));
+        bytes32 digest =
+            _hashCompact(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: block.timestamp + defaultResetPeriod, amount: defaultAmount }), address(compactContract));
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidLock.selector, digest, 0));
         simpleAllocator.isValidSignature(digest, "");
     }
+
     function test_revert_InvalidLock_ExpiredLock() public {
         vm.startPrank(user);
 
         // Lock tokens
         uint256 defaultExpiration = vm.getBlockTimestamp() + defaultResetPeriod;
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
 
         // Move time forward so lock has expired
         vm.warp(block.timestamp + defaultResetPeriod);
 
-        bytes32 digest = _hashCompact(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }), address(compactContract));
+        bytes32 digest = _hashCompact(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }), address(compactContract));
 
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidLock.selector, digest, defaultExpiration));
         simpleAllocator.isValidSignature(digest, "");
-
     }
+
     function test_successfullyValidated() public {
         vm.startPrank(user);
 
         // Lock tokens
         uint256 defaultExpiration = vm.getBlockTimestamp() + defaultResetPeriod;
-        simpleAllocator.lock(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
 
         // Move time forward so lock has expired
         vm.warp(block.timestamp + defaultResetPeriod - 1);
 
-        bytes32 digest = _hashCompact(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }), address(compactContract));
+        bytes32 digest = _hashCompact(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }), address(compactContract));
 
         bytes4 selector = simpleAllocator.isValidSignature(digest, "");
-        assertEq(selector,IERC1271.isValidSignature.selector);
+        assertEq(selector, IERC1271.isValidSignature.selector);
     }
 }
 
@@ -556,6 +409,7 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         assertEq(amount, 0);
         assertEq(expires, 0);
     }
+
     function test_checkTokensLocked_ExpiredLock() public {
         (uint256 amount, uint256 expires) = simpleAllocator.checkTokensLocked(usdcId, user);
         assertEq(amount, defaultAmount);
@@ -567,6 +421,7 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         assertEq(amount, 0);
         assertEq(expires, 0);
     }
+
     function test_checkTokensLocked_NonceConsumed() public {
         (uint256 amount, uint256 expires) = simpleAllocator.checkTokensLocked(usdcId, user);
         assertEq(amount, defaultAmount);
@@ -581,6 +436,7 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         assertEq(amount, 0);
         assertEq(expires, 0);
     }
+
     function test_checkTokensLocked_ActiveLock() public {
         vm.warp(defaultExpiration - 1);
 
@@ -588,41 +444,23 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         assertEq(amount, defaultAmount);
         assertEq(expires, defaultExpiration);
     }
+
     function test_checkCompactLocked_revert_InvalidArbiter() public {
         address otherArbiter = makeAddr("otherArbiter");
         vm.expectRevert(abi.encodeWithSelector(ISimpleAllocator.InvalidArbiter.selector, otherArbiter));
-        simpleAllocator.checkCompactLocked(Compact({
-            arbiter: otherArbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        simpleAllocator.checkCompactLocked(Compact({ arbiter: otherArbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
     }
+
     function test_checkCompactLocked_NoActiveLock() public {
         address otherUser = makeAddr("otherUser");
-        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({
-            arbiter: arbiter,
-            sponsor: otherUser,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({ arbiter: arbiter, sponsor: otherUser, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
         assertEq(locked, false);
         assertEq(expires, 0);
     }
+
     function test_checkCompactLocked_ExpiredLock() public {
         // Confirm that a lock is previously active
-        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
         assertEq(locked, true);
         assertEq(expires, defaultExpiration);
 
@@ -630,27 +468,14 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         vm.warp(defaultExpiration);
 
         // Check that the lock is no longer active
-        (locked, expires) = simpleAllocator.checkCompactLocked(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        (locked, expires) = simpleAllocator.checkCompactLocked(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
         assertEq(locked, false);
         assertEq(expires, 0);
     }
+
     function test_checkCompactLocked_NonceConsumed() public {
         // Confirm that a lock is previously active
-        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
         assertEq(locked, true);
         assertEq(expires, defaultExpiration);
 
@@ -661,14 +486,7 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         compactContract.consume(nonces);
 
         // Check that the lock is no longer active
-        (locked, expires) = simpleAllocator.checkCompactLocked(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        (locked, expires) = simpleAllocator.checkCompactLocked(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
         assertEq(locked, false);
         assertEq(expires, 0);
     }
@@ -678,14 +496,7 @@ contract SimpleAllocator_CheckTokensLocked is Locked {
         vm.warp(defaultExpiration - 1);
 
         // Confirm that a lock is active
-        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({
-            arbiter: arbiter,
-            sponsor: user,
-            nonce: defaultNonce,
-            id: usdcId,
-            expires: defaultExpiration,
-            amount: defaultAmount
-        }));
+        (bool locked, uint256 expires) = simpleAllocator.checkCompactLocked(Compact({ arbiter: arbiter, sponsor: user, nonce: defaultNonce, id: usdcId, expires: defaultExpiration, amount: defaultAmount }));
         assertEq(locked, true);
         assertEq(expires, defaultExpiration);
     }

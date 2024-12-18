@@ -11,7 +11,6 @@ import { Compact } from "src/types/EIP712Types.sol";
 import { ResetPeriod } from "src/lib/IdLib.sol";
 
 contract SimpleAllocator is ISimpleAllocator {
-
     address public immutable COMPACT_CONTRACT;
     address public immutable ARBITER;
     uint256 public immutable MIN_WITHDRAWAL_DELAY;
@@ -55,13 +54,13 @@ contract SimpleAllocator is ISimpleAllocator {
             revert InvalidExpiration(compact_.expires);
         }
         // Check expiration is not longer then the tokens forced withdrawal time
-        (,, ResetPeriod resetPeriod, ) = ITheCompact(COMPACT_CONTRACT).getLockDetails(compact_.id);
-        if(compact_.expires > block.timestamp + _resetPeriodToSeconds(resetPeriod) ){
+        (,, ResetPeriod resetPeriod,) = ITheCompact(COMPACT_CONTRACT).getLockDetails(compact_.id);
+        if (compact_.expires > block.timestamp + _resetPeriodToSeconds(resetPeriod)) {
             revert ForceWithdrawalAvailable(compact_.expires, block.timestamp + _resetPeriodToSeconds(resetPeriod));
         }
         // Check expiration is not past an active force withdrawal
         (, uint256 forcedWithdrawalExpiration) = ITheCompact(COMPACT_CONTRACT).getForcedWithdrawalStatus(compact_.sponsor, compact_.id);
-        if(forcedWithdrawalExpiration != 0 &&  forcedWithdrawalExpiration < compact_.expires) {
+        if (forcedWithdrawalExpiration != 0 && forcedWithdrawalExpiration < compact_.expires) {
             revert ForceWithdrawalAvailable(compact_.expires, forcedWithdrawalExpiration);
         }
         // Check nonce is not yet consumed
@@ -115,11 +114,11 @@ contract SimpleAllocator is ISimpleAllocator {
         bytes32 tokenHash = _getTokenHash(id_, from_);
 
         uint256 fullAmount = amount_;
-        if(_claim[tokenHash] > block.timestamp) {
+        if (_claim[tokenHash] > block.timestamp) {
             // Lock is still active, add the locked amount if the nonce has not yet been consumed
             fullAmount += ITheCompact(COMPACT_CONTRACT).hasConsumedAllocatorNonce(_nonce[tokenHash], address(this)) ? 0 : _amount[tokenHash];
         }
-        if( balance < fullAmount) {
+        if (balance < fullAmount) {
             revert InsufficientBalance(from_, id_, balance, fullAmount);
         }
 

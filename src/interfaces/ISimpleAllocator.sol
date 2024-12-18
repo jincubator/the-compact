@@ -5,9 +5,7 @@ pragma solidity ^0.8.27;
 import { IAllocator } from "src/interfaces/IAllocator.sol";
 import { Compact } from "src/types/EIP712Types.sol";
 
-
 interface ISimpleAllocator is IAllocator {
-
     /// @notice Thrown if a claim is already active
     error ClaimActive(address sponsor);
 

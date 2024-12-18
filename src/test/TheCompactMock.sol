@@ -11,7 +11,6 @@ import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { Scope } from "src/types/Scope.sol";
 import { console2 } from "forge-std/console2.sol";
 
-
 contract TheCompactMock is ERC6909 {
     using IdLib for uint96;
     using IdLib for uint256;
@@ -96,17 +95,16 @@ contract TheCompactMock is ERC6909 {
     }
 
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    // keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')
-                    0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f,
-                    keccak256("The Compact"),
-                    keccak256("0"),
-                    block.chainid,
-                    address(this)
-                )
-            );
+        return keccak256(
+            abi.encode(
+                // keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')
+                0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f,
+                keccak256("The Compact"),
+                keccak256("0"),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     function name(
