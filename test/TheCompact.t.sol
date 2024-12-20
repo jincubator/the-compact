@@ -4,12 +4,14 @@ pragma solidity ^0.8.13;
 import { Test, console } from "forge-std/Test.sol";
 import { TheCompact } from "../src/TheCompact.sol";
 import { ServerAllocator } from "../src/examples/allocator/ServerAllocator.sol";
+import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
 import { MockERC20 } from "../lib/solady/test/utils/mocks/MockERC20.sol";
 import { Compact, BatchCompact, Segment } from "../src/types/EIP712Types.sol";
 import { ResetPeriod } from "../src/types/ResetPeriod.sol";
 import { Scope } from "../src/types/Scope.sol";
 import { CompactCategory } from "../src/types/CompactCategory.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { ISimpleAllocator } from "../src/interfaces/ISimpleAllocator.sol";
 
 import { HashLib } from "../src/lib/HashLib.sol";
 
@@ -1126,6 +1128,68 @@ contract TheCompactTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPK, digest);
 
         bytes memory allocatorSignature = abi.encodePacked(r, s, v);
+
+        BasicClaim memory claim = BasicClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, id, amount, claimant, amount);
+
+        vm.prank(arbiter);
+        bool status = theCompact.claim(claim);
+        vm.snapshotGasLastCall("claim");
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(claimant.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(claimant, id), amount);
+    }
+
+    function test_claim_viaSimpleAllocator() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 10;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        
+        // Contract registers as an allocator in the Compact contract on deployment
+        SimpleAllocator simpleAllocator = new SimpleAllocator(address(theCompact), arbiter, 5, 100);
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(address(simpleAllocator), resetPeriod, scope, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), arbiter, swapper, nonce, expires, id, amount));
+
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        (bytes32 r_sponsor, bytes32 vs_sponsor) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r_sponsor, vs_sponsor);
+
+        console.log("claimHash TheCompact test");
+        console.logBytes32(claimHash);
+        console.log("arbiter SimpleAllocator");
+        console.logAddress(arbiter);
+        console.log("sponsor SimpleAllocator");
+        console.logAddress(swapper);
+        console.log("nonce SimpleAllocator");
+        console.logUint(nonce);
+        console.log("expires SimpleAllocator");
+        console.logUint(expires);
+        console.log("id SimpleAllocator");
+        console.logUint(id);
+        console.log("amount SimpleAllocator");
+        console.logUint(amount);
+        console.log("digest TheCompact test");
+        console.logBytes32(digest); 
+
+        // Lock tokens
+        vm.prank(swapper);
+        vm.expectEmit(true, true, false, true);
+        emit ISimpleAllocator.Locked(swapper, id, amount, expires);
+        simpleAllocator.lock(Compact({ arbiter: arbiter, sponsor: swapper, nonce: nonce, id: id, expires: expires, amount: amount }));
+
+        // Empty allocator signature, because the onchain allocator does not require a signature, only a lock
+        bytes memory allocatorSignature = "";
 
         BasicClaim memory claim = BasicClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, id, amount, claimant, amount);
 
