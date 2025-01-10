@@ -12,15 +12,6 @@ import { ResetPeriod } from "src/lib/IdLib.sol";
 import { console } from "forge-std/console.sol";
 
 contract SimpleAllocator is ISimpleAllocator {
-    // abi.decode(bytes("Compact(address arbiter,address "), (bytes32))
-    bytes32 constant COMPACT_TYPESTRING_FRAGMENT_ONE = 0x436f6d70616374286164647265737320617262697465722c6164647265737320;
-    // abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32))
-    bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO = 0x73706f6e736f722c75696e74323536206e6f6e63652c75696e74323536206578;
-    // abi.decode(bytes("pires,uint256 id,uint256 amount)"), (bytes32))
-    bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE = 0x70697265732c75696e743235362069642c75696e7432353620616d6f756e7429;
-    // uint200(abi.decode(bytes(",Witness witness)Witness("), (bytes25)))
-    uint200 constant WITNESS_TYPESTRING = 0x2C5769746E657373207769746E657373295769746E65737328;
-
     // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)")
     bytes32 constant COMPACT_TYPEHASH = 0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2;
 
@@ -30,13 +21,13 @@ contract SimpleAllocator is ISimpleAllocator {
     uint256 public immutable MAX_WITHDRAWAL_DELAY;
 
     /// @dev mapping of tokenHash to the expiration of the lock
-    mapping(bytes32 tokenHash => uint256 expiration) private _claim;
+    mapping(bytes32 tokenHash => uint256 expiration) internal _claim;
     /// @dev mapping of tokenHash to the amount of the lock
-    mapping(bytes32 tokenHash => uint256 amount) private _amount;
+    mapping(bytes32 tokenHash => uint256 amount) internal _amount;
     /// @dev mapping of tokenHash to the nonce of the lock
-    mapping(bytes32 tokenHash => uint256 nonce) private _nonce;
+    mapping(bytes32 tokenHash => uint256 nonce) internal _nonce;
     /// @dev mapping of the lock digest to the tokenHash of the lock
-    mapping(bytes32 digest => bytes32 tokenHash) private _sponsor;
+    mapping(bytes32 digest => bytes32 tokenHash) internal _sponsor;
 
     constructor(address compactContract_, address arbiter_, uint256 minWithdrawalDelay_, uint256 maxWithdrawalDelay_) {
         COMPACT_CONTRACT = compactContract_;
@@ -68,53 +59,6 @@ contract SimpleAllocator is ISimpleAllocator {
                 )
             )
         );
-
-        _claim[tokenHash] = compact_.expires;
-        _amount[tokenHash] = compact_.amount;
-        _nonce[tokenHash] = compact_.nonce;
-        _sponsor[digest] = tokenHash;
-
-        emit Locked(compact_.sponsor, compact_.id, compact_.amount, compact_.expires);
-    }
-
-    /// @inheritdoc ISimpleAllocator
-    function lockWithWitness(Compact calldata compact_, bytes32 typestringHash_, bytes32 witnessHash_) external {
-        bytes32 tokenHash = _checkAllocation(compact_);
-
-        console.log("claimHash SimpleAllocator");
-        // console.logBytes32(claimHash);
-        console.log("arbiter SimpleAllocator");
-        console.logAddress(compact_.arbiter);
-        console.log("sponsor SimpleAllocator");
-        console.logAddress(compact_.sponsor);
-        console.log("nonce SimpleAllocator");
-        console.logUint(compact_.nonce);
-        console.log("expires SimpleAllocator");
-        console.logUint(compact_.expires);
-        console.log("id SimpleAllocator");
-        console.logUint(compact_.id);
-        console.log("amount SimpleAllocator");
-        console.logUint(compact_.amount);
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                ITheCompact(COMPACT_CONTRACT).DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        typestringHash_, // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)")
-                        compact_.arbiter,
-                        compact_.sponsor,
-                        compact_.nonce,
-                        compact_.expires,
-                        compact_.id,
-                        compact_.amount,
-                        witnessHash_
-                    )
-                )
-            )
-        );
-        console.log("digest SimpleAllocator");
-        console.logBytes32(digest);
 
         _claim[tokenHash] = compact_.expires;
         _amount[tokenHash] = compact_.amount;
@@ -201,33 +145,11 @@ contract SimpleAllocator is ISimpleAllocator {
         return (active, active ? expires : 0);
     }
 
-    /// @dev example of a witness type string input:
-    /// "uint256 witnessArgument"
-    /// @dev full typestring:
-    /// Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)
-    function getTypestringHashForWitness(string calldata witness_) external pure returns (bytes32 typestringHash_) {
-        assembly {
-            let memoryOffset := mload(0x40)
-            mstore(memoryOffset, COMPACT_TYPESTRING_FRAGMENT_ONE)
-            mstore(add(memoryOffset, 0x20), COMPACT_TYPESTRING_FRAGMENT_TWO)
-            mstore(add(memoryOffset, 0x40), COMPACT_TYPESTRING_FRAGMENT_THREE)
-            mstore(add(memoryOffset, sub(0x60, 0x01)), shl(56, WITNESS_TYPESTRING))
-            let witnessPointer := add(memoryOffset, add(sub(0x60, 0x01), 0x19))
-            calldatacopy(witnessPointer, witness_.offset, witness_.length)
-            let witnessEnd := add(witnessPointer, witness_.length)
-            mstore8(witnessEnd, 0x29)
-            typestringHash_ := keccak256(memoryOffset, sub(add(witnessEnd, 0x01), memoryOffset))
-
-            mstore(0x40, add(or(witnessEnd, 0x1f), 0x20))
-        }
-        return typestringHash_;
-    }
-
     function _getTokenHash(uint256 id_, address sponsor_) internal pure returns (bytes32) {
         return keccak256(abi.encode(id_, sponsor_));
     }
 
-    function _checkAllocation(Compact calldata compact_) internal view returns (bytes32) {
+    function _checkAllocation(Compact memory compact_) internal view returns (bytes32) {
         // Check msg.sender is sponsor
         if (msg.sender != compact_.sponsor) {
             revert InvalidCaller(msg.sender, compact_.sponsor);
