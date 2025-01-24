@@ -39,11 +39,9 @@ contract TheCompactCore is ERC6909, Deposit {
         _register(compact.sponsor, digest, compact.expires);
     }
 
-    function depositAndRegister(ITheCompactCore.Compact calldata compact, bytes32 witness, string calldata typeString) external payable returns (ITheCompactCore.Compact memory registeredCompact) {
-        registeredCompact = compact;
+    function depositAndRegister(ITheCompactCore.Compact calldata compact, bytes32 witness, string calldata typeString) external payable {
         uint256 length = compact.inputs.length;
         uint256 nativeAmount = msg.value;
-        bool delegated = msg.sender != compact.sponsor;
         for(uint256 i = 0; i < length; ++i) {
             address token = IdLib.toToken(compact.inputs[i].id);
             uint256 amount = compact.inputs[i].amount;
@@ -60,13 +58,9 @@ contract TheCompactCore is ERC6909, Deposit {
                 }
             }
             _deposit(token, amount, IdLib.toAllocator(compact.inputs[i].id), IdLib.toScope(compact.inputs[i].id), IdLib.toResetPeriod(compact.inputs[i].id), compact.sponsor);
-            if(delegated) {
-                registeredCompact.inputs[i].recipient = _markDelegation(registeredCompact.inputs[i].recipient, msg.sender);
-            }
         }
         bytes32 digest = witness != bytes32(0) ? _compactDigestWitness(compact, witness, typeString) : _compactDigest(compact);
         _register(compact.sponsor, digest, compact.expires);
-        return registeredCompact;
     }
 
     function setOperator(address operator, bool approved) public payable override returns (bool) {
