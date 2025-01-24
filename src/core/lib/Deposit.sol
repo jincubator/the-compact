@@ -13,6 +13,46 @@ import { Errors } from "./Errors.sol";
 contract Deposit {
     using SafeTransferLib for address;
 
+    string private constant _NAME = "The Compact";
+    string private constant _VERSION = "0";
+    bytes32 immutable DOMAIN_SEPARATOR;
+
+    // Storage scope for active registrations:
+    // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
+    uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
+    uint32 private constant _MAX_REGISTRATION_EXPIRATION = 30 days;
+
+    // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs)")
+    bytes32 constant COMPACT_TYPEHASH = 0xe7d6f4bedb5bc0105639a581bf5c24bb987ae1e1ecabc848d191d6ac36a59970;
+
+    // keccak256("Permit(address owner,address spender,uint256 id,uint256 value,uint256 nonce,uint256 deadline)")
+    bytes32 private constant PERMIT_TYPEHASH = 0x41b82e2b5a0c36576b0cbe551120f192388f4a0e73168b730f27a8a467e1f79f;
+
+    // bytes4(keccak256("isValidSignature(bytes32,bytes)"))
+    bytes4 constant SIGNATURE_SELECTOR = 0x1626ba7e;
+
+    // bytes4(keccak256("attest(address,address,address,uint256,uint256)"))
+    bytes4 private constant _ATTEST_SELECTOR = 0x1a808f91;
+
+    // bytes4(keccak256("attest(address,address,address[],uint256[],uint256[],uint256,uint256,bytes)"))
+    bytes4 private constant _ATTEST_BATCH_SELECTOR = 0x9da23c98;
+
+    // Storage slot seed for ERC6909 state, used in computing balance slots.
+    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
+
+    // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
+    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
+
+    mapping(address sponsor => uint256 currentNonce) private _permit2Nonces;
+    mapping(address sponsor => mapping(uint256 nonce => bool consumed)) private _claimNonces;
+    mapping(address sponsor => mapping(uint256 id => uint256 timestamp)) private _forceWithdrawalStart;
+
+    constructor() {
+        bytes32 compactEIP712DomainHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+        DOMAIN_SEPARATOR = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes(_NAME)), keccak256(bytes(_VERSION)), block.chainid, address(this)));
+    }
+
+
     function _deposit(address token, uint256 amount, address allocator, Scope scope, ResetPeriod resetPeriod, address recipient) internal returns (uint256 id) {
         id = IdLib.toIdIfRegistered(token, scope, resetPeriod, allocator);
         _addBalance(recipient, id, amount, true);
@@ -38,27 +78,24 @@ contract Deposit {
         // TODO: Implement reentrancy guard
 
         address token = IdLib.toToken(id);
-        token.safeTransfer(to, amount);
+        if(token == address(0)) {
+            payable(to).transfer(amount);
+        } else {
+            token.safeTransfer(to, amount);
+        }
     }
 
-    /// TODO: Move everything below to a separate transfer contract
-
-    // Storage scope for active registrations:
-    // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
-    uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
-    uint32 private constant _MAX_EXPIRATION = 30 days;
-
-
-    function _register(address caller, address sponsor, bytes32 digest, uint256 expires) internal {
-        if(caller != sponsor) {
-            revert Errors.NotSponsor(caller, sponsor);
-        }
+    function _register(address sponsor, bytes32 digest, uint256 expires) internal {
+        // Must have ensured the caller is allowed to register
         bytes32 slot = keccak256(abi.encode(_ACTIVE_REGISTRATIONS_SCOPE, sponsor, digest));
         uint256 currentExpiration;
         assembly ("memory-safe") {
             currentExpiration := sload(slot)
         }
-        if(currentExpiration > expires || expires > block.timestamp + _MAX_EXPIRATION) {
+        if(currentExpiration != 0) {
+            revert Errors.AlreadyRegistered(sponsor, digest);
+        }
+        if(expires < block.timestamp || expires > block.timestamp + _MAX_REGISTRATION_EXPIRATION) {
             revert Errors.InvalidRegistrationDuration(expires);
         }
         assembly ("memory-safe") {
@@ -69,6 +106,9 @@ contract Deposit {
     function _verifyClaim(ITheCompactCore.Claim calldata claim_) internal view returns (address allocator, ITheCompactCore.Compact memory compact) {
         if(msg.sender != claim_.compact.arbiter) {
             revert Errors.NotArbiter(msg.sender, claim_.compact.arbiter);
+        }
+        if(claim_.compact.expires < block.timestamp) {
+            revert Errors.InvalidExpiration(claim_.compact.expires);
         }
         compact = claim_.compact;
         allocator = IdLib.toAllocator(claim_.compact.inputs[0].id);
@@ -84,152 +124,89 @@ contract Deposit {
                 revert Errors.AllocatorMismatch(allocator, IdLib.toAllocator(compact.inputs[i].id));
             }
         }
+        return (allocator, compact);
     }
 
-    // abi.decode(bytes("Compact(address arbiter,address "), (bytes32))
-    bytes32 constant COMPACT_TYPESTRING_FRAGMENT_ONE = 0x436f6d70616374286164647265737320617262697465722c6164647265737320;
-    // abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32))
-    bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO = 0x73706f6e736f722c75696e74323536206e6f6e63652c75696e74323536206578;
-    // abi.decode(bytes("pires,uint256 id,uint256 amount)"), (bytes32))
-    bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE = 0x70697265732c75696e743235362069642c75696e7432353620616d6f756e7429;
-
-    // bytes32 compactEIP712DomainHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    // bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("0")), block.chainid, address(this)));
-    bytes32 constant DOMAIN_SEPARATOR = 0x423efda6f5a4d5cd578a57b46b5306d04ae04f054e798cb0cd6074f08bf583ee;
-
-    // keccak256("Compact(uint256 chainId,address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs)");
-    bytes32 constant COMPACT_TYPEHASH = 0x0fee4917c24cc0706c3f2cb7a7b89603d1fef1a7efb46bd67061fe47d0f8df1b;
-
-    function _compactDigest(ITheCompactCore.Compact memory compact) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                DOMAIN_SEPARATOR,
-                keccak256(
-                    abi.encode(
-                        COMPACT_TYPEHASH,
-                        compact.chainId,
-                        compact.arbiter,
-                        compact.sponsor,
-                        compact.nonce,
-                        compact.expires,
-                        compact.inputs
-                    )
-                )
-            )
-        );
-    }
-
-    function _compactDigestWitness(ITheCompactCore.Compact calldata compact, bytes32 witness, string calldata typeString) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                DOMAIN_SEPARATOR,
-                keccak256(
-                    abi.encode(
-                        keccak256(bytes(typeString)),
-                        compact.chainId,
-                        compact.arbiter,
-                        compact.sponsor,
-                        compact.nonce,
-                        compact.expires,
-                        compact.inputs,
-                        witness
-                    )
-                )
-            )
-        );
-    }
-
-    bytes4 constant SIGNATURE_MAGIC_VALUE = 0x1626ba7e;
-
-    function _verifySignatures(bytes32 digest, address sponsor, bytes calldata sponsorSignature, address allocator, bytes calldata allocatorSignature) internal view {
+    function _verifySignatures(bytes32 sponsorDigest, address sponsor, bytes calldata sponsorSignature, bytes32 allocatorDigest, address allocator, bytes calldata allocatorSignature) internal view {
         // Check if the digest was registered
-        bytes32 slot = keccak256(abi.encode(_ACTIVE_REGISTRATIONS_SCOPE, sponsor, digest));
+        bytes32 slot = keccak256(abi.encode(_ACTIVE_REGISTRATIONS_SCOPE, sponsor, sponsorDigest));
         uint256 currentExpiration;
         assembly ("memory-safe") {
             currentExpiration := sload(slot)
         }
         if(currentExpiration < block.timestamp) {
-            if(!SignatureCheckerLib.isValidSignatureNowCalldata(sponsor, digest, sponsorSignature)) {
+            // This means no registration was found for the sponsor, since if the claim expiration is in the past the function would already have reverted.
+            if(!SignatureCheckerLib.isValidSignatureNowCalldata(sponsor, sponsorDigest, sponsorSignature)) {
                 revert Errors.InvalidSignature(sponsor, sponsorSignature);
             }
         }
-        if(!SignatureCheckerLib.isValidSignatureNowCalldata(allocator, digest, allocatorSignature)) {
-            if(IAllocator(allocator).isValidSignature(digest, allocatorSignature) != SIGNATURE_MAGIC_VALUE) {
+        if(!SignatureCheckerLib.isValidSignatureNowCalldata(allocator, allocatorDigest, allocatorSignature)) {
+            if(IAllocator(allocator).isValidSignature(allocatorDigest, allocatorSignature) != SIGNATURE_SELECTOR) {
                 revert Errors.InvalidSignature(allocator, allocatorSignature);
             }
         }
     }
 
+    function _checkPermit(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 value,
+        uint256 deadline,
+        bytes calldata signature
+    ) public virtual {
+        if (block.timestamp > deadline) {
+            revert Errors.InvalidExpiration(deadline);
+        }
 
-    // // TODO: First concept was to sort the type string structs, but likely unnecessary. Easier if User provides the full type string.
-    // string constant COMPACT_TYPESTRING = "Compact(uint256 chainId,address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs)";
-    // string constant COMPACT_WITNESS_TYPESTRING = "Compact(uint256 chainId,address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs,Witness witness)";
-    // string constant ALLOCATION_TYPESTRING = "Allocation(uint256 id,uint256 amount,address recipient)";
-    // string constant WITNESS_TYPESTRING_FRAGMENT_ONE = "Witness(";
-    // string constant WITNESS_TYPESTRING_FRAGMENT_TWO = ")";
-    // // Value of the first two bytes of the Compact type string
-    // uint16 constant COMPACT_VALUE = 17263;
-    // // Value of the first two bytes of the Allocation type string
-    // uint16 constant ALLOCATION_VALUE = 16748;
-    // // Value of the first two bytes of the Witness type string
-    // uint16 constant WITNESS_VALUE = 22377;
-    // function _typeHashWitness(string calldata typeString, string[] calldata structTypestrings) internal returns (bytes32) {
+        bytes32 hash = _computePermitHash(owner, spender, id, value, _permit2Nonces[owner]++, deadline);
+        if(!SignatureCheckerLib.isValidSignatureNowCalldata(owner, hash, signature)) {
+            revert Errors.InvalidSignature(owner, signature);
+        }
+    }
 
-    //     uint16 currentValue;
-    //     uint16 nextValue = ALLOCATION_VALUE;
-    //     uint256 structTypestringsLength = structTypestrings.length;
+    function _changeForceWithdrawalStart(uint256 id, bool enable) internal returns (uint256) {
+        if(enable) {
+            uint256 currentTimestamp = _forceWithdrawalStart[msg.sender][id];
+            if(currentTimestamp == 0) {
+                uint256 resetTimestamp = block.timestamp + IdLib.toSeconds(IdLib.toResetPeriod(id));
+                _forceWithdrawalStart[msg.sender][id] = resetTimestamp;
+                return resetTimestamp;
+            }
+            return currentTimestamp;
+        }
+        // disable forced withdrawal
+        delete _forceWithdrawalStart[msg.sender][id];
+        return 0;
+    }
 
-    //     bytes memory currentTypestring;
+    function _checkForceWithdrawalStart(uint256 id) internal view {
+        uint256 currentTimestamp = _forceWithdrawalStart[msg.sender][id];
+        if(currentTimestamp == 0 || currentTimestamp > block.timestamp) {
+            revert Errors.ForcedWithdrawalNotActive(id, currentTimestamp);
+        }
+    }
 
-    //     for(uint256 i = 0; i < structTypestringsLength; ++i) {
-    //         uint16 value = _getFirstTwoBytes(structTypestrings[i]);
-    //         if(value < currentValue) {
-    //             revert Errors.InvalidStructTypestringOrder(structTypestrings[i]);
-    //         }
-    //         if(value < nextValue) {
-    //             currentTypestring = abi.encodePacked(bytes(currentTypestring), structTypestrings[i]);
-    //         } else if(value == nextValue) {
-    //             revert Errors.InvalidStructName(structTypestrings[i]);
-    //         } else if(value > nextValue) {
-    //             if(nextValue == ALLOCATION_VALUE) {
-    //                 currentTypestring = abi.encodePacked(bytes(currentTypestring), ALLOCATION_TYPESTRING);
-    //                 nextValue = COMPACT_VALUE;
-    //             } else if (nextValue == COMPACT_VALUE) {
-    //                 currentTypestring = abi.encodePacked(bytes(currentTypestring), COMPACT_TYPESTRING);
-    //                 nextValue = WITNESS_VALUE;
-    //             } else {
-    //                 currentTypestring = abi.encodePacked(bytes(currentTypestring), WITNESS_TYPESTRING_FRAGMENT_ONE);
+    function _checkNonce(address allocator, uint256 nonce) internal view {
+        if(_claimNonces[allocator][nonce]) {
+            revert Errors.NonceAlreadyConsumed(nonce);
+        }
+    }
 
-    //             }
-    //         }
-    //         currentValue = value;
-    //     }
+    function _checkNonce(uint256 id, uint256 nonce) internal view returns (address allocator) {
+        allocator = IdLib.toAllocator(id);
+        if(_claimNonces[allocator][nonce]) {
+            revert Errors.NonceAlreadyConsumed(nonce);
+        }
+    }
 
-    //     return keccak256(abi.encode(typeString));
-    // }
+    function _consumeNonce(address allocator, uint256 nonce) internal {
+        _claimNonces[allocator][nonce] = true;
+    }
 
-    // function _getFirstTwoBytes(string calldata typeString) internal pure returns (uint16) {
-    //     uint16 result;
-    //     assembly ("memory-safe") {
-    //         // Load first two bytes from calldata
-    //         result := shr(240, calldataload(typeString.offset))
-    //     }
-    //     return result;
-    // }
-
-
-    // bytes4(keccak256("attest(address,address,address,uint256,uint256)"))
-    bytes4 private constant _ATTEST_SELECTOR = 0x1a808f91;
-    // bytes4(keccak256("attest(address,address,address[],uint256[],uint256[],uint256,uint256,bytes)"))
-    bytes4 private constant _ATTEST_BATCH_SELECTOR = 0x9da23c98;
-    // Storage slot seed for ERC6909 state, used in computing balance slots.
-    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
-
-    // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
-    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
-
+    function _getPermit2Nonce(address owner) internal view returns (uint256) {
+        return _permit2Nonces[owner];
+    }
 
     function _ensureAttested(address from, address to, uint256 id, uint256 amount) internal {
         // Derive the allocator address from the supplied id.
@@ -252,7 +229,6 @@ contract Deposit {
             if(expectedAllocator != allocator) {
                 revert Errors.AllocatorMismatch(expectedAllocator, allocator);
             }
-            
             to[i] = _castToAddress(transfer.recipients[i].recipient);
             id[i] = transfer.recipients[i].id;
             amount[i] = transfer.recipients[i].amount;
@@ -261,17 +237,6 @@ contract Deposit {
         if( IAllocator(expectedAllocator).attest(caller, caller, to, id, amount, transfer.nonce, transfer.expires, allocatorSignature) != _ATTEST_BATCH_SELECTOR) {
             revert Errors.AllocatorDenied(expectedAllocator);
         }
-    }
-
-    function _castToAddress(bytes32 address_) internal pure returns (address output_) {
-        assembly ("memory-safe") {
-            output_ := shr(96, shl(96, address_))
-        }
-    }
-
-    function _lastBitIsSet(bytes32 value) internal pure returns (bool) {
-        // Shift right 255 bits and check if 1
-        return uint256(value) >> 255 == 1;
     }
 
     // @notice Reverts if the caller does not have approval. Reduces the allowance by the amount.
@@ -305,6 +270,81 @@ contract Deposit {
                 }
             }
         }
+    }
+
+    function _compactDigest(ITheCompactCore.Compact memory compact) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        COMPACT_TYPEHASH,
+                        compact.arbiter,
+                        compact.sponsor,
+                        compact.nonce,
+                        compact.expires,
+                        compact.inputs
+                    )
+                )
+            )
+        );
+    }
+
+    function _compactDigestWitness(ITheCompactCore.Compact memory compact, bytes32 witness, string calldata typeString) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        keccak256(bytes(typeString)),
+                        compact.arbiter,
+                        compact.sponsor,
+                        compact.nonce,
+                        compact.expires,
+                        compact.inputs,
+                        witness
+                    )
+                )
+            )
+        );
+    }
+
+    function _compactDigestQualification(bytes32 sponsorSignedDigest, bytes32 qualification, string calldata qualificationTypeString) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        keccak256(bytes(qualificationTypeString)),
+                        sponsorSignedDigest,
+                        qualification
+                    )
+                )
+            )
+        );
+    }
+
+    function _computePermitHash(address owner, address spender, uint256 id, uint256 value, uint256 nonce, uint256 deadline) internal view returns (bytes32) {
+                return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        PERMIT_TYPEHASH,
+                        owner,
+                        spender,
+                        value,
+                        id,
+                        nonce,
+                        deadline
+                    )
+                )
+            )
+        );
     }
 
 
@@ -374,8 +414,6 @@ contract Deposit {
             // Load from sender's current balance.
             let fromBalance := sload(fromBalanceSlot)
 
-            // SAME COMMENT AS ABOVE, LETS UNIFY THIS BALANCE / SLOT RETRIEVAL LOGIC INTO ONE INTERNAL FUNCTION.
-
             // Revert if insufficient balance.
             if gt(amount, fromBalance) {
                 mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
@@ -397,5 +435,31 @@ contract Deposit {
                 log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, id)
             }
         }
+    }
+
+    function _castToAddress(bytes32 address_) internal pure returns (address output_) {
+        assembly ("memory-safe") {
+            output_ := shr(96, shl(96, address_))
+        }
+    }
+
+    function _lastBitIsSet(bytes32 value) internal pure returns (bool) {
+        // Shift right 255 bits and check if 1
+        return uint256(value) >> 255 == 1;
+    }
+
+    function _markDelegation(bytes32 receiver, address caller_) internal pure returns (bytes32) {
+        // To mark the delegation, the first 95 bits of the callers address will be stored in the receiver
+        // This leaves room for the first bit to be set by the arbiter to indicate the recipient was not signed for by the sponsor
+        // This is how the bytes32 receiver is structured in a claim:
+        // [           1 bit         ][                  95 bits                ][                      160 bits                          ]
+        // [ indicate empty receiver ][ last 95 bits of the registering address ][                      receiver                          ]
+
+        assembly ("memory-safe") {
+            receiver := shr(96, shl(96, receiver))
+            caller_ := shr(1, shl(160, caller_))
+            receiver := or(receiver, caller_)
+        }
+        return receiver;
     }
 }
