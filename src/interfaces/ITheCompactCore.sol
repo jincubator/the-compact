@@ -143,9 +143,10 @@ interface ITheCompactCore {
     function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
 
     // @notice Retrieves the fees for a claim
-    // @dev Allocators or an Arbiter may require a fee to be paid in order to process a claim
-    // @dev The fees must be included in the Compacts inputs if the allocator or arbiter require a fee
-    function getClaimFee(uint256[2][] calldata idAndAmount, bool allocator, bool arbiter) external view returns (uint256 allocatorFee, uint256 arbiterFee);
+    // @dev Allocators, an Arbiter, or another involved Service may require a guaranteed fee to be signed for in order to process a claim
+    // @dev The remaining amount must replace the original amount in the Compacts inputs
+    // @dev The fee must be included in the Compacts inputs with the provider as the recipient
+    function getClaimFee(address provider, uint256 id, uint256 amount) external view returns (uint256 fee, uint256 remainingAmount);
 
     // @notice Checks the forced withdrawal status of a resource lock for a given account
     // @dev Returns both the current status (disabled, pending, or enabled) and the timestamp at which forced withdrawals will be enabled

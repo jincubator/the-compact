@@ -5,6 +5,7 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 import { IAllocator } from "../../interfaces/IAllocator.sol";
 import { ITheCompactCore } from "../../interfaces/ITheCompactCore.sol";
+import { ITheCompactMultiChain } from "../../interfaces/ITheCompactMultiChain.sol";
 import { IdLib } from "../../lib/IdLib.sol";
 import { Scope } from "../../types/Scope.sol";
 import { ResetPeriod } from "../../types/ResetPeriod.sol";
@@ -15,7 +16,7 @@ contract Deposit {
 
     string private constant _NAME = "The Compact";
     string private constant _VERSION = "0";
-    bytes32 immutable DOMAIN_SEPARATOR;
+    bytes32 immutable _DOMAIN_SEPARATOR;
 
     // Storage scope for active registrations:
     // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
@@ -23,13 +24,16 @@ contract Deposit {
     uint32 private constant _MAX_REGISTRATION_EXPIRATION = 30 days;
 
     // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs)")
-    bytes32 constant COMPACT_TYPEHASH = 0xe7d6f4bedb5bc0105639a581bf5c24bb987ae1e1ecabc848d191d6ac36a59970;
+    bytes32 private constant _COMPACT_TYPEHASH = 0xe7d6f4bedb5bc0105639a581bf5c24bb987ae1e1ecabc848d191d6ac36a59970;
+
+    // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs)EnhancedCompact(Compact compact,uint256 chainId)MultiChainCompact(EnhancedCompact[])")
+    bytes32 private constant _MULTICHAIN_COMPACT_TYPEHASH = 0x4527c6867b5e06d14c0c8048cabe293f468c8ce4d78c2cdbaf193934751a96f0;
 
     // keccak256("Permit(address owner,address spender,uint256 id,uint256 value,uint256 nonce,uint256 deadline)")
-    bytes32 private constant PERMIT_TYPEHASH = 0x41b82e2b5a0c36576b0cbe551120f192388f4a0e73168b730f27a8a467e1f79f;
+    bytes32 private constant _PERMIT_TYPEHASH = 0x41b82e2b5a0c36576b0cbe551120f192388f4a0e73168b730f27a8a467e1f79f;
 
     // bytes4(keccak256("isValidSignature(bytes32,bytes)"))
-    bytes4 constant SIGNATURE_SELECTOR = 0x1626ba7e;
+    bytes4 private constant _SIGNATURE_SELECTOR = 0x1626ba7e;
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)"))
     bytes4 private constant _ATTEST_SELECTOR = 0x1a808f91;
@@ -49,13 +53,36 @@ contract Deposit {
 
     constructor() {
         bytes32 compactEIP712DomainHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-        DOMAIN_SEPARATOR = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes(_NAME)), keccak256(bytes(_VERSION)), block.chainid, address(this)));
+        _DOMAIN_SEPARATOR = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes(_NAME)), keccak256(bytes(_VERSION)), block.chainid, address(this)));
     }
 
 
     function _deposit(address token, uint256 amount, address allocator, Scope scope, ResetPeriod resetPeriod, address recipient) internal returns (uint256 id) {
         id = IdLib.toIdIfRegistered(token, scope, resetPeriod, allocator);
         _addBalance(recipient, id, amount, true);
+    }
+
+    // @dev Fee on transfer tokens are not supported, amount received will not align with the amount in the compact
+    function _depositAllInputs(ITheCompactCore.Compact memory compact) internal {
+        uint256 length = compact.inputs.length;
+        uint256 nativeAmount = msg.value;
+        for(uint256 i = 0; i < length; ++i) {
+            address token = IdLib.toToken(compact.inputs[i].id);
+            uint256 amount = compact.inputs[i].amount;
+            if(token == address(0)) {
+                // native token
+                if(nativeAmount < amount) {
+                    revert Errors.InvalidValue();
+                }
+                nativeAmount -= amount;
+            } else {
+                uint256 received = _collect(token, amount, msg.sender);
+                if(received != amount) {
+                    revert Errors.InvalidAmount(received, amount);
+                }
+            }
+            _deposit(token, amount, IdLib.toAllocator(compact.inputs[i].id), IdLib.toScope(compact.inputs[i].id), IdLib.toResetPeriod(compact.inputs[i].id), compact.sponsor);
+        }
     }
 
     function _collect(address token, uint256 amount, address from) internal returns (uint256 amountCollected) {
@@ -103,7 +130,34 @@ contract Deposit {
         }
     }
 
-    function _verifyClaim(ITheCompactCore.Claim calldata claim_) internal view returns (address allocator, ITheCompactCore.Compact memory compact) {
+    function _verifyMultiChain(ITheCompactMultiChain.EnhancedCompact[] calldata compacts) internal view returns (ITheCompactCore.Compact memory compact, uint256 index) {
+        // enforces the compacts are from the same sponsor and have the same expiration
+        address expectedSponsor = compacts[0].compact.sponsor;
+        uint256 expectedExpiration = compacts[0].compact.expires;
+        for(uint256 i = 0; i < compacts.length; ++i) {
+            if(compacts[i].compact.sponsor != expectedSponsor) {
+                revert Errors.NotSponsor(msg.sender, compacts[i].compact.sponsor);
+            }
+            if(compacts[i].compact.expires != expectedExpiration) {
+                revert Errors.InvalidExpiration(compacts[i].compact.expires);
+            }
+            // Find the compact for the current chain and ensure it is only one
+            if(compacts[i].chainId == block.chainid) {
+                if(compact.sponsor != address(0)) {
+                    revert Errors.InvalidMultiChainCompact();
+                }
+                compact = compacts[i].compact;
+                index = i;
+            }
+        }
+        if(compact.sponsor == address(0)) {
+            // No compact found for the current chain
+            revert Errors.InvalidMultiChainCompact();
+        }
+        return (compact, index);
+    }
+
+    function _verifyClaim(ITheCompactCore.Claim memory claim_) internal view returns (address allocator, ITheCompactCore.Compact memory compact) {
         if(msg.sender != claim_.compact.arbiter) {
             revert Errors.NotArbiter(msg.sender, claim_.compact.arbiter);
         }
@@ -127,6 +181,18 @@ contract Deposit {
         return (allocator, compact);
     }
 
+    function _verifyEnhancedClaim(ITheCompactMultiChain.EnhancedClaim calldata multiClaim, uint256 index) internal view returns (address allocator, ITheCompactCore.Compact memory compact_) {
+        ITheCompactCore.Claim memory claim = ITheCompactCore.Claim({
+            compact: multiClaim.compacts[index].compact,
+            typeString: multiClaim.typeString,
+            witness: multiClaim.witness,
+            allocatorSignature: multiClaim.allocatorSignature,
+            sponsorSignature: multiClaim.sponsorSignature
+        });
+        (allocator, compact_) = _verifyClaim(claim);
+        return (allocator, compact_);
+    }
+
     function _verifySignatures(bytes32 sponsorDigest, address sponsor, bytes calldata sponsorSignature, bytes32 allocatorDigest, address allocator, bytes calldata allocatorSignature) internal view {
         // Check if the digest was registered
         bytes32 slot = keccak256(abi.encode(_ACTIVE_REGISTRATIONS_SCOPE, sponsor, sponsorDigest));
@@ -141,7 +207,7 @@ contract Deposit {
             }
         }
         if(!SignatureCheckerLib.isValidSignatureNowCalldata(allocator, allocatorDigest, allocatorSignature)) {
-            if(IAllocator(allocator).isValidSignature(allocatorDigest, allocatorSignature) != SIGNATURE_SELECTOR) {
+            if(IAllocator(allocator).isValidSignature(allocatorDigest, allocatorSignature) != _SIGNATURE_SELECTOR) {
                 revert Errors.InvalidSignature(allocator, allocatorSignature);
             }
         }
@@ -186,22 +252,30 @@ contract Deposit {
             revert Errors.ForcedWithdrawalNotActive(id, currentTimestamp);
         }
     }
+    
+    function _getForceWithdrawalStart(address sponsor, uint256 id) internal view returns (uint256) {
+        return _forceWithdrawalStart[sponsor][id];
+    }
 
     function _checkNonce(address allocator, uint256 nonce) internal view {
-        if(_claimNonces[allocator][nonce]) {
+        if(_nonceConsumed(allocator, nonce)) {
             revert Errors.NonceAlreadyConsumed(nonce);
         }
     }
 
     function _checkNonce(uint256 id, uint256 nonce) internal view returns (address allocator) {
         allocator = IdLib.toAllocator(id);
-        if(_claimNonces[allocator][nonce]) {
+        if(_nonceConsumed(allocator, nonce)) {
             revert Errors.NonceAlreadyConsumed(nonce);
         }
     }
 
     function _consumeNonce(address allocator, uint256 nonce) internal {
         _claimNonces[allocator][nonce] = true;
+    }
+
+    function _nonceConsumed(address allocator, uint256 nonce) internal view returns (bool) {
+        return _claimNonces[allocator][nonce];
     }
 
     function _getPermit2Nonce(address owner) internal view returns (uint256) {
@@ -276,10 +350,10 @@ contract Deposit {
         return keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
-                DOMAIN_SEPARATOR,
+                _DOMAIN_SEPARATOR,
                 keccak256(
                     abi.encode(
-                        COMPACT_TYPEHASH,
+                        _COMPACT_TYPEHASH,
                         compact.arbiter,
                         compact.sponsor,
                         compact.nonce,
@@ -295,7 +369,7 @@ contract Deposit {
         return keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
-                DOMAIN_SEPARATOR,
+                _DOMAIN_SEPARATOR,
                 keccak256(
                     abi.encode(
                         keccak256(bytes(typeString)),
@@ -315,7 +389,7 @@ contract Deposit {
         return keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
-                DOMAIN_SEPARATOR,
+                _DOMAIN_SEPARATOR,
                 keccak256(
                     abi.encode(
                         keccak256(bytes(qualificationTypeString)),
@@ -327,14 +401,45 @@ contract Deposit {
         );
     }
 
+    function _compactDigestMultiChain(ITheCompactMultiChain.EnhancedCompact[] memory compacts) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                _DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        _MULTICHAIN_COMPACT_TYPEHASH,
+                        compacts
+                    )
+                )
+            )
+        );
+    }
+
+    function _compactDigestWithWitnessMultiChain(ITheCompactMultiChain.EnhancedCompact[] memory compacts, bytes32 witness, string calldata typeString) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                _DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        keccak256(bytes(typeString)),
+                        compacts,
+                        witness
+                    )
+                )
+            )
+        );
+    }
+
     function _computePermitHash(address owner, address spender, uint256 id, uint256 value, uint256 nonce, uint256 deadline) internal view returns (bytes32) {
                 return keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
-                DOMAIN_SEPARATOR,
+                _DOMAIN_SEPARATOR,
                 keccak256(
                     abi.encode(
-                        PERMIT_TYPEHASH,
+                        _PERMIT_TYPEHASH,
                         owner,
                         spender,
                         value,
@@ -443,9 +548,20 @@ contract Deposit {
         }
     }
 
+    function _sanitizeAddress(address address_) internal pure returns (address output_) {
+        assembly ("memory-safe") {
+            output_ := shr(96, shl(96, address_))
+        }
+    }
+
     function _lastBitIsSet(bytes32 value) internal pure returns (bool) {
         // Shift right 255 bits and check if 1
         return uint256(value) >> 255 == 1;
+
+        // To mark a receiver as unknown to the sponsor and therefore not part of the signed data, the last bit of the receiver must be set to 1 by the arbiter.
+        // This is how the bytes32 receiver is structured in a claim:
+        // [           1 bit         ][                  95 bits                ][                      160 bits                          ]
+        // [ indicate empty receiver ][       available for other features      ][                      receiver                          ]
     }
 
     function _markDelegation(bytes32 receiver, address caller_) internal pure returns (bytes32) {

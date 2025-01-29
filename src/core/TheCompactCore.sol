@@ -5,9 +5,12 @@ import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { IdLib } from "../lib/IdLib.sol";
 import { Scope } from "../types/Scope.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Deposit } from "./lib/Deposit.sol";
+import { ITheCompactMultiChain } from "../interfaces/ITheCompactMultiChain.sol";
 import { ITheCompactCore } from "../interfaces/ITheCompactCore.sol";
+import { IAllocator } from "../interfaces/IAllocator.sol";
+import { ITheCompactService } from "../interfaces/ITheCompactService.sol";
 import { Errors } from "./lib/Errors.sol";
+import { Deposit } from "./lib/Deposit.sol";
 
 contract TheCompactCore is ERC6909, Deposit {
 
@@ -39,27 +42,25 @@ contract TheCompactCore is ERC6909, Deposit {
         _register(compact.sponsor, digest, compact.expires);
     }
 
-    function depositAndRegister(ITheCompactCore.Compact calldata compact, bytes32 witness, string calldata typeString) external payable {
-        uint256 length = compact.inputs.length;
-        uint256 nativeAmount = msg.value;
-        for(uint256 i = 0; i < length; ++i) {
-            address token = IdLib.toToken(compact.inputs[i].id);
-            uint256 amount = compact.inputs[i].amount;
-            if(token == address(0)) {
-                // native token
-                if(nativeAmount < amount) {
-                    revert Errors.InvalidValue();
-                }
-                nativeAmount -= amount;
-            } else {
-                uint256 received = _collect(token, amount, msg.sender);
-                if(received != amount) {
-                    revert Errors.InvalidAmount(received, amount);
-                }
-            }
-            _deposit(token, amount, IdLib.toAllocator(compact.inputs[i].id), IdLib.toScope(compact.inputs[i].id), IdLib.toResetPeriod(compact.inputs[i].id), compact.sponsor);
+    function multiChainRegister(ITheCompactMultiChain.EnhancedCompact[] calldata compacts, bytes32 witness, string calldata typeString) external {
+        (ITheCompactCore.Compact memory compact, ) = _verifyMultiChain(compacts);
+        bytes32 digest = witness != bytes32(0) ? _compactDigestWithWitnessMultiChain(compacts, witness, typeString) : _compactDigestMultiChain(compacts);
+        if(msg.sender != compact.sponsor) {
+            revert Errors.NotSponsor(msg.sender, compact.sponsor);
         }
+        _register(compact.sponsor, digest, compact.expires);
+    }
+
+    function depositAndRegister(ITheCompactCore.Compact calldata compact, bytes32 witness, string calldata typeString) external payable {
+        _depositAllInputs(compact);
         bytes32 digest = witness != bytes32(0) ? _compactDigestWitness(compact, witness, typeString) : _compactDigest(compact);
+        _register(compact.sponsor, digest, compact.expires);
+    }
+
+    function multiChainDepositAndRegister(ITheCompactMultiChain.EnhancedCompact[] calldata compacts, bytes32 witness, string calldata typeString) external payable {
+        (ITheCompactCore.Compact memory compact, ) = _verifyMultiChain(compacts);
+        _depositAllInputs(compact);
+        bytes32 digest = witness != bytes32(0) ? _compactDigestWithWitnessMultiChain(compacts, witness, typeString) : _compactDigestMultiChain(compacts);
         _register(compact.sponsor, digest, compact.expires);
     }
 
@@ -187,11 +188,8 @@ contract TheCompactCore is ERC6909, Deposit {
         _checkNonce(allocator, claim_.compact.nonce);
         bytes32 digest = claim_.witness == bytes32(0) ? _compactDigest(compact) : _compactDigestWitness(compact, claim_.witness, claim_.typeString);
         _verifySignatures(digest, claim_.compact.sponsor, claim_.sponsorSignature, digest, allocator, claim_.allocatorSignature);
-        // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
-        if(claim_.compact.nonce != 0) {
-            // If the nonce is 0, it must be an on chain allocator that does not require a nonce to attest.
-            _consumeNonce(allocator, claim_.compact.nonce);
-        }        
+        // The allocator has successfully attested to the withdrawal. Consuming the nonce  
+        _consumeNonce(allocator, claim_.compact.nonce);
         uint256 length = claim_.compact.inputs.length;
         for(uint256 i = 0; i < length; ++i) {
             if(withdraw) {
@@ -211,11 +209,8 @@ contract TheCompactCore is ERC6909, Deposit {
         bytes32 digest = claim_.witness == bytes32(0) ? _compactDigest(compact) : _compactDigestWitness(compact, claim_.witness, claim_.typeString);
         bytes32 allocatorDigest = _compactDigestQualification(digest, qualificationHash, qualificationTypeString);
         _verifySignatures(digest, claim_.compact.sponsor, claim_.sponsorSignature, allocatorDigest, allocator, claim_.allocatorSignature);
-        // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
-        if(claim_.compact.nonce != 0) {
-            // If the nonce is 0, it must be an on chain allocator that does not require a nonce to attest.
-            _consumeNonce(allocator, claim_.compact.nonce);
-        }
+        // The allocator has successfully attested to the withdrawal. Consuming the nonce  
+        _consumeNonce(allocator, claim_.compact.nonce);
         uint256 length = claim_.compact.inputs.length;
         for(uint256 i = 0; i < length; ++i) {
             if(withdraw) {
@@ -223,6 +218,38 @@ contract TheCompactCore is ERC6909, Deposit {
                 _distribute(claim_.compact.inputs[i].id, claim_.compact.inputs[i].amount, _castToAddress(claim_.compact.inputs[i].recipient));
             } else {
                 _rebalance(claim_.compact.sponsor, _castToAddress(claim_.compact.inputs[i].recipient), claim_.compact.inputs[i].id, claim_.compact.inputs[i].amount, false);
+                // TODO: add event
+            }
+        }
+        return true;
+    }
+
+    function multiChainClaim(ITheCompactMultiChain.EnhancedClaim calldata claim_, bytes32 qualificationHash, string calldata qualificationTypeString, bool withdraw) external returns (bool) {
+        (,uint256 relevantIndex) = _verifyMultiChain(claim_.compacts);
+        (address allocator, ITheCompactCore.Compact memory compact) = _verifyEnhancedClaim(claim_, relevantIndex);
+        // Check only the nonce of the relevant compact
+        _checkNonce(allocator, compact.nonce);
+
+        // Replace the compact of this chain with the cleaned up version without the unknown recipients and using it to create the digest
+        ITheCompactMultiChain.EnhancedCompact[] memory cleanedCompacts_ = claim_.compacts;
+        cleanedCompacts_[relevantIndex].compact = compact;
+
+        bytes32 digest = claim_.witness == bytes32(0) ? _compactDigestMultiChain(cleanedCompacts_) : _compactDigestWithWitnessMultiChain(cleanedCompacts_, claim_.witness, claim_.typeString);
+        bytes32 allocatorDigest = digest;
+        if(qualificationHash != bytes32(0)) {
+            allocatorDigest = _compactDigestQualification(digest, qualificationHash, qualificationTypeString);
+        }
+        _verifySignatures(digest, compact.sponsor, claim_.sponsorSignature, allocatorDigest, allocator, claim_.allocatorSignature);
+        // The allocator has successfully attested to the withdrawal. Consuming the nonce  
+        _consumeNonce(allocator, compact.nonce);
+        uint256 length = claim_.compacts[relevantIndex].compact.inputs.length;
+        for(uint256 i = 0; i < length; ++i) {
+            ITheCompactCore.Allocation memory input = claim_.compacts[relevantIndex].compact.inputs[i];
+            if(withdraw) {
+                _burn(compact.sponsor, input.id, input.amount);
+                _distribute(input.id, input.amount, _castToAddress(input.recipient));
+            } else {
+                _rebalance(compact.sponsor, _castToAddress(input.recipient), input.id, input.amount, false);
                 // TODO: add event
             }
         }
@@ -266,10 +293,42 @@ contract TheCompactCore is ERC6909, Deposit {
         return true;
     }
 
+    function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96 allocatorId) {
+        allocator = _sanitizeAddress(allocator);
+        if (!IdLib.canBeRegistered(allocator, proof)) {
+            revert Errors.InvalidRegistrationProof(allocator);
+        }
+        allocatorId = IdLib.register(allocator);
+    }
+
+    function getClaimFee(address[] calldata providers, uint256 id, uint256 amount) external view returns (uint256[] memory, uint256 remainingAmount) {
+        uint256 length = providers.length;
+        uint256[] memory fees = new uint256[](length);
+        for(uint256 i = 0; i < length; ++i) {
+            (fees[i],) = ITheCompactService(providers[i]).getClaimFee(id, amount);
+            if(fees[i] > remainingAmount) {
+                revert Errors.InvalidAmount(fees[i], remainingAmount);
+            }
+            remainingAmount -= fees[i];
+        }
+        return (fees, remainingAmount);
+    }
+
+    function getForcedWithdrawalStatus(address sponsor, uint256 id) external view returns (uint256 availableAt) {
+        return _getForceWithdrawalStart(sponsor, id);
+    }
+
+    function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool consumed) {
+        return _nonceConsumed(allocator, nonce);
+    }
+
     function getPermitNonce(address owner) external view returns (uint256) {
         return _getPermit2Nonce(owner);
     }
 
+    function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
+        return _DOMAIN_SEPARATOR;
+    }
 
     /// @dev Returns the symbol for token `id`.
     function name(uint256) public view virtual override returns (string memory) {

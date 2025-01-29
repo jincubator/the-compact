@@ -19,4 +19,6 @@ library Errors {
     error ForcedWithdrawalNotActive(uint256 id, uint256 timestamp);
     error NonceAlreadyConsumed(uint256 nonce);
     error AlreadyRegistered(address sponsor, bytes32 digest);
+    error InvalidRegistrationProof(address allocator);
+    error InvalidMultiChainCompact();
 }
