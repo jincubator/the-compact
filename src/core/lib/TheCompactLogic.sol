@@ -151,6 +151,9 @@ contract TheCompactLogic {
                 }
                 compact = compacts[i].compact;
                 index = i;
+                if(msg.sender != compact.arbiter) {
+                    revert Errors.NotArbiter(msg.sender, compact.arbiter);
+                }
             }
         }
         if(compact.sponsor == address(0)) {
