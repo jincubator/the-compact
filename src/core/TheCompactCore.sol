@@ -10,9 +10,9 @@ import { ITheCompactCore } from "../interfaces/ITheCompactCore.sol";
 import { IAllocator } from "../interfaces/IAllocator.sol";
 import { ITheCompactService } from "../interfaces/ITheCompactService.sol";
 import { Errors } from "./lib/Errors.sol";
-import { Deposit } from "./lib/Deposit.sol";
+import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
-contract TheCompactCore is ERC6909, Deposit {
+contract TheCompactCore is ERC6909, TheCompactLogic {
 
     error InvalidToken();
 

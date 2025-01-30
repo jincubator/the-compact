@@ -11,7 +11,7 @@ import { Scope } from "../../types/Scope.sol";
 import { ResetPeriod } from "../../types/ResetPeriod.sol";
 import { Errors } from "./Errors.sol";
 
-contract Deposit {
+contract TheCompactLogic {
     using SafeTransferLib for address;
 
     string private constant _NAME = "The Compact";
