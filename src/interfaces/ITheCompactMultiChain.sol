@@ -20,7 +20,7 @@ interface ITheCompactMultiChain {
 
     // @notice Register a Compact to skip the sponsors signature at claim time
     // @dev Can only be called by the sponsor
-    function multiChainRegister(EnhancedCompact[] calldata compacts) external;
+    function multiChainRegister(EnhancedCompact[] calldata compacts, bytes32 witness, string calldata typeString) external;
 
     // @notice Deposit and register a multi chain compact
     // @dev The sponsor must not be the msg.sender, but the msg.sender must provide the tokens of the issuing chain id for the registered claim
@@ -33,5 +33,5 @@ interface ITheCompactMultiChain {
     //      and the arbiter was made responsible for setting the recipient.
     //      If the first bit is not set, the recipient was known to the sponsor / allocator and included in the signed data. 
     // @dev If the arbiter wants to split the claim even more, they may claim the tokens themselves and distribute them at will.
-    function multiChainClaim(EnhancedClaim[] calldata claims, bool withdraw) external returns (bool);
+    function multiChainClaim(EnhancedClaim calldata claim_, bytes32 qualificationHash, string calldata qualificationTypeString, bool withdraw) external returns (bool);
 }

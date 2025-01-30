@@ -31,7 +31,7 @@ interface ITheCompactCore {
         //       Can be used to ensure known entities receive their share of the claim
     }
 
-    struct Transfer {
+    struct TokenTransfer {
         uint256 nonce;
         uint256 expires;
         Allocation[] recipients;
@@ -39,7 +39,7 @@ interface ITheCompactCore {
 
     struct DelegatedTransfer {
         address from;
-        Transfer transfer;
+        TokenTransfer transfer;
     }
 
     // @notice Deposit native tokens into the compact
@@ -60,39 +60,39 @@ interface ITheCompactCore {
 
     // @notice Deposit and register a compact
     // @dev The sponsor must not be the msg.sender, but the msg.sender must provide the tokens for the registered claim
-    function depositAndRegister(Compact calldata compact, bytes32 witness, string calldata typeString) external payable returns (ITheCompactCore.Compact memory registeredCompact);
+    function depositAndRegister(Compact calldata compact, bytes32 witness, string calldata typeString) external payable;
 
     // @notice Overrides 6909 setOperator function
     // @notice Sets whether an operator is approved to manage the tokens of the caller
-    function setOperator(address operator, bool approved) external returns (bool);
+    function setOperator(address operator, bool approved) external payable returns (bool);
 
     // @notice Overrides 6909 approve function
     // @notice Approves a spender to spend tokens on behalf of the caller
-    function approve(address spender, uint256 id, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 id, uint256 amount) external payable returns (bool);
 
     // @notice Approves a spender to spend tokens on behalf of the caller
     // @dev Approves a spender by a signature of the sponsor
-    function permit(address owner, address spender, uint256 id, uint256 value, uint32 deadline, bytes calldata signature) external returns (bool);
+    function permit(address owner, address spender, uint256 id, uint256 value, uint256 deadline, bytes calldata signature) external returns (bool);
 
     // @notice Approves a spender to spend tokens on behalf of the caller
     // @dev The approval is only valid for the current transaction. The nonce will only be burned if the approval is used.
     //      If it is not used, the nonce will not be burned.
-    function transientPermit(address owner, address spender, uint256 id, uint256 value, uint32 deadline, bytes calldata signature) external returns (bool);
+    // function transientPermit(address owner, address spender, uint256 id, uint256 value, uint32 deadline, bytes calldata signature) external returns (bool);
 
     // @notice Overrides 6909 transfer function
     // @dev Expects an on chain allocator
-    function transfer(address to, uint256 id, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 id, uint256 amount) external payable returns (bool);
 
     // @notice Overrides 6909 transfer function
     // @dev Expects an on chain allocator
     // @dev Requires an approval from the sender
-    function transferFrom(address from, address to, uint256 id, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 id, uint256 amount) external payable returns (bool);
 
     // @notice Flexible transfer of tokens
     // @dev Server based allocators must use this function for transfers
     // @dev For on chain allocators, the provided allocatorSignature should be an empty bytes
     // @dev For on chain allocators, the provided nonce should be 0
-    function allocatedTransfer(Transfer calldata transfer) external returns (bool);
+    function allocatedTransfer(TokenTransfer calldata transfer, bytes calldata allocatorSignature) external returns (bool);
 
     // @notice Flexible transfer of tokens by an operator
     // @dev Follows the same rules as 'allocatedTransfer'
@@ -103,7 +103,7 @@ interface ITheCompactCore {
     // @dev Works for server based allocators and on chain allocators
     // @dev For on chain allocators, the provided allocatorSignature should be an empty bytes
     // @dev For on chain allocators, the provided nonce should be 0
-    function withdrawal(Transfer calldata transfer) external returns (bool);
+    function withdrawal(TokenTransfer calldata transfer, bytes calldata allocatorSignature) external returns (bool);
 
     // @notice Flexible withdrawal of tokens by an operator
     // @dev Follows the same rules as 'withdrawal'
@@ -123,7 +123,7 @@ interface ITheCompactCore {
 
     // @notice Enables a forced withdrawal for a resource lock
     // @dev Blocks new deposits for the resource lock
-    function enableForcedWithdrawal(uint256[] calldata ids) external returns (uint256 withdrawableAt);
+    function enableForcedWithdrawal(uint256[] calldata ids) external returns (uint256[] memory withdrawableAt);
 
     // @notice Disables a forced withdrawal for a resource lock
     // @dev Unblocks new deposits for the resource lock
@@ -131,7 +131,7 @@ interface ITheCompactCore {
 
     // @notice Executes a forced withdrawal from a resource lock after the reset period has elapsed
     // @dev Will withdraw all of the sponsors tokens from the resource lock
-    function forcedWithdrawal(uint256[] calldata ids, address recipient) external returns (uint256[] memory withdrawableAt);
+    function forcedWithdrawal(uint256[] calldata ids, address recipient) external returns (bool);
 
     // @notice Consumes a set of nonces
     // @dev Only callable by a registered allocator
@@ -146,7 +146,7 @@ interface ITheCompactCore {
     // @dev Allocators, an Arbiter, or another involved Service may require a guaranteed fee to be signed for in order to process a claim
     // @dev The remaining amount must replace the original amount in the Compacts inputs
     // @dev The fee must be included in the Compacts inputs with the provider as the recipient
-    function getClaimFee(address provider, uint256 id, uint256 amount) external view returns (uint256 fee, uint256 remainingAmount);
+    function getClaimFee(address[] calldata providers, uint256 id, uint256 amount) external view returns (uint256[] memory, uint256 remainingAmount);
 
     // @notice Checks the forced withdrawal status of a resource lock for a given account
     // @dev Returns both the current status (disabled, pending, or enabled) and the timestamp at which forced withdrawals will be enabled
@@ -165,5 +165,8 @@ interface ITheCompactCore {
 
     // @notice Returns the name of the contract
     function name() external pure returns (string memory);
+
+    // @notice Returns the version of the contract
+    function version() external pure returns (string memory);
 
 }

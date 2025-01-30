@@ -12,7 +12,7 @@ import { ITheCompactService } from "../interfaces/ITheCompactService.sol";
 import { Errors } from "./lib/Errors.sol";
 import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
-contract TheCompactCore is ERC6909, TheCompactLogic {
+contract TheCompactCore is ERC6909, TheCompactLogic, ITheCompactCore, ITheCompactMultiChain {
 
     error InvalidToken();
 
@@ -64,14 +64,14 @@ contract TheCompactCore is ERC6909, TheCompactLogic {
         _register(compact.sponsor, digest, compact.expires);
     }
 
-    function setOperator(address operator, bool approved) public payable override returns (bool) {
+    function setOperator(address operator, bool approved) public payable override (ERC6909, ITheCompactCore) returns (bool) {
         if(msg.value > 0) {
             revert Errors.InvalidValue();
         }
         return super.setOperator(operator, approved);
     }
 
-    function approve(address spender, uint256 id, uint256 amount) public payable override returns (bool) {
+    function approve(address spender, uint256 id, uint256 amount) public payable override (ERC6909, ITheCompactCore) returns (bool) {
         if(msg.value > 0) {
             revert Errors.InvalidValue();
         }
@@ -104,7 +104,7 @@ contract TheCompactCore is ERC6909, TheCompactLogic {
     //     return true;
     // }
 
-    function transfer(address to, uint256 id, uint256 amount) public payable override returns (bool) {
+    function transfer(address to, uint256 id, uint256 amount) public payable override (ERC6909, ITheCompactCore) returns (bool) {
         if(msg.value > 0) {
             revert Errors.InvalidValue();
         }
@@ -112,7 +112,7 @@ contract TheCompactCore is ERC6909, TheCompactLogic {
         return super.transfer(to, id, amount);
     }
 
-    function transferFrom(address from, address to, uint256 id, uint256 amount) public payable override returns (bool) {
+    function transferFrom(address from, address to, uint256 id, uint256 amount) public payable override (ERC6909, ITheCompactCore) returns (bool) {
         if(msg.value > 0) {
             revert Errors.InvalidValue();
         }
@@ -120,7 +120,7 @@ contract TheCompactCore is ERC6909, TheCompactLogic {
         return super.transferFrom(from, to, id, amount);
     }
 
-    function allocatedTransfer(ITheCompactCore.Transfer calldata transfer_, bytes calldata allocatorSignature) external returns (bool) {
+    function allocatedTransfer(ITheCompactCore.TokenTransfer calldata transfer_, bytes calldata allocatorSignature) external returns (bool) {
         address allocator = _checkNonce(transfer_.recipients[0].id, transfer_.nonce);
         uint256 length = _ensureBatchAttested(msg.sender, msg.sender, transfer_, allocatorSignature);
         // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
@@ -145,7 +145,6 @@ contract TheCompactCore is ERC6909, TheCompactLogic {
         }
         for(uint256 i = 0; i < length; ++i) {
             _transfer(msg.sender, delegatedTransfer.from, _castToAddress(delegatedTransfer.transfer.recipients[i].recipient), delegatedTransfer.transfer.recipients[i].id, delegatedTransfer.transfer.recipients[i].amount);
-            // TODO: consume nonce if not 0 (so not an on chain allocator)
         }
         return true;
     }
@@ -328,6 +327,15 @@ contract TheCompactCore is ERC6909, TheCompactLogic {
 
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
         return _DOMAIN_SEPARATOR;
+    }
+
+    /// @dev Returns the name for the contract.
+    function name() external pure returns (string memory) {
+        return _NAME;
+    }
+
+    function version() external pure returns (string memory) {
+        return _VERSION;
     }
 
     /// @dev Returns the symbol for token `id`.

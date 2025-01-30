@@ -14,9 +14,9 @@ import { Errors } from "./Errors.sol";
 contract TheCompactLogic {
     using SafeTransferLib for address;
 
-    string private constant _NAME = "The Compact";
-    string private constant _VERSION = "0";
-    bytes32 immutable _DOMAIN_SEPARATOR;
+    string internal constant _NAME = "The Compact";
+    string internal constant _VERSION = "0";
+    bytes32 internal immutable _DOMAIN_SEPARATOR;
 
     // Storage scope for active registrations:
     // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
