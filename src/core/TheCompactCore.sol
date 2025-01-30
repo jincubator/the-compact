@@ -122,7 +122,7 @@ contract TheCompactCore is ERC6909, Deposit {
 
     function allocatedTransfer(ITheCompactCore.Transfer calldata transfer_, bytes calldata allocatorSignature) external returns (bool) {
         address allocator = _checkNonce(transfer_.recipients[0].id, transfer_.nonce);
-        uint256 length = _ensureBatchAttested(msg.sender, transfer_, allocatorSignature);
+        uint256 length = _ensureBatchAttested(msg.sender, msg.sender, transfer_, allocatorSignature);
         // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
         if(transfer_.nonce != 0) {
             // If the nonce is 0, it must be an on chain allocator that does not require a nonce to attest.
@@ -137,7 +137,7 @@ contract TheCompactCore is ERC6909, Deposit {
 
     function allocatedTransferFrom(ITheCompactCore.DelegatedTransfer calldata delegatedTransfer, bytes calldata allocatorSignature) external returns (bool) {
         address allocator = _checkNonce(delegatedTransfer.transfer.recipients[0].id, delegatedTransfer.transfer.nonce);
-        uint256 length = _ensureBatchAttested(msg.sender, delegatedTransfer.transfer, allocatorSignature);
+        uint256 length = _ensureBatchAttested(msg.sender, delegatedTransfer.from, delegatedTransfer.transfer, allocatorSignature);
         // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
         if(delegatedTransfer.transfer.nonce != 0) {
             // If the nonce is 0, it must be an on chain allocator that does not require a nonce to attest.
@@ -152,7 +152,7 @@ contract TheCompactCore is ERC6909, Deposit {
 
     function withdrawal(ITheCompactCore.Transfer calldata withdrawal_, bytes calldata allocatorSignature) external returns (bool) {
         address allocator = _checkNonce(withdrawal_.recipients[0].id, withdrawal_.nonce);
-        uint256 length = _ensureBatchAttested(msg.sender, withdrawal_, allocatorSignature);
+        uint256 length = _ensureBatchAttested(msg.sender, msg.sender, withdrawal_, allocatorSignature);
         // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
         if(withdrawal_.nonce != 0) {
             // If the nonce is 0, it must be an on chain allocator that does not require a nonce to attest.
@@ -168,7 +168,7 @@ contract TheCompactCore is ERC6909, Deposit {
 
     function withdrawalFrom(ITheCompactCore.DelegatedTransfer calldata delegatedWithdrawal, bytes calldata allocatorSignature) external returns (bool) {
         address allocator = _checkNonce(delegatedWithdrawal.transfer.recipients[0].id, delegatedWithdrawal.transfer.nonce);
-        uint256 length = _ensureBatchAttested(msg.sender, delegatedWithdrawal.transfer, allocatorSignature);
+        uint256 length = _ensureBatchAttested(msg.sender, delegatedWithdrawal.from, delegatedWithdrawal.transfer, allocatorSignature);
         // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
         if(delegatedWithdrawal.transfer.nonce != 0) {
             // If the nonce is 0, it must be an on chain allocator that does not require a nonce to attest.

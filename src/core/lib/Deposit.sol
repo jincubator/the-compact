@@ -29,6 +29,9 @@ contract Deposit {
     // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Allocation[] inputs)EnhancedCompact(Compact compact,uint256 chainId)MultiChainCompact(EnhancedCompact[])")
     bytes32 private constant _MULTICHAIN_COMPACT_TYPEHASH = 0x4527c6867b5e06d14c0c8048cabe293f468c8ce4d78c2cdbaf193934751a96f0;
 
+    // keccak256("Transfer(address from,address[] to,uint256[] id,uint256[] amount,uint256 nonce,uint256 expires)")
+    bytes32 private constant _TRANSFER_TYPEHASH = 0x6d44c9455c8398fa551f6b1e552d67be7e70cf294bbb32590a4baf18180519e6;
+
     // keccak256("Permit(address owner,address spender,uint256 id,uint256 value,uint256 nonce,uint256 deadline)")
     bytes32 private constant _PERMIT_TYPEHASH = 0x41b82e2b5a0c36576b0cbe551120f192388f4a0e73168b730f27a8a467e1f79f;
 
@@ -282,6 +285,7 @@ contract Deposit {
         return _permit2Nonces[owner];
     }
 
+    // @dev Since there is no nonce, a single attestation can only be verified by an on chain allocator.
     function _ensureAttested(address from, address to, uint256 id, uint256 amount) internal {
         // Derive the allocator address from the supplied id.
         address allocator = IdLib.toAllocator(id);
@@ -291,7 +295,7 @@ contract Deposit {
         }
     }
 
-    function _ensureBatchAttested(address caller, ITheCompactCore.Transfer calldata transfer, bytes calldata allocatorSignature) internal returns (uint256 length) {
+    function _ensureBatchAttested(address caller, address from, ITheCompactCore.Transfer calldata transfer, bytes calldata allocatorSignature) internal returns (uint256 length) {
         address expectedAllocator = IdLib.toAllocator(transfer.recipients[0].id);
         // Ensure the allocator attests the transfers.
         length = transfer.recipients.length;
@@ -308,8 +312,11 @@ contract Deposit {
             amount[i] = transfer.recipients[i].amount;
         }
 
-        if( IAllocator(expectedAllocator).attest(caller, caller, to, id, amount, transfer.nonce, transfer.expires, allocatorSignature) != _ATTEST_BATCH_SELECTOR) {
-            revert Errors.AllocatorDenied(expectedAllocator);
+        bytes32 digest = _transferDigest(from, to, id, amount, transfer.nonce, transfer.expires);
+        if(!SignatureCheckerLib.isValidSignatureNowCalldata(expectedAllocator, digest, allocatorSignature)) {
+            if( IAllocator(expectedAllocator).attest(caller, from, to, id, amount, transfer.nonce, transfer.expires, allocatorSignature) != _ATTEST_BATCH_SELECTOR) {
+                revert Errors.AllocatorDenied(expectedAllocator);
+            }        
         }
     }
 
@@ -426,6 +433,26 @@ contract Deposit {
                         keccak256(bytes(typeString)),
                         compacts,
                         witness
+                    )
+                )
+            )
+        );
+    }
+
+    function _transferDigest(address from, address[] memory to, uint256[] memory id, uint256[] memory amount, uint256 nonce, uint256 expires) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                _DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        _TRANSFER_TYPEHASH,
+                        from,
+                        to,
+                        id,
+                        amount,
+                        nonce,
+                        expires
                     )
                 )
             )
