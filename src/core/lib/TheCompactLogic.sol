@@ -298,7 +298,7 @@ contract TheCompactLogic {
         }
     }
 
-    function _ensureBatchAttested(address caller, address from, ITheCompactCore.Transfer calldata transfer, bytes calldata allocatorSignature) internal returns (uint256 length) {
+    function _ensureBatchAttested(address caller, address from, ITheCompactCore.TokenTransfer calldata transfer, bytes calldata allocatorSignature) internal returns (uint256 length) {
         address expectedAllocator = IdLib.toAllocator(transfer.recipients[0].id);
         // Ensure the allocator attests the transfers.
         length = transfer.recipients.length;
