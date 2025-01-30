@@ -232,8 +232,8 @@ contract TheCompactLogic {
         }
 
         bytes32 hash = _computePermitHash(owner, spender, id, value, _permit2Nonces[owner]++, deadline);
-        if(!SignatureCheckerLib.isValidSignatureNowCalldata(owner, hash, signature)) {
-            revert Errors.InvalidSignature(owner, signature);
+        if(!SignatureCheckerLib.isValidSignatureNowCalldata(spender, hash, signature)) {
+            revert Errors.InvalidSignature(spender, signature);
         }
     }
 
