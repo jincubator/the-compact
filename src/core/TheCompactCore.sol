@@ -149,7 +149,7 @@ contract TheCompactCore is ERC6909, TheCompactLogic, ITheCompactCore, ITheCompac
         return true;
     }
 
-    function withdrawal(ITheCompactCore.Transfer calldata withdrawal_, bytes calldata allocatorSignature) external returns (bool) {
+    function withdrawal(ITheCompactCore.TokenTransfer calldata withdrawal_, bytes calldata allocatorSignature) external returns (bool) {
         address allocator = _checkNonce(withdrawal_.recipients[0].id, withdrawal_.nonce);
         uint256 length = _ensureBatchAttested(msg.sender, msg.sender, withdrawal_, allocatorSignature);
         // The allocator has successfully attested to the withdrawal. If the nonce is not 0, it must be consumed
