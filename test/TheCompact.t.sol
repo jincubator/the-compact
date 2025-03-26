@@ -1274,12 +1274,7 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        uint256 newLockId = IdLib.toId(Lock({
-            token: address(0),
-            allocator: alwaysOKAllocator,
-            resetPeriod: ResetPeriod.OneHourAndFiveMinutes,
-            scope: Scope.ChainSpecific
-        }));
+        uint256 newLockId = IdLib.toId(Lock({ token: address(0), allocator: alwaysOKAllocator, resetPeriod: ResetPeriod.OneHourAndFiveMinutes, scope: Scope.ChainSpecific }));
 
         string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
         uint256 witnessArgument = 234;
