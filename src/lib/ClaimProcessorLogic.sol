@@ -32,10 +32,10 @@ contract ClaimProcessorLogic is SharedLogic {
     using ClaimHashLib for BatchMultichainClaim;
     using ClaimHashLib for ExogenousBatchMultichainClaim;
     using ClaimProcessorLib for uint256;
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
     using DomainLib for uint256;
     using HashLib for uint256;
     using EfficiencyLib for uint256;
@@ -44,59 +44,59 @@ contract ClaimProcessorLogic is SharedLogic {
     using ValidityLib for bytes32;
 
     ///// 1. Claims /////
-    function _processClaim(Claim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+    function _processClaim(Claim calldata claimPayload) internal returns (bytes32 claimHash) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitClaim.usingClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
+        ClaimProcessorLib.processSimpleSplitClaim.usingClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), _common);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
     }
 
     ///// 2. Batch Claims /////
-    function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+    function _processBatchClaim(BatchClaim calldata claimPayload) internal returns (bytes32 claimHash) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
+        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), _common);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
     }
 
     ///// 3. Multichain Claims /////
-    function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+    function _processMultichainClaim(MultichainClaim calldata claimPayload) internal returns (bytes32 claimHash) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitClaim.usingMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
+        ClaimProcessorLib.processSimpleSplitClaim.usingMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), _common);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
     }
 
     ///// 4. Batch Multichain Claims /////
-    function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+    function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload) internal returns (bytes32 claimHash) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
+        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), _common);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
     }
 
     ///// 5. Exogenous Multichain Claims /////
-    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload)
         internal
         returns (bytes32 claimHash)
     {
@@ -106,7 +106,7 @@ contract ClaimProcessorLogic is SharedLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSplitClaimWithSponsorDomain.usingExogenousMultichainClaim()(
-            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
+            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), _common
         );
 
         // Clear the reentrancy guard.
@@ -114,7 +114,7 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     ///// 6. Exogenous Batch Multichain Claims /////
-    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload)
         internal
         returns (bytes32 claimHash)
     {
@@ -124,7 +124,7 @@ contract ClaimProcessorLogic is SharedLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSplitBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
-            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
+            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), _common
         );
 
         // Clear the reentrancy guard.

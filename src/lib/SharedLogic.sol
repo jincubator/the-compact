@@ -22,22 +22,31 @@ contract SharedLogic is ConstructorLogic {
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
     /**
+     * @notice Common claim distribution function for either releasing or withdrawing an associated token.
+     */
+    function _common(uint256 from, uint256 to, address token, uint256 amount) internal virtual returns (bool) {
+        return to.isWithdrawal() ? _withdraw(from, to, token, amount) : _release(from, to, token, amount);
+    }
+
+    /**
      * @notice Internal function for transferring ERC6909 tokens between accounts. Updates
      * both balances, checking for overflow and insufficient balance. This function bypasses
      * transfer hooks and allowance checks as it is only called in trusted contexts. Emits
      * a Transfer event.
      * @param from   The account to transfer tokens from.
      * @param to     The account to transfer tokens to.
-     * @param id     The ERC6909 token identifier to transfer.
+     * @param token     The ERC6909 token identifier to transfer.
      * @param amount The amount of tokens to transfer.
      * @return       Whether the transfer was successful.
      */
-    function _release(address from, address to, uint256 id, uint256 amount) internal virtual returns (bool) {
+    function _release(uint256 from, uint256 to, address token, uint256 amount) internal virtual returns (bool) {
+        uint256 fromId = from.withReplacedAddress(token);
+        uint256 toId = to.withReplacedAddress(token);
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
-            mstore(0x00, id)
+            mstore(0x00, fromId)
             let fromBalanceSlot := keccak256(0x00, 0x40)
 
             // Load from sender's current balance.
@@ -54,7 +63,7 @@ contract SharedLogic is ConstructorLogic {
 
             // Compute the recipient's balance slot and update balance.
             mstore(0x14, to)
-            mstore(0x00, id)
+            mstore(0x00, toId)
             let toBalanceSlot := keccak256(0x00, 0x40)
             let toBalanceBefore := sload(toBalanceSlot)
             let toBalanceAfter := add(toBalanceBefore, amount)
@@ -68,6 +77,7 @@ contract SharedLogic is ConstructorLogic {
             // Store the recipient's updated balance.
             sstore(toBalanceSlot, toBalanceAfter)
 
+            // TODO: Which event to emit incase there is lock transfer? mint and burn?
             // Emit the Transfer event:
             //  - topic1: Transfer event signature
             //  - topic2: sender address (sanitized)
@@ -76,7 +86,7 @@ contract SharedLogic is ConstructorLogic {
             //  - data: [caller, amount]
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), shr(0x60, shl(0x60, to)), id)
+            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), shr(0x60, shl(0x60, to)), fromId)
         }
 
         return true;
@@ -90,23 +100,20 @@ contract SharedLogic is ConstructorLogic {
      * Transfer event.
      * @param from   The account to burn tokens from.
      * @param to     The account to send underlying tokens to.
-     * @param id     The ERC6909 token identifier to burn.
+     * @param token     The ERC6909 token identifier to burn.
      * @param amount The amount of tokens to burn and withdraw.
      * @return       Whether the withdrawal was successful.
      */
-    function _withdraw(address from, address to, uint256 id, uint256 amount) internal virtual returns (bool) {
-        // Derive the underlying token from the id of the resource lock.
-        address token = id.toToken();
-
+    function _withdraw(uint256 from, uint256 to, address token, uint256 amount) internal virtual returns (bool) {
         // Handle native token withdrawals directly.
         if (token == address(0)) {
-            to.safeTransferETH(amount);
+            to.toRecipient().safeTransferETH(amount);
         } else {
             // For ERC20s, track balance change to determine actual withdrawal amount.
             uint256 initialBalance = token.balanceOf(address(this));
 
             // Perform the token withdrawal.
-            token.safeTransfer(to, amount);
+            token.safeTransfer(to.toRecipient(), amount);
 
             // Derive actual amount from balance change. A balance increase would cause
             // a massive underflow, resulting in a failure during the subsequent burn.
@@ -115,11 +122,12 @@ contract SharedLogic is ConstructorLogic {
             }
         }
 
+        uint256 fromId = from.withReplacedAddress(token);
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
-            mstore(0x00, id)
+            mstore(0x00, fromId)
             let fromBalanceSlot := keccak256(0x00, 0x40)
 
             // Load from sender's current balance.
@@ -142,7 +150,7 @@ contract SharedLogic is ConstructorLogic {
             //  - data: [caller, amount]
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, id)
+            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, fromId)
         }
 
         return true;
