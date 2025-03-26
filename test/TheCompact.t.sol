@@ -36,6 +36,11 @@ interface ImmutableCreate2Factory {
 }
 
 contract TheCompactTest is Test {
+
+    event Transfer(
+        address by, address indexed from, address indexed to, uint256 indexed id, uint256 amount
+    );
+    
     TheCompact public theCompact;
     MockERC20 public token;
     MockERC20 public anotherToken;
@@ -1316,6 +1321,12 @@ contract TheCompactTest is Test {
         recipients[1] = splitTwo;
 
         Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+
+        vm.expectEmit();
+        emit Transfer(arbiter, swapper, address(0), id, amountTwo);
+
+        vm.expectEmit();
+        emit Transfer(arbiter, address(0), recipientTwo, newLockId, amountTwo);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);

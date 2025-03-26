@@ -50,7 +50,8 @@ contract SharedLogic is ConstructorLogic {
     function _release(address from, uint256 to, uint256 fromId, uint256 amount) internal virtual returns (bool) {
         // If the allocator is different, the new allocator needs to have been registered.
         uint96 toRegisteredAllocatorId = to.toAllocatorId();
-        if (fromId.toAllocatorId() != toRegisteredAllocatorId) toRegisteredAllocatorId.mustHaveARegisteredAllocator();
+        bool isSwap = fromId.toAllocatorId() != toRegisteredAllocatorId;
+        if (isSwap) toRegisteredAllocatorId.mustHaveARegisteredAllocator();
 
         uint256 toId = to.withReplacedAddress(fromId.toToken());
         assembly ("memory-safe") {
@@ -88,7 +89,6 @@ contract SharedLogic is ConstructorLogic {
             // Store the recipient's updated balance.
             sstore(toBalanceSlot, toBalanceAfter)
 
-            // TODO: Which event to emit incase there is lock transfer? mint and burn?
             // Emit the Transfer event:
             //  - topic1: Transfer event signature
             //  - topic2: sender address (sanitized)
@@ -97,7 +97,11 @@ contract SharedLogic is ConstructorLogic {
             //  - data: [caller, amount]
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), shr(0x60, shl(0x60, to)), fromId)
+            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), mul(iszero(isSwap), shr(0x60, shl(0x60, to))), fromId)
+
+            if isSwap {
+                log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, shr(0x60, shl(0x60, to)), toId)
+            }
         }
 
         return true;
@@ -120,7 +124,6 @@ contract SharedLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         address toAddr = to.toRecipient();
-
         address token = id.toToken();
 
         // Handle native token withdrawals directly.
