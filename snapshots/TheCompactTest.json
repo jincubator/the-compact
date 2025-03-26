@@ -1,5 +1,6 @@
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
   "basicTransfer": "55240",
   "basicWithdrawal": "59348",
   "batchClaimRegisteredWithDepositWithWitness": "138194",
@@ -48,4 +49,32 @@
   "splitTransfer": "80610",
   "splitWithdrawal": "90626"
 >>>>>>> b6188b2 (For allocator changes, check if new allocator is registered (1,739 @ max))
+=======
+  "basicTransfer": "54884",
+  "basicWithdrawal": "59778",
+  "batchClaimRegisteredWithDepositWithWitness": "138033",
+  "batchDepositAndRegisterWithWitnessViaPermit2": "219697",
+  "batchTransfer": "80548",
+  "batchWithdrawal": "98086",
+  "claim": "80635",
+  "claimAndWithdraw": "109256",
+  "depositAndRegisterViaPermit2": "123392",
+  "depositBatchSingleERC20": "66340",
+  "depositBatchSingleNative": "26825",
+  "depositBatchViaPermit2NativeAndERC20": "128083",
+  "depositBatchViaPermit2SingleERC20": "103272",
+  "depositERC20AndURI": "66124",
+  "depositERC20Basic": "66058",
+  "depositERC20ViaPermit2AndURI": "98025",
+  "depositETHAndURI": "25952",
+  "depositETHBasic": "26385",
+  "register": "24836",
+  "splitBatchClaimWithWitness": "138027",
+  "splitBatchTransfer": "109469",
+  "splitBatchWithdrawal": "139651",
+  "splitClaimWithWitness": "83968",
+  "splitClaimWithWitnessAndLockConversion": "84136",
+  "splitTransfer": "80659",
+  "splitWithdrawal": "90447"
+>>>>>>> d9a640a (Remove allocated withdrawals (3,257 @ max))
 }

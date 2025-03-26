@@ -24,6 +24,13 @@ contract SharedLogic is ConstructorLogic {
 
     /**
      * @notice Common claim distribution function for either releasing or withdrawing an associated token.
+     * Determines whether the desired action is a release or withdrawal based on the claimantId (to).
+     * If the first 96 bytes are 0s, then it is a withdrawal.
+     * @param from   The account to transfer tokens from.
+     * @param to     The account to transfer tokens to.
+     * @param id     The ERC6909 token identifier to transfer.
+     * @param amount The amount of tokens to transfer.
+     * @return       Whether the transfer was successful.
      */
     function _releaseOrWithdraw(address from, uint256 to, uint256 id, uint256 amount) internal virtual returns (bool) {
         return to.isWithdrawal() ? _withdraw(from, to, id, amount) : _release(from, to, id, amount);
@@ -36,14 +43,14 @@ contract SharedLogic is ConstructorLogic {
      * a Transfer event.
      * @param from   The account to transfer tokens from.
      * @param to     The account to transfer tokens to.
-     * @param fromId     The ERC6909 token identifier to transfer.
+     * @param fromId The ERC6909 token identifier to transfer.
      * @param amount The amount of tokens to transfer.
      * @return       Whether the transfer was successful.
      */
     function _release(address from, uint256 to, uint256 fromId, uint256 amount) internal virtual returns (bool) {
         // If the allocator is different, the new allocator needs to have been registered.
-        uint96 fromRegisteredAllocatorId = fromId.toAllocatorId();
-        if (to.toAllocatorId() != fromRegisteredAllocatorId) fromRegisteredAllocatorId.mustHaveARegisteredAllocator();
+        uint96 toRegisteredAllocatorId = to.toAllocatorId();
+        if (fromId.toAllocatorId() != toRegisteredAllocatorId) toRegisteredAllocatorId.mustHaveARegisteredAllocator();
 
         uint256 toId = to.withReplacedAddress(fromId.toToken());
         assembly ("memory-safe") {

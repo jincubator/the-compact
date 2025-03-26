@@ -65,7 +65,7 @@ library ComponentLib {
         TransferComponent[] calldata transfers = transfer.transfers;
 
         // Retrieve the recipient and the total number of components.
-        address recipient = transfer.recipient;
+        uint256 recipient = transfer.recipient;
         uint256 totalTransfers = transfers.length;
 
         unchecked {
@@ -75,7 +75,7 @@ library ComponentLib {
                 TransferComponent calldata component = transfers[i];
 
                 // Perform the transfer or withdrawal for the component.
-                operation(msg.sender, component.id.withReplacedAddress(recipient), component.id, component.amount);
+                operation(msg.sender, recipient, component.id, component.amount);
             }
         }
 

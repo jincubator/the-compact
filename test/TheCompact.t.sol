@@ -483,7 +483,7 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, amount: amount, recipient: recipient });
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, amount: amount, recipient: IdLib.withReplacedAddress(id, recipient) });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
@@ -636,18 +636,23 @@ contract TheCompactTest is Test {
         transfers[0] = TransferComponent({ id: idOne, amount: amountOne });
         transfers[1] = TransferComponent({ id: idTwo, amount: amountTwo });
 
-        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers, recipient: recipient });
+        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers, recipient: IdLib.withReplacedAddress(idOne, recipient) });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
         vm.snapshotGasLastCall("batchTransfer");
         assert(status);
 
+        // Note: The interface only allows providing a single instance of the new
+        // resource locks. As a result, we need to manually derive what the expected
+        // next id is.
+        uint256 idTwoNext = IdLib.withReplacedAddress(idOne, IdLib.toToken(idTwo));
+
         assertEq(token.balanceOf(recipient), 0);
         assertEq(theCompact.balanceOf(swapper, idOne), 0);
         assertEq(theCompact.balanceOf(swapper, idTwo), 0);
         assertEq(theCompact.balanceOf(recipient, idOne), amountOne);
-        assertEq(theCompact.balanceOf(recipient, idTwo), amountTwo);
+        assertEq(theCompact.balanceOf(recipient, idTwoNext), amountTwo);
     }
 
     function test_splitWithdrawal() public {
@@ -679,9 +684,9 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        SplitComponent memory splitOne = SplitComponent({ claimantId: IdLib.withReplacedAddress(id, recipientOne), amount: amountOne });
+        SplitComponent memory splitOne = SplitComponent({ claimantId: uint256(uint160(recipientOne)), amount: amountOne });
 
-        SplitComponent memory splitTwo = SplitComponent({ claimantId: IdLib.withReplacedAddress(id, recipientTwo), amount: amountTwo });
+        SplitComponent memory splitTwo = SplitComponent({ claimantId: uint256(uint160(recipientTwo)), amount: amountTwo });
 
         SplitComponent[] memory recipients = new SplitComponent[](2);
         recipients[0] = splitOne;
@@ -690,7 +695,7 @@ contract TheCompactTest is Test {
         SplitTransfer memory transfer = SplitTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, recipients: recipients });
 
         vm.prank(swapper);
-        bool status = theCompact.allocatedWithdrawal(transfer);
+        bool status = theCompact.allocatedTransfer(transfer);
         vm.snapshotGasLastCall("splitWithdrawal");
         assert(status);
 
@@ -750,10 +755,10 @@ contract TheCompactTest is Test {
         transfers[0] = TransferComponent({ id: idOne, amount: amountOne });
         transfers[1] = TransferComponent({ id: idTwo, amount: amountTwo });
 
-        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers, recipient: recipient });
+        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers, recipient: uint256(uint160(recipient)) });
 
         vm.prank(swapper);
-        bool status = theCompact.allocatedWithdrawal(transfer);
+        bool status = theCompact.allocatedTransfer(transfer);
         vm.snapshotGasLastCall("batchWithdrawal");
         assert(status);
 
@@ -867,10 +872,10 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, amount: amount, recipient: recipient });
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, amount: amount, recipient: uint256(uint160(recipient)) });
 
         vm.prank(swapper);
-        bool status = theCompact.allocatedWithdrawal(transfer);
+        bool status = theCompact.allocatedTransfer(transfer);
         vm.snapshotGasLastCall("basicWithdrawal");
         assert(status);
 
@@ -929,11 +934,11 @@ contract TheCompactTest is Test {
         SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
 
         SplitComponent[] memory portionsOne = new SplitComponent[](1);
-        portionsOne[0] = SplitComponent({ claimantId: IdLib.withReplacedAddress(idOne, recipientOne), amount: amountOne });
+        portionsOne[0] = SplitComponent({ claimantId: uint256(uint160(recipientOne)), amount: amountOne });
 
         SplitComponent[] memory portionsTwo = new SplitComponent[](2);
-        portionsTwo[0] = SplitComponent({ claimantId: IdLib.withReplacedAddress(idTwo, recipientOne), amount: amountTwo });
-        portionsTwo[1] = SplitComponent({ claimantId: IdLib.withReplacedAddress(idTwo, recipientTwo), amount: amountThree });
+        portionsTwo[0] = SplitComponent({ claimantId: uint256(uint160(recipientOne)), amount: amountTwo });
+        portionsTwo[1] = SplitComponent({ claimantId: uint256(uint160(recipientTwo)), amount: amountThree });
 
         transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
         transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
@@ -941,7 +946,7 @@ contract TheCompactTest is Test {
         SplitBatchTransfer memory transfer = SplitBatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers });
 
         vm.prank(swapper);
-        bool status = theCompact.allocatedWithdrawal(transfer);
+        bool status = theCompact.allocatedTransfer(transfer);
         vm.snapshotGasLastCall("splitBatchWithdrawal");
         assert(status);
 
