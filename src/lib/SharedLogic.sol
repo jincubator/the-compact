@@ -13,6 +13,7 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
  */
 contract SharedLogic is ConstructorLogic {
     using IdLib for uint256;
+    using IdLib for uint96;
     using SafeTransferLib for address;
 
     // Storage slot seed for ERC6909 state, used in computing balance slots.
@@ -40,6 +41,10 @@ contract SharedLogic is ConstructorLogic {
      * @return       Whether the transfer was successful.
      */
     function _release(address from, uint256 to, uint256 fromId, uint256 amount) internal virtual returns (bool) {
+        // If the allocator is different, the new allocator needs to have been registered.
+        uint96 fromRegisteredAllocatorId = fromId.toAllocatorId();
+        if (to.toAllocatorId() != fromRegisteredAllocatorId) fromRegisteredAllocatorId.mustHaveARegisteredAllocator();
+
         uint256 toId = to.withReplacedAddress(fromId.toToken());
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
