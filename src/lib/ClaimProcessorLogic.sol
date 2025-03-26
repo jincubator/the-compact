@@ -32,10 +32,10 @@ contract ClaimProcessorLogic is SharedLogic {
     using ClaimHashLib for BatchMultichainClaim;
     using ClaimHashLib for ExogenousBatchMultichainClaim;
     using ClaimProcessorLib for uint256;
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal;
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal;
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal;
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal;
     using DomainLib for uint256;
     using HashLib for uint256;
     using EfficiencyLib for uint256;
