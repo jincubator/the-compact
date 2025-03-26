@@ -12,6 +12,7 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
 
 import { HashLib } from "../src/lib/HashLib.sol";
 import { IdLib } from "../src/lib/IdLib.sol";
+import { Lock } from "../src/types/Lock.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
 import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
@@ -1250,6 +1251,84 @@ contract TheCompactTest is Test {
 
         assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
         assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+    }
+
+    function test_splitClaimWithWitnessWithLockConversion() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+
+        vm.prank(allocator);
+        theCompact.__registerAllocator(allocator, "");
+
+        theCompact.__registerAllocator(alwaysOKAllocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        uint256 newLockId = IdLib.toId(Lock({
+            token: address(0),
+            allocator: alwaysOKAllocator,
+            resetPeriod: ResetPeriod.OneHourAndFiveMinutes,
+            scope: Scope.ChainSpecific
+        }));
+
+        string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
+        uint256 witnessArgument = 234;
+        bytes32 witness = keccak256(abi.encode(witnessArgument));
+
+        bytes32 claimHash = keccak256(
+            abi.encode(
+                keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)"),
+                arbiter,
+                swapper,
+                nonce,
+                expires,
+                id,
+                amount,
+                witness
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        SplitComponent memory splitOne = SplitComponent({ claimantId: IdLib.withReplacedAddress(id, recipientOne), amount: amountOne });
+
+        // Make the second component use the new allocator.
+        SplitComponent memory splitTwo = SplitComponent({ claimantId: IdLib.withReplacedAddress(newLockId, recipientTwo), amount: amountTwo });
+
+        SplitComponent[] memory recipients = new SplitComponent[](2);
+        recipients[0] = splitOne;
+        recipients[1] = splitTwo;
+
+        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+
+        vm.prank(arbiter);
+        (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitClaimWithWitness");
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(recipientOne.balance, 0);
+        assertEq(recipientTwo.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+
+        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, newLockId), amountTwo);
     }
 
     function test_batchDepositAndRegisterWithWitnessViaPermit2ThenClaim() public {
