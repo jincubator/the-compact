@@ -36,11 +36,8 @@ interface ImmutableCreate2Factory {
 }
 
 contract TheCompactTest is Test {
+    event Transfer(address by, address indexed from, address indexed to, uint256 indexed id, uint256 amount);
 
-    event Transfer(
-        address by, address indexed from, address indexed to, uint256 indexed id, uint256 amount
-    );
-    
     TheCompact public theCompact;
     MockERC20 public token;
     MockERC20 public anotherToken;
@@ -580,7 +577,8 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, qualifiedDigest);
         bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: abi.encode(allocatorData, qualificationArgument), id: id, amount: amount, recipient: recipient });
+        BasicTransfer memory transfer =
+            BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: abi.encode(allocatorData, qualificationArgument), id: id, amount: amount, recipient: IdLib.withReplacedAddress(id, recipient) });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
@@ -1329,9 +1327,9 @@ contract TheCompactTest is Test {
         emit Transfer(arbiter, address(0), recipientTwo, newLockId, amountTwo);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("splitClaimWithWitnessAndLockConversion");
-        assert(status);
+        assert(returnedClaimHash == claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);

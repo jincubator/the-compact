@@ -96,10 +96,7 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     ///// 5. Exogenous Multichain Claims /////
-    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload)
-        internal
-        returns (bytes32 claimHash)
-    {
+    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload) internal returns (bytes32 claimHash) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -114,10 +111,7 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     ///// 6. Exogenous Batch Multichain Claims /////
-    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload)
-        internal
-        returns (bytes32 claimHash)
-    {
+    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload) internal returns (bytes32 claimHash) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 

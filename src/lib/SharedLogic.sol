@@ -99,9 +99,7 @@ contract SharedLogic is ConstructorLogic {
             mstore(0x20, amount)
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), mul(iszero(isSwap), shr(0x60, shl(0x60, to))), fromId)
 
-            if isSwap {
-                log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, shr(0x60, shl(0x60, to)), toId)
-            }
+            if isSwap { log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, shr(0x60, shl(0x60, to)), toId) }
         }
 
         return true;
@@ -120,9 +118,6 @@ contract SharedLogic is ConstructorLogic {
      * @return       Whether the withdrawal was successful.
      */
     function _withdraw(address from, uint256 to, uint256 id, uint256 amount) internal virtual returns (bool) {
-        // Set reentrancy guard due to external token transfers.
-        _setReentrancyGuard();
-
         address toAddr = to.toRecipient();
         address token = id.toToken();
 
