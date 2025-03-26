@@ -24,8 +24,8 @@ contract SharedLogic is ConstructorLogic {
     /**
      * @notice Common claim distribution function for either releasing or withdrawing an associated token.
      */
-    function _common(uint256 from, uint256 to, address token, uint256 amount) internal virtual returns (bool) {
-        return to.isWithdrawal() ? _withdraw(from, to, token, amount) : _release(from, to, token, amount);
+    function _releaseOrWithdraw(address from, uint256 to, uint256 id, uint256 amount) internal virtual returns (bool) {
+        return to.isWithdrawal() ? _withdraw(from, to, id, amount) : _release(from, to, id, amount);
     }
 
     /**
@@ -35,13 +35,12 @@ contract SharedLogic is ConstructorLogic {
      * a Transfer event.
      * @param from   The account to transfer tokens from.
      * @param to     The account to transfer tokens to.
-     * @param token     The ERC6909 token identifier to transfer.
+     * @param fromId     The ERC6909 token identifier to transfer.
      * @param amount The amount of tokens to transfer.
      * @return       Whether the transfer was successful.
      */
-    function _release(uint256 from, uint256 to, address token, uint256 amount) internal virtual returns (bool) {
-        uint256 fromId = from.withReplacedAddress(token);
-        uint256 toId = to.withReplacedAddress(token);
+    function _release(address from, uint256 to, uint256 fromId, uint256 amount) internal virtual returns (bool) {
+        uint256 toId = to.withReplacedAddress(fromId.toToken());
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -100,20 +99,27 @@ contract SharedLogic is ConstructorLogic {
      * Transfer event.
      * @param from   The account to burn tokens from.
      * @param to     The account to send underlying tokens to.
-     * @param token     The ERC6909 token identifier to burn.
+     * @param id     The ERC6909 token identifier to burn.
      * @param amount The amount of tokens to burn and withdraw.
      * @return       Whether the withdrawal was successful.
      */
-    function _withdraw(uint256 from, uint256 to, address token, uint256 amount) internal virtual returns (bool) {
+    function _withdraw(address from, uint256 to, uint256 id, uint256 amount) internal virtual returns (bool) {
+        // Set reentrancy guard due to external token transfers.
+        _setReentrancyGuard();
+
+        address toAddr = to.toRecipient();
+
+        address token = id.toToken();
+
         // Handle native token withdrawals directly.
         if (token == address(0)) {
-            to.toRecipient().safeTransferETH(amount);
+            toAddr.safeTransferETH(amount);
         } else {
             // For ERC20s, track balance change to determine actual withdrawal amount.
             uint256 initialBalance = token.balanceOf(address(this));
 
             // Perform the token withdrawal.
-            token.safeTransfer(to.toRecipient(), amount);
+            token.safeTransfer(toAddr, amount);
 
             // Derive actual amount from balance change. A balance increase would cause
             // a massive underflow, resulting in a failure during the subsequent burn.
@@ -122,12 +128,11 @@ contract SharedLogic is ConstructorLogic {
             }
         }
 
-        uint256 fromId = from.withReplacedAddress(token);
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
-            mstore(0x00, fromId)
+            mstore(0x00, id)
             let fromBalanceSlot := keccak256(0x00, 0x40)
 
             // Load from sender's current balance.
@@ -150,7 +155,7 @@ contract SharedLogic is ConstructorLogic {
             //  - data: [caller, amount]
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, fromId)
+            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, id)
         }
 
         return true;

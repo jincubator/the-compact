@@ -53,7 +53,7 @@ contract TransferLogic is SharedLogic {
      * @param operation Function pointer to either _release or _withdraw for executing the claim.
      * @return          Whether the transfer or withdrawal was successfully processed.
      */
-    function _processBasicTransfer(BasicTransfer calldata transfer, function(uint256, uint256, address, uint256) internal returns (bool) operation) internal returns (bool) {
+    function _processBasicTransfer(BasicTransfer calldata transfer, function(address, uint256, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -64,7 +64,7 @@ contract TransferLogic is SharedLogic {
         _notExpiredAndAuthorizedByAllocator(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer, idsAndAmounts);
 
         // Perform the transfer or withdrawal.
-        operation(transfer.id.withReplacedAddress(msg.sender), transfer.id.withReplacedAddress(transfer.recipient), transfer.id.toToken(), transfer.amount);
+        operation(msg.sender, transfer.id.withReplacedAddress(transfer.recipient), transfer.id, transfer.amount);
 
         // Clear the reentancy guard.
         _clearReentrancyGuard();
@@ -80,7 +80,7 @@ contract TransferLogic is SharedLogic {
      * @param operation Function pointer to either _release or _withdraw for executing the claim.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processSplitTransfer(SplitTransfer calldata transfer, function(uint256, uint256, address, uint256) internal returns (bool) operation) internal returns (bool) {
+    function _processSplitTransfer(SplitTransfer calldata transfer, function(address, uint256, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -108,7 +108,7 @@ contract TransferLogic is SharedLogic {
      * @param operation Function pointer to either _release or _withdraw for executing the claim.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processBatchTransfer(BatchTransfer calldata transfer, function(uint256, uint256, address, uint256) internal returns (bool) operation) internal returns (bool) {
+    function _processBatchTransfer(BatchTransfer calldata transfer, function(address, uint256, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -150,7 +150,7 @@ contract TransferLogic is SharedLogic {
      * @param operation Function pointer to either _release or _withdraw for executing the claim.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(uint256, uint256, address, uint256) internal returns (bool) operation) internal returns (bool) {
+    function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, uint256, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 

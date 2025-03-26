@@ -1253,7 +1253,7 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
     }
 
-    function test_splitClaimWithWitnessWithLockConversion() public {
+    function test_splitClaimWithWitnessAndLockConversion() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;
         uint256 amount = 1e18;
@@ -1314,7 +1314,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("splitClaimWithWitness");
+        vm.snapshotGasLastCall("splitClaimWithWitnessAndLockConversion");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);

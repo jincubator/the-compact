@@ -32,10 +32,10 @@ contract ClaimProcessorLogic is SharedLogic {
     using ClaimHashLib for BatchMultichainClaim;
     using ClaimHashLib for ExogenousBatchMultichainClaim;
     using ClaimProcessorLib for uint256;
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(uint256, uint256, address, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, uint256, uint256, uint256) internal returns (bool)) internal returns (bool);
     using DomainLib for uint256;
     using HashLib for uint256;
     using EfficiencyLib for uint256;
@@ -50,7 +50,7 @@ contract ClaimProcessorLogic is SharedLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitClaim.usingClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), _common);
+        ClaimProcessorLib.processSimpleSplitClaim.usingClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), _releaseOrWithdraw);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -63,7 +63,7 @@ contract ClaimProcessorLogic is SharedLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), _common);
+        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), _releaseOrWithdraw);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -76,7 +76,7 @@ contract ClaimProcessorLogic is SharedLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitClaim.usingMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), _common);
+        ClaimProcessorLib.processSimpleSplitClaim.usingMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), _releaseOrWithdraw);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -89,7 +89,7 @@ contract ClaimProcessorLogic is SharedLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), _common);
+        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), _releaseOrWithdraw);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -106,7 +106,7 @@ contract ClaimProcessorLogic is SharedLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSplitClaimWithSponsorDomain.usingExogenousMultichainClaim()(
-            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), _common
+            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), _releaseOrWithdraw
         );
 
         // Clear the reentrancy guard.
@@ -124,7 +124,7 @@ contract ClaimProcessorLogic is SharedLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSplitBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
-            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), _common
+            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), _releaseOrWithdraw
         );
 
         // Clear the reentrancy guard.

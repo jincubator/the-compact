@@ -124,7 +124,7 @@ library ClaimProcessorLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(uint256, uint256, address, uint256) internal returns (bool) operation
+        function(address, uint256, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processClaimWithSplitComponents(calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
@@ -151,7 +151,7 @@ library ClaimProcessorLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(uint256, uint256, address, uint256) internal returns (bool) operation
+        function(address, uint256, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processClaimWithSplitBatchComponents(calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
@@ -175,7 +175,7 @@ library ClaimProcessorLib {
         uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(uint256, uint256, address, uint256) internal returns (bool) operation
+        function(address, uint256, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processSplitClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, bytes32(0), typehash, domainSeparator, operation);
     }
@@ -199,7 +199,7 @@ library ClaimProcessorLib {
         uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(uint256, uint256, address, uint256) internal returns (bool) operation
+        function(address, uint256, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, bytes32(0), typehash, domainSeparator, operation);
     }
@@ -225,7 +225,7 @@ library ClaimProcessorLib {
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(uint256, uint256, address, uint256) internal returns (bool) operation
+        function(address, uint256, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processSplitClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
     }
@@ -252,7 +252,7 @@ library ClaimProcessorLib {
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(uint256, uint256, address, uint256) internal returns (bool) operation
+        function(address, uint256, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
     }
