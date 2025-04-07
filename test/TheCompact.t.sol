@@ -139,7 +139,7 @@ contract TheCompactTest is Test {
         bytes12 locktag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(locktag);
+        uint256 id = theCompact.deposit{ value: amount }(locktag, swapper);
         vm.snapshotGasLastCall("depositETHBasic");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
@@ -195,7 +195,7 @@ contract TheCompactTest is Test {
         bytes12 locktag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit(address(token), locktag, amount);
+        uint256 id = theCompact.deposit(address(token), locktag, amount, swapper);
         vm.snapshotGasLastCall("depositERC20Basic");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
@@ -342,7 +342,6 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        (uint8 v, bytes32 r2, bytes32 s) = vm.sign(swapperPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, vs);
 
         uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, locktag, recipient, signature);
@@ -666,7 +665,7 @@ contract TheCompactTest is Test {
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), locktag, amountOne, swapper);
-        uint256 idTwo = theCompact.deposit{ value: amountTwo + amountThree }(locktag);
+        uint256 idTwo = theCompact.deposit{ value: amountTwo + amountThree }(locktag, swapper);
         vm.stopPrank();
 
         assertEq(theCompact.balanceOf(swapper, idOne), amountOne);
@@ -746,7 +745,7 @@ contract TheCompactTest is Test {
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), locktag, amountOne, swapper);
-        uint256 idTwo = theCompact.deposit{ value: amountTwo + amountThree }(locktag);
+        uint256 idTwo = theCompact.deposit{ value: amountTwo + amountThree }(locktag, swapper);
         vm.stopPrank();
 
         assertEq(theCompact.balanceOf(swapper, idOne), amountOne);
@@ -895,7 +894,9 @@ contract TheCompactTest is Test {
         address swapperSponsor = makeAddr("swapperSponsor");
 
         vm.prank(allocator);
-        theCompact.__registerAllocator(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        bytes12 locktag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
 
         vm.prank(swapper);
         token.transfer(swapperSponsor, amount);
@@ -909,8 +910,9 @@ contract TheCompactTest is Test {
 
         bytes32 typehash = keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)");
 
+
         vm.prank(swapperSponsor);
-        (uint256 id, bytes32 registeredClaimHash) = theCompact.depositAndRegisterFor(address(swapper), address(token), allocator, resetPeriod, scope, amount, arbiter, nonce, expires, typehash, witness);
+        (uint256 id, bytes32 registeredClaimHash) = theCompact.depositAndRegisterFor(address(swapper), address(token), locktag, amount, arbiter, nonce, expires, typehash, witness);
         vm.snapshotGasLastCall("depositRegisterFor");
 
         assertEq(theCompact.balanceOf(swapper, id), amount);
@@ -1823,7 +1825,7 @@ contract TheCompactTest is Test {
         theCompact.assignEmissary(lockTag, emissary);
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
         string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
@@ -1879,7 +1881,7 @@ contract TheCompactTest is Test {
         bytes12 locktag = IdLib.toLockTag(allocatorId, Scope.Multichain, ResetPeriod.TenMinutes);
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(locktag);
+        uint256 id = theCompact.deposit{ value: amount }(locktag, swapper);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(swapper, id), amount);

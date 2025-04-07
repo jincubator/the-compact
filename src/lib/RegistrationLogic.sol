@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { IdLib } from "./IdLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
@@ -13,6 +14,7 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
  * been registered.
  */
 contract RegistrationLogic {
+    using IdLib for bytes12;
     using RegistrationLib for address;
     using RegistrationLib for bytes32;
     using RegistrationLib for bytes32[2][];
@@ -80,15 +82,14 @@ contract RegistrationLogic {
      * @param typehash    Typehash of the entire compact. Including the subtypes of the
      * witness
      * @param witness     EIP712 structured hash of witness.
-     * @param resetPeriod Duration after which the resource locks can be reset once forced
-     * withdrawals are initiated.
+     * @param locktag     Lock configuration identifier, containing the allocator, resetPeriod, and scope.
      */
-    function _registerUsingClaimWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
+    function _registerUsingClaimWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, bytes12 locktag)
         internal
         returns (bytes32 claimhash)
     {
         claimhash = HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
-        sponsor.registerCompact(claimhash, typehash, resetPeriod);
+        sponsor.registerCompact(claimhash, typehash, locktag.toResetPeriod());
     }
 
     /**

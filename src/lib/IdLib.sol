@@ -340,21 +340,6 @@ library IdLib {
     }
 
     /**
-     * @notice Internal pure function for extracting the allocator ID from a locktag.
-     * Allocator ID is represented by a uint96 as solidity only supports uint values
-     * for multiples of 8 bits.
-     * @param locktag      Locktag to extract from.
-     * @return allocatorId The allocator ID (bits 160-251).
-     */
-    function toAllocatorId(bytes12 locktag) internal pure returns (uint96 allocatorId) {
-        // We need to move the locktag from the leftmost 12 to the rightmost 12.
-        assembly ("memory-safe") {
-            // extract bits 5-96
-            allocatorId := shr(164, shl(4, locktag))
-        }
-    }
-
-    /**
      * @notice Internal pure function for converting a reset period to its duration in
      * seconds. There are eight distinct reset periods ranging from one second to
      * thirty days. Specific periods include some additional padding:
