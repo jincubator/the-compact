@@ -910,7 +910,6 @@ contract TheCompactTest is Test {
 
         bytes32 typehash = keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)");
 
-
         vm.prank(swapperSponsor);
         (uint256 id, bytes32 registeredClaimHash) = theCompact.depositAndRegisterFor(address(swapper), address(token), locktag, amount, arbiter, nonce, expires, typehash, witness);
         vm.snapshotGasLastCall("depositRegisterFor");

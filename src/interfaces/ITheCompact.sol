@@ -159,17 +159,9 @@ interface ITheCompact {
      * @return id         The ERC6909 token identifier of the associated resource lock.
      * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
      */
-    function depositAndRegisterFor(
-        address recipient,
-        address token,
-        bytes12 locktag,
-        uint256 amount,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
-        bytes32 typehash,
-        bytes32 witness
-    ) external returns (uint256 id, bytes32 claimhash);
+    function depositAndRegisterFor(address recipient, address token, bytes12 locktag, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
+        external
+        returns (uint256 id, bytes32 claimhash);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a

@@ -26,7 +26,6 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
-
     /// Natives ///
 
     function deposit(bytes12 locktag, address recipient) external payable returns (uint256) {
@@ -55,24 +54,16 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _performCustomERC20Deposit(token, locktag, amount, recipient);
     }
 
-
     function depositAndRegister(address token, bytes12 locktag, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
         id = _performCustomERC20Deposit(token, locktag, amount, msg.sender);
 
         _registerWithDefaults(claimHash, typehash);
     }
 
-    function depositAndRegisterFor(
-        address recipient,
-        address token,
-        bytes12 locktag,
-        uint256 amount,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
-        bytes32 typehash,
-        bytes32 witness
-    ) external returns (uint256 id, bytes32 claimhash) {
+    function depositAndRegisterFor(address recipient, address token, bytes12 locktag, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
+        external
+        returns (uint256 id, bytes32 claimhash)
+    {
         id = _performCustomERC20Deposit(token, locktag, amount, recipient);
 
         claimhash = _registerUsingClaimWithWitness(recipient, id, amount, arbiter, nonce, expires, typehash, witness, locktag);
