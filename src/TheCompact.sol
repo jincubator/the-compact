@@ -10,6 +10,7 @@ import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
+import { EmissaryStatus } from "./types/EmissaryStatus.sol";
 
 import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
@@ -37,6 +38,44 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _performCustomERC20Deposit(token, locktag, amount, msg.sender);
     }
 
+    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
+        id = _performBasicERC20Deposit(token, allocator, amount);
+
+        _registerWithDefaults(claimHash, typehash);
+    }
+
+    function depositAndRegisterFor(address recipient, address allocator, ResetPeriod resetPeriod, Scope scope, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
+        external
+        payable
+        returns (uint256 id, bytes32 claimhash)
+    {
+        id = _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
+
+        claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness, resetPeriod);
+    }
+
+    function depositAndRegisterFor(
+        address recipient,
+        address token,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        uint256 amount,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) external returns (uint256 id, bytes32 claimhash) {
+        id = _performCustomERC20Deposit(token, allocator, resetPeriod, scope, amount, recipient);
+
+        claimhash = _registerUsingClaimWithWitness(recipient, id, amount, arbiter, nonce, expires, typehash, witness, resetPeriod);
+    }
+
+    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256) {
+        return _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
+    }
+
     function deposit(address token, bytes12 locktag, uint256 amount, address recipient) external returns (uint256) {
         return _performCustomERC20Deposit(token, locktag, amount, recipient);
     }
@@ -51,6 +90,16 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _processBatchDeposit(idsAndAmounts, msg.sender);
 
         return _registerBatch(claimHashesAndTypehashes, duration);
+    }
+
+    function depositAndRegisterFor(address recipient, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
+        external
+        payable
+        returns (bytes32 claimhash)
+    {
+        _processBatchDeposit(idsAndAmounts, recipient);
+
+        claimhash = _registerUsingBatchClaimWithWitness(recipient, idsAndAmounts, arbiter, nonce, expires, typehash, witness, resetPeriod);
     }
 
     function deposit(
@@ -158,8 +207,20 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getForcedWithdrawalStatus(account, id);
     }
 
-    function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope) {
+    function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope, bytes12) {
         return _getLockDetails(id);
+    }
+
+    function assignEmissary(bytes12 lockTag, address emissary) external returns (bool) {
+        return _assignEmissary(lockTag, emissary);
+    }
+
+    function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256 emissaryAssignmentAvailableAt) {
+        return _scheduleEmissaryAssignment(lockTag);
+    }
+
+    function getEmissaryStatus(address sponsor, bytes12 lockTag) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary) {
+        return _getEmissaryStatus(sponsor, lockTag);
     }
 
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool) {

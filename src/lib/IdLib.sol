@@ -298,14 +298,15 @@ library IdLib {
     }
 
     /**
-     * @notice Internal pure function for extracting the reset period from a locktag.
-     * @param locktag      Locktag to extract from.
+     * @notice Internal pure function for extracting the reset period from a resource
+     * lock tag.
+     * @param lockTag      The resource lock tag to extract from.
      * @return resetPeriod The reset period (bits 252-254).
      */
-    function toResetPeriod(bytes12 locktag) internal pure returns (ResetPeriod resetPeriod) {
+    function toResetPeriod(bytes12 lockTag) internal pure returns (ResetPeriod resetPeriod) {
         assembly ("memory-safe") {
             // extract 2nd, 3rd & 4th uppermost bits
-            resetPeriod := and(shr(252, locktag), 7)
+            resetPeriod := and(shr(252, lockTag), 7)
         }
     }
 
@@ -333,7 +334,7 @@ library IdLib {
      */
     function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
         assembly ("memory-safe") {
-            // extract bits 5-96
+            // Extract bits 5-96.
             allocatorId := shr(164, shl(4, id))
         }
     }
@@ -426,6 +427,31 @@ library IdLib {
         assembly ("memory-safe") {
             allocatorId := or(shl(88, compactFlag), shr(168, shl(168, allocator)))
         }
+    }
+
+    /**
+     * @notice Internal pure function for extracting the allocator ID from a resource
+     * lock tag. The allocator ID is a 92-bit value, with the first 4 bits representing
+     * the compact flag and the last 88 bits matching the last 88 bits of the underlying
+     * allocator, but is represented by a uint96 as solidity only supports uint values
+     * for multiples of 8 bits.
+     * @param lockTag      The resource lock tag to extract from.
+     * @return allocatorId The allocator ID (bits 160-251).
+     */
+    function toAllocatorId(bytes12 lockTag) internal pure returns (uint96 allocatorId) {
+        assembly ("memory-safe") {
+            // Extract bits 5-96.
+            allocatorId := shr(164, shl(4, lockTag))
+        }
+    }
+
+    /**
+     * @notice Internal view function for ensuring that the allocator ID from a resource
+     * lock tag is registered to an allocator.
+     * @param lockTag The resource lock tag to check allocator registration for.
+     */
+    function hasRegisteredAllocatorId(bytes12 lockTag) internal view {
+        lockTag.toAllocatorId().mustHaveARegisteredAllocator();
     }
 
     /**

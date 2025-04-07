@@ -105,8 +105,14 @@ contract WithdrawalLogic is ConstructorLogic {
             }
         }
 
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
         // Process the withdrawal.
         msg.sender.withdraw(recipient, id, amount);
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 
     /**

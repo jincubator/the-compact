@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
+import { EmissaryStatus } from "../types/EmissaryStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
@@ -75,6 +76,62 @@ interface ITheCompact {
     function deposit(bytes12 locktag) external payable returns (uint256 id);
 
     /**
+     * @notice External payable function for depositing native tokens and simultaneously registering a
+     * compact on behalf of someone else. The amount of the claim must be explicitly provided otherwise
+     * a wrong claimhash may be derived.
+     * @param recipient   The recipient of the ERC6909 token.
+     * @param allocator   The address of the allocator mediating the resource lock.
+     * @param resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
+     * @param scope       The scope of the resource lock (multichain or single chain).
+     * @param arbiter     The account tasked with verifying and submitting the claim.
+     * @param nonce       A parameter to enforce replay protection, scoped to allocator.
+     * @param expires     The time at which the claim expires.
+     * @param typehash    The EIP-712 typehash associated with the registered compact.
+     * @param witness     Hash of the witness data.
+     * @return id         The ERC6909 token identifier of the associated resource lock.
+     * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
+     */
+    function depositAndRegisterFor(address recipient, address allocator, ResetPeriod resetPeriod, Scope scope, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
+        external
+        payable
+        returns (uint256 id, bytes32 claimhash);
+
+    /**
+     * @notice External function for depositing ERC20 tokens and simultaneously registering a
+     * compact on behalf of someone else. The caller must directly approve The Compact to transfer
+     * a sufficient amount of the ERC20 token on its behalf. The ERC6909 token amount received by
+     * designated recipient the caller is derived from the difference between the starting and ending
+     * balance held in the resource lock, which may differ from the amount transferred depending on
+     * the implementation details of the respective token.
+     * @param recipient   The recipient of the ERC6909 token.
+     * @param token       The address of the ERC20 token to deposit.
+     * @param allocator   The address of the allocator mediating the resource lock.
+     * @param resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
+     * @param scope       The scope of the resource lock (multichain or single chain).
+     * @param amount      The amount of tokens to deposit.
+     * @param arbiter     The account tasked with verifying and submitting the claim.
+     * @param nonce       A parameter to enforce replay protection, scoped to allocator.
+     * @param expires     The time at which the claim expires.
+     * @param typehash    The EIP-712 typehash associated with the registered compact.
+     * @param witness     Hash of the witness data.
+     * @return id         The ERC6909 token identifier of the associated resource lock.
+     * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
+     */
+    function depositAndRegisterFor(
+        address recipient,
+        address token,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        uint256 amount,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) external returns (uint256 id, bytes32 claimhash);
+
+    /**
      * @notice External payable function for depositing native tokens into a resource lock with
      * custom reset period and scope parameters. The ERC6909 token amount received by the recipient
      * will match the amount of native tokens sent with the transaction.
@@ -142,6 +199,28 @@ interface ITheCompact {
      * @return                        Whether the batch deposit and claim hash registration was successfully completed.
      */
     function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external payable returns (bool);
+
+    /**
+     * @notice External function for depositing ERC20 tokens and simultaneously registering a
+     * batch compact on behalf of someone else. The caller must directly approve The Compact
+     * to transfer a sufficient amount of the ERC20 token on its behalf. The ERC6909 token amount
+     * received by designated recipient the caller is derived from the difference between the
+     * starting and ending balance held in the resource lock, which may differ from the amount
+     * transferred depending on the implementation details of the respective token.
+     * @param recipient     The recipient of the ERC6909 token.
+     * @param idsAndAmounts The address of the ERC20 token to deposit.
+     * @param arbiter       The account tasked with verifying and submitting the claim.
+     * @param nonce         A parameter to enforce replay protection, scoped to allocator.
+     * @param expires       The time at which the claim expires.
+     * @param typehash      The EIP-712 typehash associated with the registered compact.
+     * @param witness       Hash of the witness data.
+     * @param resetPeriod   The duration after which the resource lock can be reset once a forced withdrawal is initiated.
+     * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
+     */
+    function depositAndRegisterFor(address recipient, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
+        external
+        payable
+        returns (bytes32 claimhash);
 
     /**
      * @notice External function for depositing ERC20 tokens using Permit2 authorization. The
@@ -385,6 +464,39 @@ interface ITheCompact {
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires);
 
     /**
+     * @notice Assigns an emissary for the caller that has authority to authorize claims where that
+     * caller is the sponsor. The emissary will utilize a reset period dictated by the reset period
+     * on the provided lock tag that blocks reassignment of the emissary for the duration of that
+     * reset period. The reset period ensures that once an emissary is assigned, another assignment
+     * cannot be made until the reset period has elapsed.
+     * @param lockTag The lockTag the emissary will be assigned for.
+     * @return Whether the assignment was successful.
+     */
+    function assignEmissary(bytes12 lockTag, address emissary) external returns (bool);
+
+    /**
+     * @notice Schedules a future emissary assignment for a specific lock tag. The reset period on
+     * the lock tag determines how long reassignment will be blocked after this assignment. This
+     * allows for a delay before the next assignment can be made. Note that the reset period of the
+     * current emissary (if set) will dictate when the next assignment will be allowed.
+     * @param lockTag The lockTag the emissary assignment is scheduled for.
+     * @return emissaryAssignmentAvailableAt The timestamp when the next assignment will be allowed.
+     */
+    function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256 emissaryAssignmentAvailableAt);
+
+    /**
+     * @notice Gets the current emissary status for an allocator. Returns the current status,
+     * the timestamp when reassignment will be allowed again (based on reset period), and
+     * the currently assigned emissary (if any).
+     * @param sponsor The address of the sponsor to check.
+     * @param lockTag The lockTag to check.
+     * @return status The current emissary assignment status.
+     * @return emissaryAssignmentAvailableAt The timestamp when reassignment will be allowed.
+     * @return currentEmissary The currently assigned emissary address (or zero address if none).
+     */
+    function getEmissaryStatus(address sponsor, bytes12 lockTag) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary);
+
+    /**
      * @notice External view function for retrieving the details of a resource lock. Returns the
      * underlying token, the mediating allocator, the reset period, and the scope.
      * @param id           The ERC6909 token identifier of the resource lock.
@@ -392,8 +504,9 @@ interface ITheCompact {
      * @return allocator   The account of the allocator mediating the resource lock.
      * @return resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
      * @return scope       The scope of the resource lock (multichain or single chain).
+     * @return lockTag     The lock tag containing the allocator ID, the reset period, and the scope.
      */
-    function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope);
+    function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag);
 
     /**
      * @notice External view function for checking whether a specific nonce has been consumed by
