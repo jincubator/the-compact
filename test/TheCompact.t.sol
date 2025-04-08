@@ -2313,7 +2313,7 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(recipientTwo, id), 0);
     }
 
-        function test_claim_sponsor_as_arbiter() public {
+    function test_claim_sponsor_as_arbiter() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;
         uint256 amount = 1e18;
@@ -2333,7 +2333,8 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
         assertEq(theCompact.balanceOf(swapper, id), amount);
 
-        uint256 claimant = abi.decode(abi.encodePacked(bytes12(bytes32(0)), 0x1111111111111111111111111111111111111111), (uint256));
+        uint256 claimant =
+            abi.decode(abi.encodePacked(bytes12(bytes32(0)), 0x1111111111111111111111111111111111111111), (uint256));
 
         SplitComponent memory splitOne = SplitComponent({ claimant: claimant, amount: amount });
 
