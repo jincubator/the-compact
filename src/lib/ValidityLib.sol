@@ -326,6 +326,7 @@ library ValidityLib {
         returns (bool isValid)
     {
         if (signer == address(0)) return isValid;
+        // if (signer == msg.sender) return true;
         assembly ("memory-safe") {
             let m := mload(0x40)
             for { } 1 { } {

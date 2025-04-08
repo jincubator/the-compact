@@ -2313,6 +2313,53 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(recipientTwo, id), 0);
     }
 
+        function test_claim_sponsor_as_arbiter() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(alwaysOKAllocator, "");
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        uint256 claimant = abi.decode(abi.encodePacked(bytes12(bytes32(0)), 0x1111111111111111111111111111111111111111), (uint256));
+
+        SplitComponent memory splitOne = SplitComponent({ claimant: claimant, amount: amount });
+
+        SplitComponent[] memory recipients = new SplitComponent[](1);
+        recipients[0] = splitOne;
+
+        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        uint256 witnessArgument = 234;
+        bytes32 witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), witnessArgument));
+
+        bytes memory sponsorSignature = "";
+        bytes memory allocatorData = "";
+
+        Claim memory claim = Claim(
+            allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients
+        );
+
+        vm.prank(swapper);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("claim_sponsor_as_arbiter");
+
+        assertEq(address(theCompact).balance, 0);
+        assertEq(recipientOne.balance, amount);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+    }
+
     function test_standardTransfer() public {
         address recipient = 0x1111111111111111111111111111111111111111;
         uint256 amount = 1e18;
