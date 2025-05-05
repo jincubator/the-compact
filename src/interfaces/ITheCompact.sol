@@ -594,7 +594,10 @@ interface ITheCompact {
      * @return id          The ERC6909 token identifier of the resource lock.
      * @return lockTag     The lock tag containing the allocator ID, the reset period, and the scope.
      */
-    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (uint256 id, bytes12 lockTag);
+    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+        external
+        view
+        returns (uint256 id, bytes12 lockTag);
 
     /**
      * @notice External view function for checking the registration status of a compact. Returns

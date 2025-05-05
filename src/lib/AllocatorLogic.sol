@@ -121,7 +121,11 @@ contract AllocatorLogic {
      * @return id          The ERC6909 token identifier of the resource lock.
      * @return lockTag     The lock tag containing the allocator id, the reset period, and the scope.
      */
-    function _getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) internal view returns (uint256 id, bytes12 lockTag) {
+    function _getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+        internal
+        view
+        returns (uint256 id, bytes12 lockTag)
+    {
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
         lockTag = allocatorId.toLockTag(scope, resetPeriod);
 

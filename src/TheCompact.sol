@@ -291,11 +291,19 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getEmissaryStatus(sponsor, lockTag);
     }
 
-    function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag) {
+    function getLockDetails(uint256 id)
+        external
+        view
+        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag)
+    {
         return _getLockDetails(id);
     }
 
-    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (uint256 id, bytes12 lockTag) {
+    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+        external
+        view
+        returns (uint256 id, bytes12 lockTag)
+    {
         return _getId(token, allocator, resetPeriod, scope);
     }
 

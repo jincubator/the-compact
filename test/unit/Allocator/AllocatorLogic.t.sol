@@ -147,10 +147,7 @@ contract AllocatorLogicTest is Test {
         uint256 id = token.asUint256() | (uint256(bytes32(lockTag)));
 
         // Get lock details
-        (
-            uint256 retrievedId,
-            bytes12 retrievedLockTag
-        ) = logic.getId(token, allocatorAddr, resetPeriod, scope);
+        (uint256 retrievedId, bytes12 retrievedLockTag) = logic.getId(token, allocatorAddr, resetPeriod, scope);
 
         // Assert lock details match
         assertEq(retrievedId, id, "Lock ids should match");

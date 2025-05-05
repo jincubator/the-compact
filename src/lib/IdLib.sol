@@ -473,7 +473,11 @@ library IdLib {
      * @param scope        The scope of the resource lock (multichain or single chain).
      * @return id          The derived resource lock ID.
      */
-    function toId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) internal pure returns (uint256 id) {
+    function toId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+        internal
+        pure
+        returns (uint256 id)
+    {
         id = toId(Lock(token, allocator, resetPeriod, scope));
     }
 }
