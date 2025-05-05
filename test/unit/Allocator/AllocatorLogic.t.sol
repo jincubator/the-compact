@@ -119,6 +119,23 @@ contract AllocatorLogicTest is Test {
         assertEq(uint8(retrievedScope), uint8(scope), "Scopes should match");
     }
 
+    function test_revert_getId_unregisteredAllocator() public {
+        // Create a mock token to derive lock id from
+        address token = makeAddr("token");
+        address unregisteredAllocator = makeAddr("unregisteredAllocator");
+        ResetPeriod resetPeriod = ResetPeriod.OneDay;
+        Scope scope = Scope.Multichain;
+
+        // Generate lock ID using IdLib functions
+        uint96 unregisteredAllocatorId = IdLib.usingAllocatorId(unregisteredAllocator);
+        bytes12 lockTag = unregisteredAllocatorId.toLockTag(scope, resetPeriod);
+        uint256 id = token.asUint256() | (uint256(bytes32(lockTag)));
+
+        // Revert when getting lock details with unregistered allocator
+        vm.expectRevert(abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, unregisteredAllocatorId));
+        logic.getId(token, unregisteredAllocator, resetPeriod, scope);
+    }
+
     function test_getId() public {
         // Create a mock token to derive lock id from
         address token = makeAddr("token");
