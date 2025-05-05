@@ -6,7 +6,6 @@ import { ITheCompact } from "./interfaces/ITheCompact.sol";
 import { AllocatedBatchTransfer } from "./types/BatchClaims.sol";
 import { AllocatedTransfer } from "./types/Claims.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
-import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
@@ -292,8 +291,12 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getEmissaryStatus(sponsor, lockTag);
     }
 
-    function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope, bytes12) {
+    function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag) {
         return _getLockDetails(id);
+    }
+
+    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (uint256 id, bytes12 lockTag) {
+        return _getId(token, allocator, resetPeriod, scope);
     }
 
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool) {

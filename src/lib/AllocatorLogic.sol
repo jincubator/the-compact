@@ -111,4 +111,20 @@ contract AllocatorLogic {
         scope = id.toScope();
         lockTag = id.toLockTag();
     }
+
+    /**
+     * @notice Internal view function for deriving a resource lock id from its components.
+     * @param token        The address of the underlying token (or address(0) for native tokens).
+     * @param allocator    The address of the allocator mediating the resource lock.
+     * @param resetPeriod  The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
+     * @param scope        The scope of the resource lock (multichain or single chain).
+     * @return id          The ERC6909 token identifier of the resource lock.
+     * @return lockTag     The lock tag containing the allocator id, the reset period, and the scope.
+     */
+    function _getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) internal view returns (uint256 id, bytes12 lockTag) {
+        uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
+        lockTag = allocatorId.toLockTag(scope, resetPeriod);
+
+        return (token.toId(allocator, resetPeriod, scope), lockTag);
+    }
 }

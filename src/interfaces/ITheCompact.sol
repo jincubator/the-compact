@@ -585,6 +585,18 @@ interface ITheCompact {
         returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag);
 
     /**
+     * @notice External view function for deriving a resource lock id from its components.
+     * @dev Reverts if the allocator is not registered.
+     * @param token        The address of the underlying token (or address(0) for native tokens).
+     * @param allocator    The address of the allocator mediating the resource lock.
+     * @param resetPeriod  The duration after which the resource lock can be reset once a forced withdrawal is initiated.
+     * @param scope        The scope of the resource lock (multichain or single chain).
+     * @return id          The ERC6909 token identifier of the resource lock.
+     * @return lockTag     The lock tag containing the allocator ID, the reset period, and the scope.
+     */
+    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (uint256 id, bytes12 lockTag);
+
+    /**
      * @notice External view function for checking the registration status of a compact. Returns
      * both whether the claim hash is currently active and when it was registered (if relevant).
      * Note that an "active" compact may in fact not be claimable, (e.g. it has expired, the

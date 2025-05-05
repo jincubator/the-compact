@@ -458,4 +458,22 @@ library IdLib {
                 | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256()
         );
     }
+
+    /**
+     * @notice Internal pure function for deriving a resource lock id from its components.
+     * The id consists of:
+     *  - Bit 255: scope
+     *  - Bits 252-254: reset period
+     *  - Bits 160-251: allocator ID (first 4 bits are compact flag, next 88 from allocator address)
+     *  - Bits 0-159: token address
+     * @dev Note that this will return an ID even if the allocator is unregistered.
+     * @param token        The address of the underlying token.
+     * @param allocator    The address of the allocator mediating the resource lock.
+     * @param resetPeriod  The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
+     * @param scope        The scope of the resource lock (multichain or single chain).
+     * @return id          The derived resource lock ID.
+     */
+    function toId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) internal pure returns (uint256 id) {
+        id = toId(Lock(token, allocator, resetPeriod, scope));
+    }
 }

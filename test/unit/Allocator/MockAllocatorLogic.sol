@@ -33,4 +33,8 @@ contract MockAllocatorLogic is TheCompactLogic {
     {
         return _getLockDetails(id);
     }
+
+    function getId(address token, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (uint256 id, bytes12 lockTag) {
+        return _getId(token, allocator, resetPeriod, scope);
+    }
 }

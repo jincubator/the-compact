@@ -1,6 +1,6 @@
 {
-  "disableForcedWithdrawal": "3340",
-  "enableForcedWithdrawal": "25628",
+  "disableForcedWithdrawal": "3362",
+  "enableForcedWithdrawal": "25650",
   "getForcedWithdrawalStatus_disabled": "2715",
   "getForcedWithdrawalStatus_enabled": "715",
   "getForcedWithdrawalStatus_pending": "715",
