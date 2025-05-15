@@ -77,6 +77,12 @@ contract Setup is TestHelpers {
     string constant batchCompactWitnessTypestring =
         "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
     bytes32 constant batchCompactWithWitnessTypehash = keccak256(bytes(batchCompactWitnessTypestring));
+    string constant multichainCompactWitnessTypestring =
+        "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
+    bytes32 constant multichainCompactWithWitnessTypehash = keccak256(bytes(multichainCompactWitnessTypestring));
+    string constant multichainElementsWitnessTypestring =
+        "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
+    bytes32 constant multichainElementsWithWitnessTypehash = keccak256(bytes(multichainElementsWitnessTypestring));
 
     function setUp() public virtual {
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);

@@ -6,6 +6,8 @@ import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { FeeOnTransferToken } from "../../src/test/FeeOnTransferToken.sol";
+import { ReentrantToken } from "../../src/test/ReentrantToken.sol";
+import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
 import { Setup } from "./Setup.sol";
 
@@ -333,5 +335,41 @@ contract DepositTest is Setup {
         assertEq(fotToken.balanceOf(swapper), 0);
         // Check balances of ERC6909
         assertEq(theCompact.balanceOf(swapper, id), successfulAmount_ - fee_);
+    }
+
+    function test_revert_BlockingReentrantTokenCall(uint256 amount) public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        ReentrantToken reentrantToken = new ReentrantToken("Test", "TEST", 18, address(theCompact), bytes(""));
+        uint256 id = uint256(bytes32(lockTag)) | uint256(uint160(address(reentrantToken)));
+        reentrantToken.setReentrantData(
+            abi.encodeWithSelector(ITheCompact.depositERC20.selector, address(reentrantToken), lockTag, amount, swapper)
+        );
+
+        reentrantToken.mint(swapper, type(uint256).max);
+
+        vm.prank(swapper);
+        reentrantToken.approve(address(theCompact), type(uint256).max);
+
+        assertEq(reentrantToken.balanceOf(address(theCompact)), 0);
+        assertEq(reentrantToken.balanceOf(swapper), type(uint256).max);
+
+        vm.prank(swapper);
+        // The reentrant call will fail with "ReentrantCall", then the transferFrom will revert with "TransferFromFailed"
+        vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector), address(theCompact));
+        theCompact.depositERC20(address(reentrantToken), lockTag, amount, swapper);
+
+        // Check balances of ERC20
+        assertEq(reentrantToken.balanceOf(address(theCompact)), 0);
+        assertEq(reentrantToken.balanceOf(swapper), type(uint256).max);
+        // Check balances of ERC6909
+        assertEq(theCompact.balanceOf(swapper, id), 0);
     }
 }

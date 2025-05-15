@@ -35,6 +35,14 @@ struct CreateBatchClaimHashWithWitnessArgs {
     bytes32 witness;
 }
 
+struct CreateMultichainClaimHashWithWitnessArgs {
+    bytes32 typehash;
+    address sponsor;
+    uint256 nonce;
+    uint256 expires;
+    bytes32 elementsHash;
+}
+
 struct CreatePermitBatchWitnessDigestArgs {
     bytes32 domainSeparator;
     bytes32 tokenPermissionsHash;

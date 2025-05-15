@@ -84,6 +84,9 @@ struct MultichainCompact {
     Element[] elements; // Arbiter, chainId, ids & amounts, and mandate for each chain.
 }
 
+// keccak256(bytes("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))
+bytes32 constant MULTICHAIN_COMPACT_TYPEHASH = 0x2139415a3893388d729a322b9cd3920e406de66799708f65237b8b9fc5247f6b;
+
 // abi.decode(bytes("MultichainCompact(address sponso"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
     0x4d756c7469636861696e436f6d7061637428616464726573732073706f6e736f;
@@ -106,6 +109,9 @@ bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE =
 
 // uint112(abi.decode(bytes("ndate)Mandate("), (bytes14)))
 uint112 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX = 0x6e64617465294d616e6461746528;
+
+// keccak256(bytes("Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))
+bytes32 constant ELEMENT_TYPEHASH = 0xacd5c97b2a93c9a83c23cd952d3eb010ee7c72561a0d8cf72bf98394806a1341;
 
 /// @dev `keccak256(bytes("CompactDeposit(bytes12 lockTag,address recipient)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH =

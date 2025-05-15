@@ -64,11 +64,11 @@ library ClaimHashLib {
 
     ///// CATEGORY 2: Claim with witness message & type hashes /////
     function toMessageHashes(Claim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toMessageHashWithWitness.usingClaim()(claim);
+        return HashLib.toClaimMessageHash.usingClaim()(claim);
     }
 
     function toMessageHashes(BatchClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toBatchClaimWithWitnessMessageHash.usingBatchClaim()(claim, claim.claims.toIdsAndAmountsHash());
+        return HashLib.toBatchClaimMessageHash.usingBatchClaim()(claim, claim.claims.toIdsAndAmountsHash());
     }
 
     function toMessageHashes(MultichainClaim calldata claim)

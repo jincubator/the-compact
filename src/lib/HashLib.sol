@@ -15,12 +15,14 @@ import {
     BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    MULTICHAIN_COMPACT_TYPEHASH,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
+    ELEMENT_TYPEHASH,
     PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH
 } from "../types/EIP712Types.sol";
 
@@ -181,57 +183,6 @@ library HashLib {
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a claim with a witness.
-     * @param claim               Pointer to the claim location in calldata.
-     * @return messageHash        The EIP-712 compliant message hash.
-     * @return typehash           The EIP-712 typehash.
-     */
-    function toMessageHashWithWitness(uint256 claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
-
-            // Derive the pointer to the witness typestring.
-            let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
-
-            // Retrieve the length of the witness typestring.
-            let witnessTypestringLength := calldataload(witnessTypestringPtr)
-
-            // Prepare first component of typestring from four one-word fragments.
-            mstore(m, COMPACT_TYPESTRING_FRAGMENT_ONE)
-            mstore(add(m, 0x20), COMPACT_TYPESTRING_FRAGMENT_TWO)
-            mstore(add(m, 0x58), COMPACT_TYPESTRING_FRAGMENT_FOUR)
-            mstore(add(m, 0x40), COMPACT_TYPESTRING_FRAGMENT_THREE)
-
-            // Copy remaining typestring data from calldata to memory.
-            let witnessStart := add(m, 0x78)
-            calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
-
-            // Prepare closing ")" parenthesis at the very end of the memory region.
-            mstore8(add(witnessStart, witnessTypestringLength), 0x29)
-
-            // Derive the typehash from the prepared data.
-            typehash := keccak256(m, add(0x79, witnessTypestringLength))
-
-            // Prepare initial components of message data: typehash & arbiter.
-            mstore(m, typehash)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-
-            // Next data segment copied from calldata: sponsor, nonce, expires.
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
-
-            // Prepare final components of message data: id, amount, & witness.
-            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
-            mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
-            mstore(add(m, 0xe0), calldataload(add(claim, 0xa0))) // witness
-
-            // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0x100)
-        }
-    }
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch transfer or withdrawal once an idsAndAmounts hash is available.
      * @param transfer          An AllocatedBatchTransfer struct containing the transfer details.
      * @param idsAndAmountsHash A hash of the ids and amounts.
@@ -264,89 +215,172 @@ library HashLib {
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a batch transfer or withdrawal.
-     * @param claim             Pointer to the claim location in calldata.
-     * @param idsAndAmountsHash A hash of the ids and amounts.
-     * @return messageHash      The EIP-712 compliant message hash.
+     * a claim with or without a witness.
+     * @param claimPointer               Pointer to the claim location in calldata.
+     * @return messageHash        The EIP-712 compliant message hash.
+     * @return typehash           The EIP-712 typehash.
      */
-    function toBatchMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
+    function toClaimMessageHash(uint256 claimPointer) internal view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
+            function createHash(claim) -> derivedMessageHash, derivedTypehash {
+                // Retrieve the free memory pointer; memory will be left dirtied.
+                let m := mload(0x40)
 
-            // Prepare initial components of message data: typehash & arbiter.
-            mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+                // Derive the pointer to the witness typestring.
+                let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
 
-            // Next data segment copied from calldata: sponsor, nonce, expires.
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+                // Retrieve the length of the witness typestring.
+                let witnessTypestringLength := calldataload(witnessTypestringPtr)
 
-            // Prepare final component of message data: idsAndAmountsHash.
-            mstore(add(m, 0xa0), idsAndAmountsHash)
+                if iszero(witnessTypestringLength) {
+                    // Prepare initial components of message data: typehash & arbiter.
+                    mstore(m, COMPACT_TYPEHASH)
+                    mstore(add(m, 0x20), caller()) // arbiter: msg.sender
 
-            // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xc0)
+                    // Clear sponsor memory location as an added precaution so that
+                    // upper bits of sponsor do not need to be copied from calldata.
+                    mstore(add(m, 0x40), 0)
+
+                    // Next data segment copied from calldata: sponsor, nonce & expires.
+                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
+
+                    // Prepare final components of message data: id and amount.
+                    mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
+                    mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
+
+                    // Derive the message hash from the prepared data.
+                    derivedMessageHash := keccak256(m, 0xe0)
+
+                    // Set Compact typehash
+                    derivedTypehash := COMPACT_TYPEHASH
+
+                    leave
+                }
+
+                // Prepare first component of typestring from four one-word fragments.
+                mstore(m, COMPACT_TYPESTRING_FRAGMENT_ONE)
+                mstore(add(m, 0x20), COMPACT_TYPESTRING_FRAGMENT_TWO)
+                mstore(add(m, 0x58), COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                mstore(add(m, 0x40), COMPACT_TYPESTRING_FRAGMENT_THREE)
+
+                // Copy remaining typestring data from calldata to memory.
+                let witnessStart := add(m, 0x78)
+                calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
+
+                // Prepare closing ")" parenthesis at the very end of the memory region.
+                mstore8(add(witnessStart, witnessTypestringLength), 0x29)
+
+                // Derive the typehash from the prepared data.
+                derivedTypehash := keccak256(m, add(0x79, witnessTypestringLength))
+
+                // Prepare initial components of message data: typehash & arbiter.
+                mstore(m, derivedTypehash)
+                mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+
+                // Next data segment copied from calldata: sponsor, nonce, expires.
+                calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
+
+                // Prepare final components of message data: id, amount, & witness.
+                mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
+                mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
+                mstore(add(m, 0xe0), calldataload(add(claim, 0xa0))) // witness
+
+                // Derive the message hash from the prepared data.
+                derivedMessageHash := keccak256(m, 0x100)
+            }
+
+            // Execute internal assembly function and store derived messageHash and typehashes.
+            messageHash, typehash := createHash(claimPointer)
         }
     }
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a batch claim with a witness.
-     * @param claim             Pointer to the claim location in calldata.
+     * a batch claim with or without a witness.
+     * @param claimPointer             Pointer to the claim location in calldata.
      * @param idsAndAmountsHash A hash of the ids and amounts.
      * @return messageHash      The EIP-712 compliant message hash.
      * @return typehash         The EIP-712 typehash.
      */
-    function toBatchClaimWithWitnessMessageHash(uint256 claim, uint256 idsAndAmountsHash)
+    function toBatchClaimMessageHash(uint256 claimPointer, uint256 idsAndAmountsHash)
         internal
         view
         returns (bytes32 messageHash, bytes32 typehash)
     {
         assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
+            function createHash(claim, idsAmountsHash) -> derivedMessageHash, derivedTypehash {
+                // Retrieve the free memory pointer; memory will be left dirtied.
+                let m := mload(0x40)
 
-            // Derive the pointer to the witness typestring.
-            let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+                // Derive the pointer to the witness typestring.
+                let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
 
-            // Retrieve the length of the witness typestring.
-            let witnessTypestringLength := calldataload(witnessTypestringPtr)
+                // Retrieve the length of the witness typestring.
+                let witnessTypestringLength := calldataload(witnessTypestringPtr)
 
-            // Prepare first component of typestring from four one-word fragments.
-            mstore(m, BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
-            mstore(add(m, 0x20), BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
-            mstore(add(m, 0x5e), BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-            mstore(add(m, 0x40), BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                if iszero(witnessTypestringLength) {
+                    // Prepare initial components of message data: typehash & arbiter.
+                    mstore(m, BATCH_COMPACT_TYPEHASH)
+                    mstore(add(m, 0x20), caller()) // arbiter: msg.sender
 
-            // Copy remaining typestring data from calldata to memory.
-            let witnessStart := add(m, 0x7e)
-            calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
+                    // Clear sponsor memory location as an added precaution so that
+                    // upper bits of sponsor do not need to be copied from calldata.
+                    mstore(add(m, 0x40), 0)
 
-            // Prepare closing ")" parenthesis at the very end of the memory region.
-            mstore8(add(witnessStart, witnessTypestringLength), 0x29)
+                    // Next data segment copied from calldata: sponsor, nonce, expires.
+                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54) // sponsor, nonce, expires
 
-            // Derive the typehash from the prepared data.
-            typehash := keccak256(m, add(0x7f, witnessTypestringLength))
+                    // Prepare final component of message data: idsAndAmountsHash.
+                    mstore(add(m, 0xa0), idsAmountsHash)
 
-            // Prepare initial components of message data: typehash & arbiter.
-            mstore(m, typehash)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+                    // Derive the message hash from the prepared data.
+                    derivedMessageHash := keccak256(m, 0xc0)
 
-            // Next data segment copied from calldata: sponsor, nonce, expires.
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
+                    // Set BatchCompact typehash
+                    derivedTypehash := BATCH_COMPACT_TYPEHASH
 
-            // Prepare final components of message data: idsAndAmountsHash & witness.
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            mstore(add(m, 0xc0), calldataload(add(claim, 0xa0))) // witness
+                    leave
+                }
 
-            // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
+                // Prepare first component of typestring from four one-word fragments.
+                mstore(m, BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                mstore(add(m, 0x20), BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                mstore(add(m, 0x5e), BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                mstore(add(m, 0x40), BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+
+                // Copy remaining typestring data from calldata to memory.
+                let witnessStart := add(m, 0x7e)
+                calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
+
+                // Prepare closing ")" parenthesis at the very end of the memory region.
+                mstore8(add(witnessStart, witnessTypestringLength), 0x29)
+
+                // Derive the typehash from the prepared data.
+                derivedTypehash := keccak256(m, add(0x7f, witnessTypestringLength))
+
+                // Prepare initial components of message data: typehash & arbiter.
+                mstore(m, derivedTypehash)
+                mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+
+                // Next data segment copied from calldata: sponsor, nonce, expires.
+                calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
+
+                // Prepare final components of message data: idsAndAmountsHash & witness.
+                mstore(add(m, 0xa0), idsAmountsHash)
+                mstore(add(m, 0xc0), calldataload(add(claim, 0xa0))) // witness
+
+                // Derive the message hash from the prepared data.
+                derivedMessageHash := keccak256(m, 0xe0)
+            }
+
+            // Execute internal assembly function and store derived messageHash and typehashes.
+            messageHash, typehash := createHash(claimPointer, idsAndAmountsHash)
         }
     }
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a multichain claim.
+     * a multichain claim with or without a witness.
      * @param claim                     Pointer to the claim location in calldata.
      * @param additionalOffset          Additional offset from claim pointer to ID from most compact case.
      * @param elementTypehash           The element typehash.
@@ -373,11 +407,19 @@ library HashLib {
             mstore(add(m, 0x20), caller()) // arbiter
             mstore(add(m, 0x40), chainid())
 
-            // Store the witness in memory.
-            mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) // witness
+            let elementEnd := 0x80
+
+            // Check if the element typehash is not ELEMENT_TYPEHASH, indicating a witness is present
+            if iszero(eq(elementTypehash, ELEMENT_TYPEHASH)) {
+                // Store the witness in memory.
+                mstore(add(m, elementEnd), calldataload(add(claim, 0xa0))) // witness
+
+                // Update the elementEnd pointer
+                elementEnd := add(elementEnd, 0x20)
+            }
 
             // Derive the first element hash from the prepared data and write it to memory.
-            mstore(m, keccak256(m, 0xa0))
+            mstore(m, keccak256(m, elementEnd))
 
             // Derive the pointer to the additional chains and retrieve the length.
             let additionalChainsPtr := add(claim, calldataload(add(add(claim, additionalOffset), 0xa0)))
@@ -402,7 +444,7 @@ library HashLib {
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * an exogenous multichain claim.
+     * an exogenous multichain claim with or without a witness.
      * @param claim                     Pointer to the claim location in calldata.
      * @param additionalOffset          Additional offset from claim pointer to ID from most compact case.
      * @param elementTypehash           The element typehash.
@@ -429,11 +471,19 @@ library HashLib {
             mstore(add(m, 0x20), caller()) // arbiter
             mstore(add(m, 0x40), chainid())
 
-            // Store the witness in memory.
-            mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) // witness
+            let elementEnd := 0x80
+
+            // Check if the element typehash is not ELEMENT_TYPEHASH, indicating a witness is present
+            if iszero(eq(elementTypehash, ELEMENT_TYPEHASH)) {
+                // Store the witness in memory.
+                mstore(add(m, elementEnd), calldataload(add(claim, 0xa0))) // witness
+
+                // Update the elementEnd pointer
+                elementEnd := add(elementEnd, 0x20)
+            }
 
             // Derive the element hash from the prepared data and write it to memory.
-            let elementHash := keccak256(m, 0xa0)
+            let elementHash := keccak256(m, elementEnd)
 
             // Derive the pointer to the additional chains and retrieve the length.
             let claimWithAdditionalOffset := add(claim, additionalOffset)
@@ -478,42 +528,52 @@ library HashLib {
 
     /**
      * @notice Internal pure function for deriving the EIP-712 typehashes for
-     * multichain claims.
-     * @param claim                      Pointer to the claim location in calldata.
+     * multichain claims with or without a witness.
+     * @param claimPointer                      Pointer to the claim location in calldata.
      * @return elementTypehash           The element typehash.
      * @return multichainCompactTypehash The multichain compact typehash.
      */
-    function toMultichainTypehashes(uint256 claim)
+    function toMultichainTypehashes(uint256 claimPointer)
         internal
         pure
         returns (bytes32 elementTypehash, bytes32 multichainCompactTypehash)
     {
         assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
+            function createHash(claim) -> derivedElementTypehash, derivedMultichainCompactTypehash {
+                // Retrieve the free memory pointer; memory will be left dirtied.
+                let m := mload(0x40)
 
-            // Derive the pointer to the witness typestring and retrieve the length.
-            let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
-            let witnessTypestringLength := calldataload(witnessTypestringPtr)
+                // Derive the pointer to the witness typestring and retrieve the length.
+                let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+                let witnessTypestringLength := calldataload(witnessTypestringPtr)
 
-            // Prepare the first five fragments of the multichain compact typehash.
-            mstore(m, MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
-            mstore(add(m, 0x20), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
-            mstore(add(m, 0x40), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
-            mstore(add(m, 0x60), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-            mstore(add(m, 0x8e), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
-            mstore(add(m, 0x80), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                if iszero(witnessTypestringLength) {
+                    derivedElementTypehash := ELEMENT_TYPEHASH
+                    derivedMultichainCompactTypehash := MULTICHAIN_COMPACT_TYPEHASH
 
-            // Copy remaining witness typestring from calldata to memory.
-            let witnessStart := add(m, 0xae)
-            calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
+                    leave
+                }
+                // Prepare the first five fragments of the multichain compact typehash.
+                mstore(m, MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                mstore(add(m, 0x20), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                mstore(add(m, 0x40), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                mstore(add(m, 0x60), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                mstore(add(m, 0x8e), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
+                mstore(add(m, 0x80), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
 
-            // Prepare closing ")" parenthesis at the very end of the memory region.
-            mstore8(add(witnessStart, witnessTypestringLength), 0x29)
+                // Copy remaining witness typestring from calldata to memory.
+                let witnessStart := add(m, 0xae)
+                calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
-            // Derive the element typehash and multichain compact typehash from the prepared data.
-            elementTypehash := keccak256(add(m, 0x53), add(0x5c, witnessTypestringLength))
-            multichainCompactTypehash := keccak256(m, add(0xaf, witnessTypestringLength))
+                // Prepare closing ")" parenthesis at the very end of the memory region.
+                mstore8(add(witnessStart, witnessTypestringLength), 0x29)
+
+                // Derive the element typehash and multichain compact typehash from the prepared data.
+                derivedElementTypehash := keccak256(add(m, 0x53), add(0x5c, witnessTypestringLength))
+                derivedMultichainCompactTypehash := keccak256(m, add(0xaf, witnessTypestringLength))
+            }
+
+            elementTypehash, multichainCompactTypehash := createHash(claimPointer)
         }
     }
 
