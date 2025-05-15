@@ -817,7 +817,13 @@ contract Permit2DepositTest is Setup {
         ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
         {
             (signature, tokenPermissions) = _createPermit2BatchSignature(
-                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, allocatorPrivateKey // wrong private key
+                tokens,
+                amounts,
+                params.nonce,
+                params.deadline,
+                lockTag,
+                params.recipient,
+                allocatorPrivateKey // wrong private key
             );
         }
 
@@ -827,7 +833,8 @@ contract Permit2DepositTest is Setup {
                 DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
 
             vm.expectRevert(
-                abi.encodeWithSelector(bytes4(0x815e1d64)), address(permit2) // error InvalidSigner
+                abi.encodeWithSelector(bytes4(0x815e1d64)),
+                address(permit2) // error InvalidSigner
             );
             theCompact.batchDepositViaPermit2{ value: params.amount }(
                 swapper, tokenPermissions, details, params.recipient, signature
@@ -899,9 +906,7 @@ contract Permit2NotDeployedTest is Setup {
             DepositDetails memory details =
                 DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
 
-            vm.expectRevert(
-                abi.encodeWithSelector(ITheCompact.Permit2CallFailed.selector), address(theCompact)
-            );
+            vm.expectRevert(abi.encodeWithSelector(ITheCompact.Permit2CallFailed.selector), address(theCompact));
             theCompact.batchDepositViaPermit2{ value: params.amount }(
                 swapper, tokenPermissions, details, params.recipient, signature
             );
