@@ -492,9 +492,6 @@ library HashLib {
             // Retrieve the length of the additional chains array.
             let additionalChainsLength := shl(5, calldataload(additionalChainsPtr))
 
-            // Derive the pointer to the additional chains data array in calldata.
-            let additionalChainsData := add(0x20, additionalChainsPtr)
-
             // Retrieve the chain index from calldata.
             let chainIndex := shl(5, calldataload(add(claimWithAdditionalOffset, 0xc0)))
 
@@ -504,7 +501,7 @@ library HashLib {
 
             // Iterate over the additional chains array and store each element hash in memory.
             for { let i := 0 } lt(i, additionalChainsLength) { i := add(i, 0x20) } {
-                mstore(add(add(m, i), extraOffset), calldataload(add(additionalChainsData, i)))
+                mstore(add(add(m, i), extraOffset), calldataload(add(add(0x20, additionalChainsPtr), i)))
                 // If current index matches chain index, store derived hash and increment offset.
                 if eq(i, chainIndex) {
                     extraOffset := 0x20

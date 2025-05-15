@@ -543,20 +543,9 @@ contract Permit2DepositAndRegisterTest is Setup {
 
     function test_revert_InvalidCompactCategory() public virtual {
         // Setup test parameters
-        // ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        // Scope scope = Scope.Multichain;
         uint256 amount = 1e18;
         uint256 nonce = 0;
         uint256 expires = block.timestamp + 1000;
-
-        // // Initialize claim
-        // Claim memory claim;
-        // claim.sponsor = swapper;
-        // claim.nonce = params.nonce;
-        // claim.expires = block.timestamp + 1000;
-        // claim.allocatedAmount = params.amount;
-        // claim.witnessTypestring = witnessTypestring;
-        // claim.sponsorSignature = "";
 
         // Create domain separator
         bytes32 domainSeparator;
@@ -581,9 +570,6 @@ contract Permit2DepositAndRegisterTest is Setup {
             id = uint256(bytes32(lockTag)) | uint256(uint160(address(token)));
         }
 
-        uint256 witnessArgument = 234;
-        bytes32 witness = _createCompactWitness(witnessArgument);
-
         // Create claim hash
         bytes32 claimHash;
         {
@@ -598,7 +584,7 @@ contract Permit2DepositAndRegisterTest is Setup {
                     chainId: block.chainid,
                     idsAndAmounts: idsAndAmounts
                 });
-                witnessHashes[0] = witness;
+                witnessHashes[0] = _createCompactWitness(234);
             }
 
             CreateMultichainClaimHashWithWitnessArgs memory args;
