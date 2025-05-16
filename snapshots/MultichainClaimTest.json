@@ -1,6 +1,10 @@
 {
-  "batchMultichainClaimWithWitness": "95243",
-  "exogenousBatchMultichainClaimWithWitness": "122932",
-  "exogenousMultichainClaimWithWitness": "93790",
-  "multichainClaimWithWitness": "94053"
+  "batchMultichainClaim": "95031",
+  "batchMultichainClaimWithWitness": "95347",
+  "exogenousBatchMultichainClaim": "122720",
+  "exogenousBatchMultichainClaimWithWitness": "123036",
+  "exogenousMultichainClaim": "93576",
+  "exogenousMultichainClaimWithWitness": "93892",
+  "multichainClaim": "93841",
+  "multichainClaimWithWitness": "94157"
 }
