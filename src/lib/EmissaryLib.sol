@@ -52,8 +52,8 @@ library EmissaryLib {
     // Maps: keccak256(_EMISSARY_SCOPE) => EmissarySlot
     uint256 private constant _EMISSARY_SCOPE = 0x2d5c707;
 
-    // bytes4(keccak256("verifyClaim(address,bytes32,bytes,bytes12)")).
-    uint32 private constant _VERIFY_CLAIM_SELECTOR = 0xcd4d6588;
+    // bytes4(keccak256("verifyClaim(address,bytes32,bytes32,bytes,bytes12)")).
+    uint32 private constant _VERIFY_CLAIM_SELECTOR = 0xf699ba1c;
 
     /**
      * @dev Retrieves the configuration for a given emissary.
@@ -195,20 +195,24 @@ library EmissaryLib {
      * ensuring that the verification process is modular and can be updated independently.
      * If no emissary is assigned, the verification fails, enforcing the requirement
      * for an active emissary to validate claims.
+     * @param digest    The digest of the claim on the notarized chain.
      * @param claimHash The hash of the claim to verify.
      * @param sponsor   The address of the sponsor.
      * @param lockTag   The lock tag for the claim.
      * @param signature The signature to verify.
      */
-    function verifyWithEmissary(bytes32 claimHash, address sponsor, bytes12 lockTag, bytes calldata signature)
-        internal
-        view
-    {
+    function verifyWithEmissary(
+        bytes32 digest,
+        bytes32 claimHash,
+        address sponsor,
+        bytes12 lockTag,
+        bytes calldata signature
+    ) internal view {
         // Retrieve the emissary for the sponsor and lock tag from storage.
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
 
         // Delegate the verification process to the assigned emissary contract.
-        _callVerifyClaim(emissaryConfig.emissary, sponsor, claimHash, signature, lockTag);
+        _callVerifyClaim(emissaryConfig.emissary, sponsor, digest, claimHash, signature, lockTag);
     }
 
     /**
@@ -217,6 +221,7 @@ library EmissaryLib {
      * if the magic value is not returned successfully.
      * @param emissary  The emissary to perform the call to.
      * @param sponsor   The address of the sponsor.
+     * @param digest    The digest of the claim to verify.
      * @param claimHash The hash of the claim to verify.
      * @param signature The signature to verify.
      * @param lockTag   The lock tag for the claim.
@@ -224,6 +229,7 @@ library EmissaryLib {
     function _callVerifyClaim(
         address emissary,
         address sponsor,
+        bytes32 digest,
         bytes32 claimHash,
         bytes calldata signature,
         bytes12 lockTag
@@ -242,17 +248,18 @@ library EmissaryLib {
             // Prepare fixed-location components of calldata.
             mstore(m, _VERIFY_CLAIM_SELECTOR)
             mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), claimHash)
-            mstore(add(m, 0x60), 0x80)
-            mstore(add(m, 0x80), lockTag)
-            mstore(add(m, 0xa0), signature.length)
-            calldatacopy(add(m, 0xc0), signature.offset, signature.length)
+            mstore(add(m, 0x40), digest)
+            mstore(add(m, 0x60), claimHash)
+            mstore(add(m, 0x80), 0xa0)
+            mstore(add(m, 0xa0), lockTag)
+            mstore(add(m, 0xc0), signature.length)
+            calldatacopy(add(m, 0xe0), signature.offset, signature.length)
 
             // Ensure sure initial scratch space is cleared as an added precaution.
             mstore(0, 0)
 
             // Perform a staticcall to emissary and write response to scratch space.
-            let success := staticcall(gas(), emissary, dataStart, add(0xa4, signature.length), 0, 0x20)
+            let success := staticcall(gas(), emissary, dataStart, add(0xc4, signature.length), 0, 0x20)
 
             // Revert if the required magic value was not received back.
             if iszero(eq(mload(0), shl(224, _VERIFY_CLAIM_SELECTOR))) {
