@@ -847,6 +847,74 @@ contract Permit2DepositTest is Setup {
             assertEq(token.balanceOf(address(theCompact)), 0);
         }
     }
+
+    function test_revert_InvalidDepositBalanceChange() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(0);
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = 0; // Invalid amount - Balance will not change
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidDepositBalanceChange.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: params.amount }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
 }
 
 contract Permit2NotDeployedTest is Setup {
