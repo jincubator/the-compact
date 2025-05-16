@@ -159,19 +159,14 @@ library ClaimProcessorLib {
      * domain separator.
      * @param messageHash      The EIP-712 hash of the claim message.
      * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
      */
-    function processSimpleClaim(
-        bytes32 messageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 typehash,
-        bytes32 domainSeparator
-    ) internal {
+    function processSimpleClaim(bytes32 messageHash, uint256 calldataPointer, bytes32 typehash, bytes32 domainSeparator)
+        internal
+    {
         messageHash.processClaimWithComponents(
-            calldataPointer, offsetToId, bytes32(0).asStubborn(), typehash, domainSeparator, validate
+            calldataPointer, 0xe0, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
 
@@ -182,19 +177,17 @@ library ClaimProcessorLib {
      * message hash itself as the qualification message and a zero sponsor domain separator.
      * @param messageHash      The EIP-712 hash of the claim message.
      * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
      */
     function processSimpleBatchClaim(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
         messageHash.processClaimWithBatchComponents(
-            calldataPointer, offsetToId, bytes32(0).asStubborn(), typehash, domainSeparator, validate
+            calldataPointer, 0xe0, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
 
