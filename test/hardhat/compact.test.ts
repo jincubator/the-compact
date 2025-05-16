@@ -147,16 +147,15 @@ describe("Compact Protocol E2E", function () {
       account: arbiter.account,
     });
 
-    // TODO: fix the claim event signature in the contract
-    // const claimEvents = await compactContract.getEvents.Claim({
-    //   sponsor: sponsor.account.address,
-    //   allocator: alwaysOKAllocatorAddress,
-    //   arbiter: arbiter.account.address,
-    // });
-    // expect(
-    //   claimEvents.length > 0,
-    //   "Claim event not found or has incorrect parameters."
-    // ).to.be.true;
+    const claimEvents = await compactContract.getEvents.Claim({
+      sponsor: sponsor.account.address,
+      allocator: alwaysOKAllocator.address,
+      arbiter: arbiter.account.address,
+    });
+    expect(
+      claimEvents.length > 0,
+      "Claim event not found or has incorrect parameters."
+    ).to.be.true;
 
     const fillerBalanceAfter = await publicClient.getBalance({
       address: filler.account.address,
