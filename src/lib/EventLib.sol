@@ -9,8 +9,8 @@ pragma solidity ^0.8.27;
  * library only implements a few events.
  */
 library EventLib {
-    // keccak256(bytes("Claim(address,address,address,bytes32)")).
-    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
+    // keccak256(bytes("Claim(address,address,address,bytes32,uint256)")).
+    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x9a071f16ca19062495c8c0e832e4541b4453cd2995fd631b0b7e9f0ee300ff12;
 
     // keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)")).
     uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE =
