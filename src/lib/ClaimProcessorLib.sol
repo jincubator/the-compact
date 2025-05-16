@@ -96,62 +96,6 @@ library ClaimProcessorLib {
         sponsor.emitClaim(messageHash, allocator, nonce);
     }
 
-    function _validateSponsor(
-        address sponsor,
-        bytes32 messageHash,
-        uint256 calldataPointer,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        uint256[2][] memory idsAndAmounts,
-        uint256 shortestResetPeriod
-    ) internal view {
-        bytes calldata sponsorSignature;
-        assembly ("memory-safe") {
-            // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
-            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
-            sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
-            sponsorSignature.length := calldataload(sponsorSignaturePtr)
-        }
-
-        // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
-        messageHash.hasValidSponsorOrRegistration(
-            sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash, shortestResetPeriod
-        );
-    }
-
-    function _validateAllocator(
-        address allocator,
-        address sponsor,
-        bytes32 messageHash,
-        bytes calldata allocatorData,
-        uint256[2][] memory idsAndAmounts,
-        uint256 nonce,
-        uint256 expires
-    ) internal {
-        // Validate allocator authorization through the allocator interface.
-        allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
-    }
-
-    function _validateAllocator(
-        address allocator,
-        address sponsor,
-        bytes32 messageHash,
-        uint256 calldataPointer,
-        uint256[2][] memory idsAndAmounts,
-        uint256 nonce,
-        uint256 expires
-    ) internal {
-        // Extract allocator signature from calldata using offset stored at calldataPointer.
-        bytes calldata allocatorData;
-        assembly ("memory-safe") {
-            let allocatorDataPtr := add(calldataPointer, calldataload(calldataPointer))
-            allocatorData.offset := add(0x20, allocatorDataPtr)
-            allocatorData.length := calldataload(allocatorDataPtr)
-        }
-
-        _validateAllocator(allocator, sponsor, messageHash, allocatorData, idsAndAmounts, nonce, expires);
-    }
-
     /**
      * @notice Internal function for processing simple claims with local domain
      * signatures. Extracts claim parameters from calldata, validates the claim,
@@ -166,7 +110,7 @@ library ClaimProcessorLib {
         internal
     {
         messageHash.processClaimWithComponents(
-            calldataPointer, 0xe0, bytes32(0).asStubborn(), typehash, domainSeparator, validate
+            calldataPointer, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
 
@@ -187,7 +131,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator
     ) internal {
         messageHash.processClaimWithBatchComponents(
-            calldataPointer, 0xe0, bytes32(0).asStubborn(), typehash, domainSeparator, validate
+            calldataPointer, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
 
@@ -209,9 +153,7 @@ library ClaimProcessorLib {
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithComponents(
-            calldataPointer, uint256(0xe0).asStubborn(), sponsorDomain, typehash, domainSeparator, validate
-        );
+        messageHash.processClaimWithComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
     }
 
     /**
@@ -233,8 +175,98 @@ library ClaimProcessorLib {
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithBatchComponents(
-            calldataPointer, uint256(0xe0).asStubborn(), sponsorDomain, typehash, domainSeparator, validate
+        messageHash.processClaimWithBatchComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
+    }
+
+    /**
+     * @notice Private view function to validate that a sponsor has authorized a given claim.
+     * @dev Extracts the sponsor signature from calldata and validates authorization through
+     * ECDSA, direct registration, EIP1271, or emissary.
+     * @param sponsor                The address of the sponsor of the claimed compact.
+     * @param messageHash            The EIP-712 message hash of the claim.
+     * @param calldataPointer        Pointer to the location of the associated struct in calldata.
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature.
+     * @param typehash               The EIP-712 typehash used for the claim message.
+     * @param idsAndAmounts          The claimable resource lock IDs and amounts.
+     * @param shortestResetPeriod    The shortest reset period across all resource locks on this compact.
+     */
+    function _validateSponsor(
+        address sponsor,
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        uint256[2][] memory idsAndAmounts,
+        uint256 shortestResetPeriod
+    ) private view {
+        bytes calldata sponsorSignature;
+        assembly ("memory-safe") {
+            // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
+            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
+            sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
+            sponsorSignature.length := calldataload(sponsorSignaturePtr)
+        }
+
+        // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
+        messageHash.hasValidSponsorOrRegistration(
+            sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash, shortestResetPeriod
         );
+    }
+
+    /**
+     * @notice Private function to validate that an allocator has authorized a given claim.
+     * @dev Extracts allocator data from calldata and validates allocator authorization through the allocator interface.
+     * @param allocator       The address of the allocator mediating the claim.
+     * @param sponsor         The address of the sponsor of the claimed compact.
+     * @param messageHash     The EIP-712 message hash of the claim.
+     * @param calldataPointer Pointer to the location of the associated struct in calldata.
+     * @param idsAndAmounts   The claimable resource lock IDs and amounts.
+     * @param nonce           The nonce used for the claim.
+     * @param expires         The expiration timestamp for the claim.
+     */
+    function _validateAllocator(
+        address allocator,
+        address sponsor,
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        uint256[2][] memory idsAndAmounts,
+        uint256 nonce,
+        uint256 expires
+    ) private {
+        // Extract allocator signature from calldata using offset stored at calldataPointer.
+        bytes calldata allocatorData;
+        assembly ("memory-safe") {
+            let allocatorDataPtr := add(calldataPointer, calldataload(calldataPointer))
+            allocatorData.offset := add(0x20, allocatorDataPtr)
+            allocatorData.length := calldataload(allocatorDataPtr)
+        }
+
+        _validateAllocatorUsingExtractedData(
+            allocator, sponsor, messageHash, allocatorData, idsAndAmounts, nonce, expires
+        );
+    }
+
+    /**
+     * @notice Private function to validate that the allocator has authorized the claim.
+     * @dev Validates allocator authorization through the allocator interface using provided allocator data.
+     * @param allocator     The address of the allocator mediating the claim.
+     * @param sponsor       The address of the sponsor of the claimed compact.
+     * @param messageHash   The EIP-712 message hash of the claim.
+     * @param allocatorData The allocator-specific data for claim authorization.
+     * @param idsAndAmounts The claimable resource lock IDs and amounts.
+     * @param nonce         The nonce used for the claim.
+     * @param expires       The expiration timestamp for the claim.
+     */
+    function _validateAllocatorUsingExtractedData(
+        address allocator,
+        address sponsor,
+        bytes32 messageHash,
+        bytes calldata allocatorData,
+        uint256[2][] memory idsAndAmounts,
+        uint256 nonce,
+        uint256 expires
+    ) private {
+        // Validate allocator authorization through the allocator interface.
+        allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
     }
 }
