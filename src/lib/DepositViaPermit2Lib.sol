@@ -219,6 +219,8 @@ library DepositViaPermit2Lib {
                     // Derive memory offset for region used to retrieve typestring fragment by index.
                     let indexWords := shl(5, c)
 
+                    categorySpecificEnd := sub(categorySpecificEnd, 24)
+
                     // Prepare token permissions typestring fragment.
                     mstore(add(categorySpecificEnd, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
                     mstore(sub(categorySpecificEnd, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)

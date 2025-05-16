@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
@@ -398,6 +399,591 @@ contract Permit2DepositTest is Setup {
             assertEq(theCompact.balanceOf(params.recipient, ids[0]), params.amount);
             assertEq(theCompact.balanceOf(params.recipient, ids[1]), params.amount);
             assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
+        }
+    }
+
+    function test_revert_EmptyArray() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        {
+            // Create Permit 2 Batch signature with empty array
+
+            bytes32 tokenPermissionsPortion = keccak256(
+                abi.encode(
+                    keccak256(
+                        abi.encode(
+                            keccak256("TokenPermissions(address token,uint256 amount)"),
+                            address(0), // empty token
+                            0 // empty amount
+                        )
+                    )
+                )
+            );
+
+            bytes32 digest = keccak256(
+                abi.encodePacked(
+                    bytes2(0x1901),
+                    keccak256(
+                        abi.encode(
+                            permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)
+                        )
+                    ),
+                    keccak256(
+                        abi.encode(
+                            keccak256(
+                                "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
+                            ),
+                            tokenPermissionsPortion,
+                            address(theCompact), // spender
+                            params.nonce,
+                            params.deadline,
+                            keccak256(
+                                abi.encode(
+                                    keccak256("CompactDeposit(bytes12 lockTag,address recipient)"),
+                                    lockTag,
+                                    params.recipient
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+
+            // Sign the digest
+            (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+            signature = abi.encodePacked(r, vs);
+        }
+
+        // Make deposit
+        {
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: 0 }(
+                swapper,
+                new ISignatureTransfer.TokenPermissions[](0),
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag }),
+                params.recipient,
+                signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_revert_NativeAndZeroValue() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(0);
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = params.amount;
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: 0 }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_revert_NonNativeAndNotZeroValue() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(token);
+            amounts[0] = params.amount;
+            tokens[1] = address(anotherToken);
+            amounts[1] = params.amount;
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: params.amount }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_revert_NativeAndNotMatchingValue() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(address(0));
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = params.amount;
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: params.amount + 1 }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_revert_InvalidDepositTokenOrdering() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(token);
+            amounts[0] = params.amount;
+            tokens[1] = address(0);
+            amounts[1] = params.amount;
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidDepositTokenOrdering.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: 0 }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_revert_Permit2CallFailed_WithData() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(address(0));
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = params.amount;
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens,
+                amounts,
+                params.nonce,
+                params.deadline,
+                lockTag,
+                params.recipient,
+                allocatorPrivateKey // wrong private key
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(bytes4(0x815e1d64)),
+                address(permit2) // error InvalidSigner
+            );
+            theCompact.batchDepositViaPermit2{ value: params.amount }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_revert_InvalidDepositBalanceChange() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(0);
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = 0; // Invalid amount - Balance will not change
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidDepositBalanceChange.selector), address(theCompact)
+            );
+            theCompact.batchDepositViaPermit2{ value: params.amount }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
+        }
+    }
+}
+
+contract Permit2NotDeployedTest is Setup {
+    function setUp() public override {
+        deployPermit2 = false;
+        super.setUp();
+    }
+
+    function test_revert_Permit2NotDeployed() public {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
+
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+        }
+
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(0);
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = params.amount;
+        }
+
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        // Make deposit
+        {
+            DepositDetails memory details =
+                DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
+
+            vm.expectRevert(abi.encodeWithSelector(ITheCompact.Permit2CallFailed.selector), address(theCompact));
+            theCompact.batchDepositViaPermit2{ value: params.amount }(
+                swapper, tokenPermissions, details, params.recipient, signature
+            );
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 0);
+            assertEq(token.balanceOf(address(theCompact)), 0);
         }
     }
 }
