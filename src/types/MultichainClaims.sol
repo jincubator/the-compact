@@ -11,10 +11,10 @@ struct MultichainClaim {
     uint256 expires; // The time at which the claim expires.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
-    bytes32[] additionalChains; // The element hashes from additional chains.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     Component[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    bytes32[] additionalChains; // The element hashes from additional chains.
 }
 
 struct ExogenousMultichainClaim {
@@ -25,10 +25,10 @@ struct ExogenousMultichainClaim {
     uint256 expires; // The time at which the claim expires.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
-    bytes32[] additionalChains; // The element hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current element hash.
-    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     Component[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
 }

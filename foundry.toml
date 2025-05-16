@@ -9,8 +9,10 @@ bytecode_hash = 'none'
 src = "src"
 out = "out"
 libs = ["lib"]
-extra_output_files = ["irOptimized"]
+# NOTE: uncomment to view yul IR output
+# extra_output_files = ["irOptimized"]
 fuzz.runs = 10_000
+dynamic_test_linking = true
 
 [fmt]
 line_length = 120
