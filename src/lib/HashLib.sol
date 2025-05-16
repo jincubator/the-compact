@@ -578,24 +578,18 @@ library HashLib {
      * @notice Internal pure function for deriving the EIP-712 message hash for
      * a single id and amount.
      * @param claim              Pointer to the claim location in calldata.
-     * @param additionalOffset   Additional offset from claim pointer to ID from most compact case.
      * @return idsAndAmountsHash The hash of the id and amount.
      */
-    function toSingleIdAndAmountHash(uint256 claim, uint256 additionalOffset)
-        internal
-        pure
-        returns (uint256 idsAndAmountsHash)
-    {
+    function toSingleIdAndAmountHash(uint256 claim) internal pure returns (uint256 idsAndAmountsHash) {
         assembly ("memory-safe") {
-            // Derive the pointer to the claim with additional offset.
-            let claimWithAdditionalOffset := add(claim, additionalOffset)
+            // Derive pointer to id and amount and copy into scratch space.
+            calldatacopy(0, add(claim, 0xe0), 0x40)
 
-            // Store the id and amount at the beginning of the memory region.
-            mstore(0, calldataload(add(claimWithAdditionalOffset, 0xc0)))
-            mstore(0x20, calldataload(add(claimWithAdditionalOffset, 0xe0)))
+            // Derive first idsAndAmount hash and place in scratch space.
+            mstore(0, keccak256(0, 0x40))
 
-            // Derive the idsAndAmounts hash from the stored data.
-            idsAndAmountsHash := keccak256(0, 0x40)
+            // Hash again to derive idsAndAmountsHash.
+            idsAndAmountsHash := keccak256(0, 0x20)
         }
     }
 
@@ -606,9 +600,8 @@ library HashLib {
      * @return idsAndAmountsHash The hash of the ids and amounts.
      * @dev This function expects that the calldata of idsAndAmounts will have bounds
      * checked elsewhere; using it without this check occurring elsewhere can result in
-     * erroneous hash values. This function also assumes that replacementAmounts.length
-     * does not exceed replacementAmounts.length and will break if the invariant is not
-     * upheld.
+     * erroneous hash values. This function also expects that replacementAmounts.length
+     * equals idsAndAmounts.length and will break if the invariant is not upheld.
      */
     function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)
         internal
@@ -619,24 +612,23 @@ library HashLib {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let ptr := mload(0x40)
 
-            // Get the total length of the calldata slice.
-            // Each element of the array consists of 2 words.
-            let len := shl(6, idsAndAmounts.length)
-
-            // Copy calldata into memory at the free memory pointer.
-            calldatacopy(ptr, idsAndAmounts.offset, len)
-
-            let amountDataStart := add(ptr, 0x20)
+            // Cache various memory pointer data locations.
             let replacementDataStart := add(replacementAmounts, 0x20)
-            let amountsToReplace := mload(replacementAmounts)
 
             // Iterate over the replacementAmounts array, splicing in the updated amounts.
-            for { let i := 0 } lt(i, amountsToReplace) { i := add(i, 1) } {
-                mstore(add(amountDataStart, shl(6, i)), mload(add(replacementDataStart, shl(5, i))))
+            for { let i := 0 } lt(i, idsAndAmounts.length) { i := add(i, 1) } {
+                // Copy id from calldata to first word of scratch space.
+                mstore(0, calldataload(add(idsAndAmounts.offset, shl(6, i))))
+
+                // Copy amount from replacement data to second word.
+                mstore(0x20, mload(add(replacementDataStart, shl(5, i))))
+
+                // Derive hash using scratch space and write to next memory region.
+                mstore(add(ptr, shl(5, i)), keccak256(0, 0x40))
             }
 
-            // Compute the hash of the calldata that has been copied into memory.
-            idsAndAmountsHash := keccak256(ptr, len)
+            // Compute hash of derived hashes that have been stored in memory.
+            idsAndAmountsHash := keccak256(ptr, shl(5, idsAndAmounts.length))
         }
     }
 
@@ -653,8 +645,14 @@ library HashLib {
         // Retrieve the total number of ids in the claims array.
         uint256 totalIds = claims.length;
 
-        // Prepare a memory region for storing the ids and amounts.
-        bytes memory idsAndAmounts = new bytes(totalIds << 6);
+        // Prepare a memory region for storing hashes of ids and amounts.
+        bytes memory idsAndAmounts = new bytes(totalIds << 5);
+
+        // Cache the memory location where data begins in the new region.
+        uint256 idsAndAmountsDataStart;
+        assembly ("memory-safe") {
+            idsAndAmountsDataStart := add(idsAndAmounts, 0x20)
+        }
 
         unchecked {
             // Iterate over the claims array.
@@ -663,16 +661,18 @@ library HashLib {
                 BatchClaimComponent calldata claimComponent = claims[i];
 
                 assembly ("memory-safe") {
-                    // Derive the offset to the current position in the memory region,
-                    // then retrieve and store the id and amount at the current position.
-                    calldatacopy(add(add(idsAndAmounts, 0x20), shl(6, i)), claimComponent, 0x40)
+                    // Copy the id and amount into scratch space.
+                    calldatacopy(0, claimComponent, 0x40)
+
+                    // Hash the elements in scratch space and store at current position.
+                    mstore(add(idsAndAmountsDataStart, shl(5, i)), keccak256(0, 0x40))
                 }
             }
         }
 
         assembly ("memory-safe") {
-            // Derive the hash of the ids and amounts from the prepared data.
-            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
+            // Derive the hash of all idsAndAmounts hashes from the prepared data.
+            idsAndAmountsHash := keccak256(idsAndAmountsDataStart, mload(idsAndAmounts))
         }
     }
 

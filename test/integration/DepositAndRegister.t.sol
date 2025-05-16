@@ -292,7 +292,7 @@ contract DepositAndRegisterTest is Setup {
             args.sponsor = swapper;
             args.nonce = params.nonce;
             args.expires = params.deadline;
-            args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+            args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
             args.witness = witness;
 
             claimHashesAndTypehashes[0][0] = _createBatchClaimHashWithWitness(args);
@@ -377,5 +377,13 @@ contract DepositAndRegisterTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+    }
+
+    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        }
+        return keccak256(abi.encodePacked(hashes));
     }
 }

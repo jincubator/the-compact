@@ -33,7 +33,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
     using ClaimHashLib for ExogenousBatchMultichainClaim;
     using ClaimProcessorLib for uint256;
     using ClaimProcessorFunctionCastLib for function(bytes32, uint256, bytes32, bytes32, bytes32) internal;
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32) internal;
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, bytes32, bytes32) internal;
     using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal;
     using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32) internal;
     using
@@ -50,7 +50,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
-        ClaimProcessorLib.processSimpleClaim.usingClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator());
+        ClaimProcessorLib.processSimpleClaim.usingClaim()(claimHash, claimPayload, typehash, _domainSeparator());
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -64,7 +64,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSimpleBatchClaim.usingBatchClaim()(
-            claimHash, claimPayload, uint256(0xe0).asStubborn(), typehash, _domainSeparator()
+            claimHash, claimPayload, typehash, _domainSeparator()
         );
 
         // Clear the reentrancy guard.
@@ -79,7 +79,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSimpleClaim.usingMultichainClaim()(
-            claimHash, claimPayload, 0x100, typehash, _domainSeparator()
+            claimHash, claimPayload, typehash, _domainSeparator()
         );
 
         // Clear the reentrancy guard.
@@ -97,7 +97,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSimpleBatchClaim.usingBatchMultichainClaim()(
-            claimHash, claimPayload, uint256(0x100).asStubborn(), typehash, _domainSeparator()
+            claimHash, claimPayload, typehash, _domainSeparator()
         );
 
         // Clear the reentrancy guard.

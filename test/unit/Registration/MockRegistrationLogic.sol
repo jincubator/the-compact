@@ -50,8 +50,12 @@ contract MockRegistrationLogic is TheCompactLogic {
         bytes32 typehash,
         bytes32 witness
     ) external returns (bytes32 claimHash) {
+        uint256[] memory replacementAmounts = new uint256[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            replacementAmounts[i] = idsAndAmounts[i][1];
+        }
         return _registerUsingBatchClaimWithWitness(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, new uint256[](0)
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );
     }
 }

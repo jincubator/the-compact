@@ -86,7 +86,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(idsAndAmountsOne)),
+                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsOne)))),
                     claim.witness
                 )
             );
@@ -96,7 +96,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
-                    keccak256(abi.encodePacked(idsAndAmountsTwo)),
+                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo)))),
                     claim.witness
                 )
             );
@@ -106,7 +106,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     thirdChainId,
-                    keccak256(abi.encodePacked(idsAndAmountsTwo)),
+                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo)))),
                     claim.witness
                 )
             );
@@ -329,7 +329,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(args.idsAndAmountsOne)),
+                    _hashOfHashes(args.idsAndAmountsOne),
                     args.claim.witness
                 )
             );
@@ -339,7 +339,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     args.anotherChainId,
-                    keccak256(abi.encodePacked(args.idsAndAmountsTwo)),
+                    _hashOfHashes(args.idsAndAmountsTwo),
                     args.claim.witness
                 )
             );
@@ -516,6 +516,14 @@ contract MultichainClaimTest is Setup {
         }
     }
 
+    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        }
+        return keccak256(abi.encodePacked(hashes));
+    }
+
     function test_multichainClaim() public {
         // Setup test parameters
         TestParams memory params;
@@ -573,7 +581,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(idsAndAmountsOne))
+                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsOne))))
                 )
             );
 
@@ -582,7 +590,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
-                    keccak256(abi.encodePacked(idsAndAmountsTwo))
+                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo))))
                 )
             );
 
@@ -805,7 +813,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(args.idsAndAmountsOne))
+                    _hashOfHashes(args.idsAndAmountsOne)
                 )
             );
 
@@ -814,7 +822,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     args.anotherChainId,
-                    keccak256(abi.encodePacked(args.idsAndAmountsTwo))
+                    _hashOfHashes(args.idsAndAmountsTwo)
                 )
             );
         }
