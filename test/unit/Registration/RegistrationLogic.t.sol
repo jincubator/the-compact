@@ -257,9 +257,16 @@ contract RegistrationLogicTest is Test {
         bytes32 _typehash,
         bytes32 _witness
     ) internal pure returns (bytes32 messageHash) {
-        bytes memory packedData = abi.encode(
-            _typehash, _arbiter, _sponsor, _nonce, _expires, keccak256(abi.encodePacked(_idsAndAmounts)), _witness
-        );
+        bytes memory packedData =
+            abi.encode(_typehash, _arbiter, _sponsor, _nonce, _expires, _hashOfHashes(_idsAndAmounts), _witness);
         messageHash = keccak256(packedData);
+    }
+
+    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        }
+        return keccak256(abi.encodePacked(hashes));
     }
 }

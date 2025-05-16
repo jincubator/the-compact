@@ -24,7 +24,7 @@ import { HashLib } from "./HashLib.sol";
  * claims, allocated transfers, and withdrawals.
  */
 library ClaimHashLib {
-    using ClaimHashFunctionCastLib for function(uint256, uint256) internal pure returns (uint256);
+    using ClaimHashFunctionCastLib for function(uint256) internal pure returns (uint256);
     using ClaimHashFunctionCastLib for function(uint256) internal view returns (bytes32, bytes32);
     using ClaimHashFunctionCastLib for function(uint256, uint256) internal view returns (bytes32, bytes32);
     using
@@ -129,7 +129,7 @@ library ClaimHashLib {
     {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingMultichainClaimWithWitness()(
             claim,
-            HashLib.toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim, uint256(0x20)),
+            HashLib.toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim),
             HashLib.toMultichainClaimMessageHash
         );
     }
@@ -141,7 +141,7 @@ library ClaimHashLib {
     {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousMultichainClaimWithWitness()(
             claim,
-            HashLib.toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim, uint256(0x20)),
+            HashLib.toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim),
             HashLib.toExogenousMultichainClaimMessageHash
         );
     }

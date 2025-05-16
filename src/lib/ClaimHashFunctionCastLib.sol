@@ -147,10 +147,10 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `ClaimHashLib._toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata)`.
      * @return fnOut Modified function used in `ClaimHashLib._toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata)`.
      */
-    function usingMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
+    function usingMultichainClaimWithWitness(function (uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (MultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
+        returns (function (MultichainClaim calldata) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -163,10 +163,10 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `ClaimHashLib._toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata)`.
      * @return fnOut Modified function used in `ClaimHashLib._toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata)`.
      */
-    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
+    function usingExogenousMultichainClaimWithWitness(function (uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
+        returns (function (ExogenousMultichainClaim calldata) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
