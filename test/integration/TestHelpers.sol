@@ -34,6 +34,7 @@ import {
     CreateClaimHashWithWitnessArgs,
     CreateBatchClaimHashWithWitnessArgs,
     CreatePermitBatchWitnessDigestArgs,
+    CreateMultichainClaimHashWithWitnessArgs,
     SetupPermitCallExpectationArgs
 } from "./TestHelperStructs.sol";
 
@@ -64,6 +65,9 @@ contract TestHelpers is Test {
         return witness;
     }
 
+    /**
+     * Helper function to create a claim hash
+     */
     function _createClaimHash(
         bytes32 typehash,
         address arbiter,
@@ -88,6 +92,15 @@ contract TestHelpers is Test {
     }
 
     /**
+     * Helper function to create a batch claim hash
+     */
+    function _createBatchClaimHash(CreateBatchClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.idsAndAmountsHash)
+        );
+    }
+
+    /**
      * Helper function to create a batch claim hash with witness
      */
     function _createBatchClaimHashWithWitness(CreateBatchClaimHashWithWitnessArgs memory args)
@@ -108,8 +121,63 @@ contract TestHelpers is Test {
         );
     }
 
+    function _createMultichainClaimHashWithWitness(CreateMultichainClaimHashWithWitnessArgs memory args)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(args.typehash, args.sponsor, args.nonce, args.expires, args.elementsHash));
+    }
+
+    function _createMultichainElementsHash(bytes32 typeHash, Element[] memory elements, bytes32[] memory witnessHashes)
+        internal
+        pure
+        returns (bytes32)
+    {
+        bytes32[] memory elementHashes = new bytes32[](elements.length);
+        for (uint256 i = 0; i < elements.length; ++i) {
+            elementHashes[i] = _createMultichainElementHash(
+                typeHash, elements[i].arbiter, elements[i].chainId, elements[i].idsAndAmounts, witnessHashes[i]
+            );
+        }
+        return keccak256(abi.encode(elementHashes));
+    }
+
+    function _createMultichainElementHash(
+        bytes32 typeHash,
+        address arbiter,
+        uint256 chainId,
+        uint256[2][] memory idsAndAmounts,
+        bytes32 witnessHash
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(typeHash, arbiter, chainId, idsAndAmounts, witnessHash));
+    }
+
     function _createDigest(bytes32 domainSeparator, bytes32 hashValue) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(bytes2(0x1901), domainSeparator, hashValue));
+    }
+
+    /**
+     * Helper function to create a permit batch digest
+     */
+    function _createPermitBatchDigest(CreatePermitBatchWitnessDigestArgs memory args) internal pure returns (bytes32) {
+        bytes32 activationHash =
+            keccak256(abi.encode(args.activationTypehash, address(1010), args.idsHash, args.claimHash));
+
+        bytes32 permitBatchHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"
+                ),
+                args.tokenPermissionsHash,
+                args.spender,
+                args.nonce,
+                args.deadline,
+                activationHash
+            )
+        );
+
+        return keccak256(abi.encodePacked(bytes2(0x1901), args.domainSeparator, permitBatchHash));
     }
 
     /**

@@ -377,7 +377,7 @@ contract DepositViaPermit2Logic is DepositLogic {
             //  * the array is empty
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
-            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            //  * the first token is native and the callvalue doesn't equal the first amount
             if or(
                 iszero(totalTokens),
                 or(
