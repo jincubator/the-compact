@@ -134,6 +134,20 @@ contract EmissaryLogicTest is Test {
         assertTrue(ResetPeriod.OneHourAndFiveMinutes == _resetPeriod, "ResetPeriod");
     }
 
+    function test_verifyWithEmissary() public {
+        test_new_emissary();
+        bytes32 claimHash = bytes32("claimHash");
+        bytes32 domainSep = logic.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), domainSep, claimHash));
+
+        bytes memory signature = hex"4141414141414141414141414141414141414141414141414141414141414141";
+
+        vm.expectCall(
+            address(emissary1), abi.encodeCall(IEmissary.verifyClaim, (sponsor, digest, claimHash, signature, lockTag))
+        );
+        logic.verifyWithEmissary(sponsor, signature, claimHash, address(allocator), resetPeriod, scope);
+    }
+
     function toLockTag(uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) internal pure returns (bytes12) {
         // Derive lock tag (pack scope, reset period, & allocator ID).
         return ((_scope.asUint256() << 255) | (_resetPeriod.asUint256() << 252) | (_allocatorId.asUint256() << 160))
