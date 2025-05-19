@@ -291,7 +291,7 @@ contract ClaimTest is Setup {
                 args.sponsor = claim.sponsor;
                 args.nonce = claim.nonce;
                 args.expires = claim.expires;
-                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
                 args.witness = claim.witness;
             }
 
@@ -568,5 +568,13 @@ contract ClaimTest is Setup {
         assertEq(recipientOne.balance, 0);
         assertEq(theCompact.balanceOf(swapper, claim.id), claim.allocatedAmount);
         assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+    }
+
+    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        }
+        return keccak256(abi.encodePacked(hashes));
     }
 }

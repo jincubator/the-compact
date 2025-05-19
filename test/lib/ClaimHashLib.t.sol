@@ -260,7 +260,9 @@ contract ClaimHashLibTest is Test {
             )
         );
 
-        bytes32 idsAndAmountsHash = keccak256(abi.encode(uint256(1), uint256(100), uint256(2), uint256(200)));
+        bytes32 idsAndAmountsHash = keccak256(
+            abi.encode(keccak256(abi.encode(uint256(1), uint256(100))), keccak256(abi.encode(uint256(2), uint256(200))))
+        );
 
         bytes32 expectedClaimHash = keccak256(
             abi.encode(
@@ -303,7 +305,7 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(claim.id, claim.allocatedAmount));
+        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
         uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
 
         bytes32 thisChainElementHash =
@@ -390,7 +392,7 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(claim.id, claim.allocatedAmount));
+        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
         uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
 
         bytes32 elementHash =
@@ -573,7 +575,7 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (multi-chain)");
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(claim.id, claim.allocatedAmount));
+        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
         uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
 
         bytes32 thisChainElementHash =
@@ -664,7 +666,7 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (exo multi-chain index 1)");
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(claim.id, claim.allocatedAmount));
+        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
         uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
 
         bytes32 elementHash =

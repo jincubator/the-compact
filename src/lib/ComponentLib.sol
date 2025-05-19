@@ -92,7 +92,6 @@ library ComponentLib {
      * tokens to multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
@@ -101,7 +100,6 @@ library ComponentLib {
     function processClaimWithComponents(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
@@ -114,8 +112,8 @@ library ComponentLib {
         Component[] calldata components;
 
         assembly ("memory-safe") {
-            // Calculate pointer to claim parameters using provided offset.
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+            // Calculate pointer to claim parameters using expected offset.
+            let calldataPointerWithOffset := add(calldataPointer, 0xe0)
 
             // Extract resource lock id and allocated amount.
             id := calldataload(calldataPointerWithOffset)
@@ -158,7 +156,6 @@ library ComponentLib {
      * identify specific issues. Each resource lock can be split among multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
@@ -167,7 +164,6 @@ library ComponentLib {
     function processClaimWithBatchComponents(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
@@ -178,7 +174,7 @@ library ComponentLib {
         BatchClaimComponent[] calldata claims;
         assembly ("memory-safe") {
             // Extract array of batch claim components.
-            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
+            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, 0xe0)))
             claims.offset := add(0x20, claimsPtr)
             claims.length := calldataload(claimsPtr)
         }

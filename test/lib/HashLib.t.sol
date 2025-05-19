@@ -243,52 +243,15 @@ contract HashLibTest is Test {
         idsAndAmounts[0] = [vm.randomUint(), vm.randomUint()];
         idsAndAmounts[1] = [vm.randomUint(), vm.randomUint()];
         idsAndAmounts[2] = [vm.randomUint(), vm.randomUint()];
-        uint256[] memory noReplacements = new uint256[](0);
+        uint256[] memory noReplacements = new uint256[](3);
+        noReplacements[0] = idsAndAmounts[0][1];
+        noReplacements[1] = idsAndAmounts[1][1];
+        noReplacements[2] = idsAndAmounts[2][1];
 
-        bytes memory encoded = abi.encodePacked(
-            idsAndAmounts[0][0],
-            idsAndAmounts[0][1],
-            idsAndAmounts[1][0],
-            idsAndAmounts[1][1],
-            idsAndAmounts[2][0],
-            idsAndAmounts[2][1]
-        );
-        bytes32 expectedHash = keccak256(encoded);
+        bytes32 expectedHash = _hashOfHashes(idsAndAmounts);
 
         bytes32 actualHash = tester.callToIdsAndAmountsHash(idsAndAmounts, noReplacements);
         assertEq(actualHash, expectedHash, "toIdsAndAmountsHash no replace failed");
-    }
-
-    function testToIdsAndAmountsHash_ReplaceSingle() public {
-        uint256[2][] memory idsAndAmountsOriginal = new uint256[2][](3);
-        idsAndAmountsOriginal[0] = [vm.randomUint(), vm.randomUint()];
-        idsAndAmountsOriginal[1] = [vm.randomUint(), vm.randomUint()];
-        idsAndAmountsOriginal[2] = [vm.randomUint(), vm.randomUint()];
-
-        uint256[] memory replacements = new uint256[](1);
-        replacements[0] = vm.randomUint();
-
-        bytes32 actualHash = tester.callToIdsAndAmountsHash(idsAndAmountsOriginal, replacements);
-
-        uint256[2][] memory idsAndAmountsExpected = new uint256[2][](3);
-        for (uint256 i = 0; i < idsAndAmountsOriginal.length; i++) {
-            idsAndAmountsExpected[i][0] = idsAndAmountsOriginal[i][0];
-            idsAndAmountsExpected[i][1] = idsAndAmountsOriginal[i][1];
-        }
-
-        idsAndAmountsExpected[0][1] = replacements[0];
-
-        bytes memory packedData = abi.encodePacked(
-            idsAndAmountsExpected[0][0],
-            idsAndAmountsExpected[0][1],
-            idsAndAmountsExpected[1][0],
-            idsAndAmountsExpected[1][1],
-            idsAndAmountsExpected[2][0],
-            idsAndAmountsExpected[2][1]
-        );
-        bytes32 expectedHash = keccak256(packedData);
-
-        assertEq(actualHash, expectedHash, "toIdsAndAmountsHash replace single failed");
     }
 
     function testToIdsAndAmountsHash_ReplaceMultiple() public {
@@ -297,9 +260,10 @@ contract HashLibTest is Test {
         idsAndAmountsOriginal[1] = [vm.randomUint(), vm.randomUint()];
         idsAndAmountsOriginal[2] = [vm.randomUint(), vm.randomUint()];
 
-        uint256[] memory replacements = new uint256[](2);
+        uint256[] memory replacements = new uint256[](3);
         replacements[0] = vm.randomUint();
         replacements[1] = vm.randomUint();
+        replacements[2] = vm.randomUint();
 
         bytes32 actualHash = tester.callToIdsAndAmountsHash(idsAndAmountsOriginal, replacements);
 
@@ -311,16 +275,9 @@ contract HashLibTest is Test {
 
         idsAndAmountsExpected[0][1] = replacements[0];
         idsAndAmountsExpected[1][1] = replacements[1];
+        idsAndAmountsExpected[2][1] = replacements[2];
 
-        bytes memory packedData = abi.encodePacked(
-            idsAndAmountsExpected[0][0],
-            idsAndAmountsExpected[0][1],
-            idsAndAmountsExpected[1][0],
-            idsAndAmountsExpected[1][1],
-            idsAndAmountsExpected[2][0],
-            idsAndAmountsExpected[2][1]
-        );
-        bytes32 expectedHash = keccak256(packedData);
+        bytes32 expectedHash = _hashOfHashes(idsAndAmountsExpected);
 
         assertEq(actualHash, expectedHash, "toIdsAndAmountsHash replace multiple failed");
     }
@@ -347,7 +304,8 @@ contract HashLibTest is Test {
         claims[1] = claim2;
 
         bytes memory encoded = abi.encode(id1, amount1, id2, amount2);
-        bytes32 expectedHash = keccak256(encoded);
+        bytes32 expectedHash =
+            keccak256(abi.encode(keccak256(abi.encode(id1, amount1)), keccak256(abi.encode(id2, amount2))));
 
         uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
         assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
@@ -478,10 +436,12 @@ contract HashLibTest is Test {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [_id1, _amount1];
         idsAndAmounts[1] = [_id2, _amount2];
-        uint256[] memory noReplacements = new uint256[](0);
 
-        bytes memory encoded = abi.encodePacked(_id1, _amount1, _id2, _amount2);
-        bytes32 expectedHash = keccak256(encoded);
+        uint256[] memory noReplacements = new uint256[](2);
+        noReplacements[0] = _amount1;
+        noReplacements[1] = _amount2;
+
+        bytes32 expectedHash = _hashOfHashes(idsAndAmounts);
 
         bytes32 actualHash = tester.callToIdsAndAmountsHash(idsAndAmounts, noReplacements);
 
@@ -493,17 +453,22 @@ contract HashLibTest is Test {
         uint256 _amount1,
         uint256 _id2,
         uint256 _amount2,
-        uint256 _replacementAmount
+        uint256 _replacementAmount1,
+        uint256 _replacementAmount2
     ) public view {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [_id1, _amount1];
         idsAndAmounts[1] = [_id2, _amount2];
 
-        uint256[] memory replacements = new uint256[](1);
-        replacements[0] = _replacementAmount;
+        uint256[] memory replacements = new uint256[](2);
+        replacements[0] = _replacementAmount1;
+        replacements[1] = _replacementAmount2;
 
-        bytes memory encoded = abi.encodePacked(_id1, _replacementAmount, _id2, _amount2);
-        bytes32 expectedHash = keccak256(encoded);
+        uint256[2][] memory idsAndAmountsWithReplacements = new uint256[2][](2);
+        idsAndAmountsWithReplacements[0] = [_id1, _replacementAmount1];
+        idsAndAmountsWithReplacements[1] = [_id2, _replacementAmount2];
+
+        bytes32 expectedHash = _hashOfHashes(idsAndAmountsWithReplacements);
 
         bytes32 actualHash = tester.callToIdsAndAmountsHash(idsAndAmounts, replacements);
 
@@ -526,10 +491,19 @@ contract HashLibTest is Test {
         claims[1] = claim2;
 
         bytes memory encoded = abi.encode(_id1, _amount1, _id2, _amount2);
-        bytes32 expectedHash = keccak256(encoded);
+        bytes32 expectedHash =
+            keccak256(abi.encode(keccak256(abi.encode(_id1, _amount1)), keccak256(abi.encode(_id2, _amount2))));
 
         uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
         assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
+    }
+
+    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        }
+        return keccak256(abi.encodePacked(hashes));
     }
 }
 

@@ -324,7 +324,7 @@ contract Permit2DepositAndRegisterTest is Setup {
                 args.sponsor = claim.sponsor;
                 args.nonce = params.nonce;
                 args.expires = claim.expires;
-                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
                 args.witness = claim.witness;
             }
 
@@ -455,7 +455,7 @@ contract Permit2DepositAndRegisterTest is Setup {
                 args.sponsor = swapper;
                 args.nonce = params.nonce;
                 args.expires = claim.expires;
-                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
                 args.witness = claim.witness;
             }
 
@@ -539,6 +539,14 @@ contract Permit2DepositAndRegisterTest is Setup {
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[0]), 6e17);
         assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[1]), 1e18);
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[2]), 1e18);
+    }
+
+    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        }
+        return keccak256(abi.encodePacked(hashes));
     }
 
     function test_revert_InvalidCompactCategory() public virtual {
@@ -1068,7 +1076,7 @@ contract Permit2DepositAndRegisterTest is Setup {
                 args.sponsor = swapper;
                 args.nonce = params.nonce;
                 args.expires = claim.expires;
-                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
                 args.witness = claim.witness;
             }
 
