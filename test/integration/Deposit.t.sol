@@ -286,6 +286,180 @@ contract DepositTest is Setup {
         assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 
+    function test_depositBatchDifferentAllocators() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        vm.prank(alwaysOKAllocator);
+        uint96 anotherAllocatorId = theCompact.__registerAllocator(alwaysOKAllocator, "");
+
+        uint256 nativeId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(0)))
+        );
+
+        uint256 tokenId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(anotherAllocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
+
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [nativeId, amount];
+            idsAndAmounts[1] = [tokenId, amount];
+
+            vm.prank(swapper);
+            bool ok = theCompact.batchDeposit{ value: amount }(idsAndAmounts, recipient);
+            vm.snapshotGasLastCall("depositBatchNativeAndERC20");
+            assert(ok);
+        }
+
+        {
+            // Check Native Token
+            (address derivedNativeToken, address derivedNativeAllocator,,, bytes12 derivedNativeLockTag) =
+                theCompact.getLockDetails(nativeId);
+            assertEq(derivedNativeToken, address(0));
+            assertEq(derivedNativeAllocator, allocator);
+
+            assertEq(
+                nativeId,
+                (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                    | uint256(uint160(address(0)))
+            );
+            assertEq(
+                derivedNativeLockTag,
+                bytes12(
+                    bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))
+                )
+            );
+
+            assertEq(address(theCompact).balance, amount);
+            assertEq(theCompact.balanceOf(recipient, nativeId), amount);
+            assert(bytes(theCompact.tokenURI(nativeId)).length > 0);
+        }
+        {
+            // Check ERC20 Token
+            (address derivedToken, address derivedAllocator,,, bytes12 derivedLockTag) =
+                theCompact.getLockDetails(tokenId);
+            assertEq(derivedToken, address(token));
+            assertEq(derivedAllocator, alwaysOKAllocator);
+
+            assertEq(
+                tokenId,
+                (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(anotherAllocatorId) << 160)
+                    | uint256(uint160(address(token)))
+            );
+            assertEq(
+                derivedLockTag,
+                bytes12(
+                    bytes32(
+                        (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(anotherAllocatorId) << 160)
+                    )
+                )
+            );
+
+            assertEq(token.balanceOf(address(theCompact)), amount);
+            assertEq(theCompact.balanceOf(recipient, tokenId), amount);
+            assert(bytes(theCompact.tokenURI(tokenId)).length > 0);
+        }
+    }
+
+    function test_depositBatchNativeTokenAndERC20() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        uint256 nativeId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(0)))
+        );
+
+        uint256 tokenId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
+
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [nativeId, amount];
+            idsAndAmounts[1] = [tokenId, amount];
+
+            vm.prank(swapper);
+            bool ok = theCompact.batchDeposit{ value: amount }(idsAndAmounts, recipient);
+            vm.snapshotGasLastCall("depositBatchNativeAndERC20");
+            assert(ok);
+        }
+
+        {
+            // Check Native Token
+            (
+                address derivedNativeToken,
+                address derivedNativeAllocator,
+                ResetPeriod derivedNativeResetPeriod,
+                Scope derivedNativeScope,
+                bytes12 derivedNativeLockTag
+            ) = theCompact.getLockDetails(nativeId);
+            assertEq(derivedNativeToken, address(0));
+            assertEq(derivedNativeAllocator, allocator);
+            assertEq(uint256(derivedNativeResetPeriod), uint256(resetPeriod));
+            assertEq(uint256(derivedNativeScope), uint256(scope));
+
+            assertEq(
+                nativeId,
+                (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                    | uint256(uint160(address(0)))
+            );
+            assertEq(
+                derivedNativeLockTag,
+                bytes12(
+                    bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))
+                )
+            );
+
+            assertEq(address(theCompact).balance, amount);
+            assertEq(theCompact.balanceOf(recipient, nativeId), amount);
+            assert(bytes(theCompact.tokenURI(nativeId)).length > 0);
+        }
+        {
+            // Check ERC20 Token
+            (
+                address derivedToken,
+                address derivedAllocator,
+                ResetPeriod derivedResetPeriod,
+                Scope derivedScope,
+                bytes12 derivedLockTag
+            ) = theCompact.getLockDetails(tokenId);
+            assertEq(derivedToken, address(token));
+            assertEq(derivedAllocator, allocator);
+            assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
+            assertEq(uint256(derivedScope), uint256(scope));
+
+            assertEq(
+                tokenId,
+                (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                    | uint256(uint160(address(token)))
+            );
+            assertEq(
+                derivedLockTag,
+                bytes12(
+                    bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))
+                )
+            );
+
+            assertEq(token.balanceOf(address(theCompact)), amount);
+            assertEq(theCompact.balanceOf(recipient, tokenId), amount);
+            assert(bytes(theCompact.tokenURI(tokenId)).length > 0);
+        }
+    }
+
     function test_revert_InvalidDepositBalanceChange(uint8 fee_, uint8 failingAmount_, uint256 successfulAmount_)
         public
     {
@@ -371,5 +545,139 @@ contract DepositTest is Setup {
         assertEq(reentrantToken.balanceOf(swapper), type(uint256).max);
         // Check balances of ERC6909
         assertEq(theCompact.balanceOf(swapper, id), 0);
+    }
+
+    function test_revert_Batch_ArrayEmpty() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        theCompact.__registerAllocator(allocator, "");
+
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](0);
+
+            vm.prank(swapper);
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDeposit{ value: amount }(idsAndAmounts, recipient);
+        }
+
+        {
+            assertEq(token.balanceOf(address(theCompact)), 0);
+            assertEq(address(theCompact).balance, 0);
+        }
+    }
+
+    function test_revert_Batch_NativeTokenValueZero() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        uint256 nativeId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(0)))
+        );
+
+        uint256 tokenId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
+
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [nativeId, amount];
+            idsAndAmounts[1] = [tokenId, amount];
+
+            vm.prank(swapper);
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDeposit{ value: 0 }(idsAndAmounts, recipient);
+        }
+
+        {
+            assertEq(token.balanceOf(address(theCompact)), 0);
+            assertEq(address(theCompact).balance, 0);
+        }
+    }
+
+    function test_revert_Batch_NonNativeValueNotZero() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        uint256 tokenId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
+
+        uint256 anotherTokenId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(anotherToken)))
+        );
+
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [tokenId, amount];
+            idsAndAmounts[1] = [anotherTokenId, amount];
+
+            vm.prank(swapper);
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDeposit{ value: amount }(idsAndAmounts, recipient);
+        }
+
+        {
+            assertEq(token.balanceOf(address(theCompact)), 0);
+            assertEq(address(theCompact).balance, 0);
+        }
+    }
+
+    function test_revert_Batch_NativeTokenNonMatchingValue() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        uint256 nativeId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(0)))
+        );
+
+        uint256 tokenId = (
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
+
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [nativeId, amount];
+            idsAndAmounts[1] = [tokenId, amount];
+
+            vm.prank(swapper);
+            vm.expectRevert(
+                abi.encodeWithSelector(ITheCompact.InvalidBatchDepositStructure.selector), address(theCompact)
+            );
+            theCompact.batchDeposit{ value: amount + 1 }(idsAndAmounts, recipient);
+        }
+
+        {
+            assertEq(token.balanceOf(address(theCompact)), 0);
+            assertEq(address(theCompact).balance, 0);
+        }
     }
 }

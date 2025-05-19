@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import { Test, console } from "forge-std/Test.sol";
+import { Setup } from "test/integration/Setup.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { Scope } from "src/types/Scope.sol";
 import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "src/types/EIP712Types.sol";
@@ -10,7 +11,7 @@ import "src/lib/RegistrationLib.sol";
 import "./MockRegistrationLogic.sol";
 import { console2 } from "forge-std/console2.sol";
 
-contract RegistrationLogicTest is Test {
+contract RegistrationLogicTest is Setup {
     using RegistrationLib for address;
 
     MockRegistrationLogic logic;
@@ -18,7 +19,7 @@ contract RegistrationLogicTest is Test {
     address sponsor;
     address arbiter;
 
-    function setUp() public {
+    function setUp() public override {
         logic = new MockRegistrationLogic();
 
         sponsor = makeAddr("sponsor");
@@ -66,8 +67,8 @@ contract RegistrationLogicTest is Test {
         uint256 amount = 100;
         uint256 nonce = 42;
         uint256 expires = block.timestamp + 1 days;
-        bytes32 typehash = COMPACT_TYPEHASH;
-        bytes32 witness = keccak256("witness data");
+        bytes32 typehash = compactWithWitnessTypehash;
+        bytes32 witness = keccak256(abi.encode(witnessTypehash, uint256(234)));
 
         bytes32 claimHash =
             logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
@@ -82,6 +83,27 @@ contract RegistrationLogicTest is Test {
         assertEq(claimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
+    function test_registerUsingClaimNoWitness() public {
+        uint256 tokenId = 1;
+        uint256 amount = 100;
+        uint256 nonce = 42;
+        uint256 expires = block.timestamp + 1 days;
+        bytes32 typehash = COMPACT_TYPEHASH;
+
+        bytes32 claimHash =
+            logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0));
+
+        // Verify the claim is registered
+        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+
+        // Verify the generated claimHash matches expected
+        bytes32 expectedClaimHash = HashLib.toFlatMessageHashWithWitness(
+            sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0)
+        );
+        assertEq(claimHash, expectedClaimHash, "Claim hash should match expected value");
+    }
+
     function test_registerUsingBatchClaimWithWitness() public {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [uint256(1), uint256(100)];
@@ -89,8 +111,8 @@ contract RegistrationLogicTest is Test {
 
         uint256 nonce = 42;
         uint256 expires = block.timestamp + 1 days;
-        bytes32 typehash = BATCH_COMPACT_TYPEHASH;
-        bytes32 witness = keccak256("batch witness data");
+        bytes32 typehash = batchCompactWithWitnessTypehash;
+        bytes32 witness = keccak256(abi.encode(witnessTypehash, uint256(234)));
 
         bytes32 claimHash =
             logic.registerUsingBatchClaimWithWitness(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
@@ -102,6 +124,30 @@ contract RegistrationLogicTest is Test {
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash =
             _toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+        assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
+    }
+
+    function test_registerUsingBatchClaimNoWitness() public {
+        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+        idsAndAmounts[0] = [uint256(1), uint256(100)];
+        idsAndAmounts[1] = [uint256(2), uint256(200)];
+
+        uint256 nonce = 42;
+        uint256 expires = block.timestamp + 1 days;
+        bytes32 typehash = BATCH_COMPACT_TYPEHASH;
+
+        bytes32 claimHash = logic.registerUsingBatchClaimWithWitness(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0)
+        );
+
+        // Verify the claim is registered
+        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+
+        // Verify the generated claimHash matches expected
+        bytes32 expectedClaimHash = _toFlatBatchClaimWithWitnessMessageHash(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0)
+        );
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
     }
 
@@ -257,16 +303,13 @@ contract RegistrationLogicTest is Test {
         bytes32 _typehash,
         bytes32 _witness
     ) internal pure returns (bytes32 messageHash) {
-        bytes memory packedData =
-            abi.encode(_typehash, _arbiter, _sponsor, _nonce, _expires, _hashOfHashes(_idsAndAmounts), _witness);
-        messageHash = keccak256(packedData);
-    }
-
-    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
-        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
-        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+        bytes memory packedData;
+        if (_typehash == BATCH_COMPACT_TYPEHASH) {
+            packedData = abi.encode(_typehash, _arbiter, _sponsor, _nonce, _expires, _hashOfHashes(_idsAndAmounts));
+        } else {
+            packedData =
+                abi.encode(_typehash, _arbiter, _sponsor, _nonce, _expires, _hashOfHashes(_idsAndAmounts), _witness);
         }
-        return keccak256(abi.encodePacked(hashes));
+        messageHash = keccak256(packedData);
     }
 }

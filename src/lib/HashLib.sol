@@ -711,10 +711,14 @@ library HashLib {
             mstore(add(m, 0x80), expires)
             mstore(add(m, 0xa0), tokenId)
             mstore(add(m, 0xc0), amount)
-            mstore(add(m, 0xe0), witness)
+            let claimEnd := 0xe0
+            if iszero(eq(typehash, COMPACT_TYPEHASH)) {
+                mstore(add(m, claimEnd), witness)
+                claimEnd := 0x100
+            }
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0x100)
+            messageHash := keccak256(m, claimEnd)
         }
     }
 
@@ -751,10 +755,14 @@ library HashLib {
             mstore(add(m, 0x60), nonce)
             mstore(add(m, 0x80), expires)
             mstore(add(m, 0xa0), idsAndAmountsHash)
-            mstore(add(m, 0xc0), witness)
+            let claimEnd := 0xc0
+            if iszero(eq(typehash, BATCH_COMPACT_TYPEHASH)) {
+                mstore(add(m, claimEnd), witness)
+                claimEnd := 0xe0
+            }
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
+            messageHash := keccak256(m, claimEnd)
         }
     }
 }

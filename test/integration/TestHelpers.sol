@@ -66,6 +66,15 @@ contract TestHelpers is Test {
     }
 
     /**
+     * Helper function to create a claim hash with a CreateClaimHashWithWitnessArgs struct
+     */
+    function _createClaimHash(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount)
+        );
+    }
+
+    /**
      * Helper function to create a claim hash
      */
     function _createClaimHash(

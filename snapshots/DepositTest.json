@@ -1,4 +1,5 @@
 {
+  "depositBatchNativeAndERC20": "91153",
   "depositBatchSingleERC20": "66396",
   "depositBatchSingleNative": "26818",
   "depositERC20AndURI": "66058",
