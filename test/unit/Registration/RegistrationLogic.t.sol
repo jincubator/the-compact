@@ -94,8 +94,8 @@ contract RegistrationLogicTest is Setup {
             logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0));
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration not detected");
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash = HashLib.toFlatMessageHashWithWitness(
@@ -149,8 +149,8 @@ contract RegistrationLogicTest is Setup {
         );
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration not detected");
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash = _toFlatBatchClaimWithWitnessMessageHash(

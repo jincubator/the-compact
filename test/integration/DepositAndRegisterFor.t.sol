@@ -191,11 +191,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, COMPACT_TYPEHASH);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
@@ -317,11 +314,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, COMPACT_TYPEHASH);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
@@ -728,12 +722,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) =
-                    theCompact.getRegistrationStatus(swapper, claimHash, batchCompactWithWitnessTypehash);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, batchCompactWithWitnessTypehash);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
@@ -884,11 +874,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, BATCH_COMPACT_TYPEHASH);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, BATCH_COMPACT_TYPEHASH);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
