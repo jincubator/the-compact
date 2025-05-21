@@ -80,8 +80,7 @@ contract RegisterTest is Setup {
         }
 
         {
-            bool isRegistered =
-                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
             assert(isRegistered);
         }
 
@@ -169,8 +168,7 @@ contract RegisterTest is Setup {
         }
 
         {
-            bool isRegistered =
-                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
             assert(isRegistered);
         }
 

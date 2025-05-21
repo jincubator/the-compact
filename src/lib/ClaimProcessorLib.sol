@@ -83,9 +83,7 @@ library ClaimProcessorLib {
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
 
         // Validate that the sponsor has authorized the claim.
-        _validateSponsor(
-            sponsor, messageHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts
-        );
+        _validateSponsor(sponsor, messageHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts);
 
         // Validate that the allocator has authorized the claim.
         _validateAllocator(allocator, sponsor, messageHash, calldataPointer, idsAndAmounts, nonce, expires);

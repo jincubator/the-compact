@@ -136,8 +136,7 @@ contract ComponentLibTest is Test {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         claims[0] = _buildTestClaim(id, amount, portions);
 
-        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
-            tester.buildIdsAndAmounts(claims, bytes32(0)); // No sponsor domain sep => multichain allowed
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) = tester.buildIdsAndAmounts(claims, bytes32(0)); // No sponsor domain sep => multichain allowed
 
         assertEq(idsAndAmounts.length, 1, "idsAndAmounts length mismatch");
         assertEq(idsAndAmounts[0][0], id, "ID mismatch");
@@ -159,8 +158,7 @@ contract ComponentLibTest is Test {
         claims[0] = _buildTestClaim(id1, amount1, portions1);
         claims[1] = _buildTestClaim(id2, amount2, portions2);
 
-        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
-            tester.buildIdsAndAmounts(claims, bytes32(0));
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) = tester.buildIdsAndAmounts(claims, bytes32(0));
 
         assertEq(idsAndAmounts.length, 2, "idsAndAmounts length mismatch");
         assertEq(idsAndAmounts[0][0], id1);

@@ -176,8 +176,7 @@ contract Permit2DepositAndRegisterTest is Setup {
             vm.snapshotGasLastCall("depositAndRegisterWithWitnessViaPermit2");
             assertEq(returnedId, claim.id);
 
-            bool isRegistered =
-                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
             assert(isRegistered);
         }
 

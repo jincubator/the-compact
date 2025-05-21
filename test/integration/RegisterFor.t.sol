@@ -71,8 +71,7 @@ contract RegisterForTest is Setup {
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        bool isRegistered =
-            theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+        bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
         assertTrue(isRegistered);
     }
 
@@ -116,8 +115,7 @@ contract RegisterForTest is Setup {
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        bool isRegistered =
-            theCompact.getRegistrationStatus(swapper, claimHash, batchTypehash);
+        bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, batchTypehash);
         assertTrue(isRegistered);
     }
 
@@ -176,8 +174,7 @@ contract RegisterForTest is Setup {
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        bool isRegistered =
-            theCompact.getRegistrationStatus(swapper, claimHash, multichainTypehash);
+        bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, multichainTypehash);
         assertTrue(isRegistered);
     }
 
