@@ -1,10 +1,10 @@
 {
-  "batchMultichainClaim": "95080",
-  "batchMultichainClaimWithWitness": "95396",
-  "exogenousBatchMultichainClaim": "122664",
-  "exogenousBatchMultichainClaimWithWitness": "122980",
-  "exogenousMultichainClaim": "94231",
-  "exogenousMultichainClaimWithWitness": "94547",
-  "multichainClaim": "93481",
-  "multichainClaimWithWitness": "93797"
+  "batchMultichainClaim": "97278",
+  "batchMultichainClaimWithWitness": "97594",
+  "exogenousBatchMultichainClaim": "124812",
+  "exogenousBatchMultichainClaimWithWitness": "125128",
+  "exogenousMultichainClaim": "96438",
+  "exogenousMultichainClaimWithWitness": "96754",
+  "multichainClaim": "95688",
+  "multichainClaimWithWitness": "96004"
 }
