@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { Test, console, stdError } from "forge-std/Test.sol";
+import { Setup } from "test/integration/Setup.sol";
 import { HashLib } from "src/lib/HashLib.sol";
 import { IdLib } from "src/lib/IdLib.sol";
 import { EfficiencyLib } from "src/lib/EfficiencyLib.sol";
@@ -12,7 +13,7 @@ import { AllocatedBatchTransfer } from "src/types/BatchClaims.sol";
 import { Component, ComponentsById, BatchClaimComponent } from "src/types/Components.sol";
 import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "src/types/EIP712Types.sol";
 
-contract HashLibTest is Test {
+contract HashLibTest is Setup {
     using HashLib for *;
     using EfficiencyLib for *;
     using IdLib for address;
@@ -31,7 +32,7 @@ contract HashLibTest is Test {
     uint96 allocatorId = IdLib.usingAllocatorId(address(0xdeadbeef));
     bytes12 lockTag = IdLib.toLockTag(allocatorId, Scope.Multichain, ResetPeriod.OneDay);
 
-    function setUp() public {
+    function setUp() public override {
         tester = new HashLibTester();
         sponsor = makeAddr("Sponsor");
         claimant1 = makeAddr("Claimant1");
@@ -303,7 +304,6 @@ contract HashLibTest is Test {
         claims[0] = claim1;
         claims[1] = claim2;
 
-        bytes memory encoded = abi.encode(id1, amount1, id2, amount2);
         bytes32 expectedHash =
             keccak256(abi.encode(keccak256(abi.encode(id1, amount1)), keccak256(abi.encode(id2, amount2))));
 
@@ -490,20 +490,11 @@ contract HashLibTest is Test {
         claims[0] = claim1;
         claims[1] = claim2;
 
-        bytes memory encoded = abi.encode(_id1, _amount1, _id2, _amount2);
         bytes32 expectedHash =
             keccak256(abi.encode(keccak256(abi.encode(_id1, _amount1)), keccak256(abi.encode(_id2, _amount2))));
 
         uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
         assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
-    }
-
-    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
-        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
-        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
-        }
-        return keccak256(abi.encodePacked(hashes));
     }
 }
 
