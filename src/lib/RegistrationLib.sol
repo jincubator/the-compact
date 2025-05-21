@@ -57,9 +57,7 @@ library RegistrationLib {
     }
 
     /**
-     * @notice Internal function for registering multiple claim hashes in a single call. All
-     * claim hashes will be registered using the shortest reset period on that compact as its
-     * duration using the caller as the sponsor.
+     * @notice Internal function for registering multiple claim hashes in a single call.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */

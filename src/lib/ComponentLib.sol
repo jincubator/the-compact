@@ -178,7 +178,7 @@ library ComponentLib {
             claims.length := calldataload(claimsPtr)
         }
 
-        // Parse into idsAndAmounts & extract shortest reset period & first allocatorId.
+        // Parse into idsAndAmounts & extract first allocatorId.
         (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
             _buildIdsAndAmounts(claims, sponsorDomainSeparator);
 

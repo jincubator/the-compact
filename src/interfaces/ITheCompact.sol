@@ -194,9 +194,7 @@ interface ITheCompact {
 
     /**
      * @notice External function to register a claim hash and its associated EIP-712 typehash.
-     * The registered claim hash will remain valid for the duration of the shortest reset period
-     * across all locks on the compact. Once expired, the claim hash can no longer be used to
-     * initiate claims.
+     * The registered claim hash will remain valid until the allocator consumes the nonce.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
      * @return          Whether the claim hash was successfully registered.
@@ -205,9 +203,8 @@ interface ITheCompact {
 
     /**
      * @notice External function to register multiple claim hashes and their associated EIP-712
-     * typehashes in a single call. Each registered claim hash will remain valid the duration of
-     * the shortest reset period on each respective lock. Once expired, the claim hashes can no
-     * longer be used to initiate claims.
+     * typehashes in a single call. Each registered claim hash will remain valid until the allocator
+     * consumes the nonce.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */

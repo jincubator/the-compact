@@ -31,8 +31,7 @@ contract RegistrationLogic is ConstructorLogic {
 
     /**
      * @notice Internal function for registering a claim hash. The claim hash and its
-     * associated typehash will remain valid until the shortest reset period of the
-     * compact that the claim hash is derived from has elapsed.
+     * associated typehash will remain valid until the allocator consumes the nonce.
      * @param sponsor   The account registering the claim hash.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
@@ -43,8 +42,7 @@ contract RegistrationLogic is ConstructorLogic {
 
     /**
      * @notice Internal function for registering multiple claim hashes in a single call. Each
-     * claim hash and its associated typehash will remain valid until the shortest reset period
-     * of the respective compact that the claim hash is derived from has elapsed.
+     * claim hash and its associated typehash will remain valid until the allocator consumes the nonce.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */
