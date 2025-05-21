@@ -130,15 +130,19 @@ library ValidityLib {
      * @param domainSeparator     The domain separator to combine with the message hash.
      * @param typehash            The EIP-712 typehash used for the claim message.
      */
-    function hasValidSponsorOrRegistration(
+    function validateSponsorAndConsumeRegistration(
         bytes32 claimHash,
         address expectedSigner,
         bytes calldata signature,
         bytes32 domainSeparator,
         uint256[2][] memory idsAndAmounts,
         bytes32 typehash
-    ) internal view {
+    ) internal {
         bool registered = expectedSigner.isRegistered(claimHash, typehash);
+        if (registered) {
+            // clear the registration
+            expectedSigner.consumeRegistration(claimHash, typehash);
+        }
 
         // If no signature is supplied and the claim is registered, return early.
         if (signature.length == 0 && registered) {

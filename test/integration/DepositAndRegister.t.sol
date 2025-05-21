@@ -129,6 +129,12 @@ contract DepositAndRegisterTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_depositERC20AndRegisterAndClaim() public {
@@ -240,6 +246,12 @@ contract DepositAndRegisterTest is Setup {
         assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_batchDepositAndRegisterMultipleAndClaim_lengthOne() public {
@@ -367,5 +379,12 @@ contract DepositAndRegisterTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered =
+                theCompact.isRegistered(swapper, claimHashesAndTypehashes[0][0], claimHashesAndTypehashes[0][1]);
+            assert(!isRegistered);
+        }
     }
 }

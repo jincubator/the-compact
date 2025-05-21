@@ -242,6 +242,12 @@ contract Permit2DepositAndRegisterTest is Setup {
         assertEq(theCompact.balanceOf(swapper, claim.id), 0);
         assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, claim.id), amountOne);
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, claim.id), amountTwo);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_batchDepositAndRegisterWithWitnessViaPermit2ThenClaim() public virtual {
@@ -533,6 +539,12 @@ contract Permit2DepositAndRegisterTest is Setup {
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[0]), 6e17);
         assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[1]), 1e18);
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[2]), 1e18);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, typehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_revert_InvalidCompactCategory() public virtual {
@@ -870,6 +882,12 @@ contract Permit2DepositAndRegisterTest is Setup {
         assertEq(theCompact.balanceOf(swapper, claim.id), 0);
         assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, claim.id), amountOne);
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, claim.id), amountTwo);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_batchDepositAndRegisterViaPermit2ThenClaim() public virtual {
@@ -1149,5 +1167,11 @@ contract Permit2DepositAndRegisterTest is Setup {
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[0]), 6e17);
         assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[1]), 1e18);
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[2]), 1e18);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, typehash);
+            assert(!isRegistered);
+        }
     }
 }

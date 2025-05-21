@@ -91,6 +91,39 @@ library RegistrationLib {
         view
         returns (bool registered)
     {
+        uint256 registrationSlot = _deriveRegistrationSlot(sponsor, claimHash, typehash);
+        assembly ("memory-safe") {
+            // Load registration storage slot to get registration status.
+            registered := sload(registrationSlot)
+        }
+    }
+
+    /**
+     * @notice Internal function for consuming (clearing) a registration.
+     * @param sponsor   The account that registered the claim hash.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     */
+    function consumeRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
+        uint256 registrationSlot = _deriveRegistrationSlot(sponsor, claimHash, typehash);
+        assembly ("memory-safe") {
+            // Store 0 (false) in registration storage slot.
+            sstore(registrationSlot, 0)
+        }
+    }
+
+    /**
+     * @notice Internal function for deriving the registration storage slot for a given claim hash and typehash.
+     * @param sponsor   The account that registered the claim hash.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     * @return registrationSlot The storage slot for the registration.
+     */
+    function _deriveRegistrationSlot(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        pure
+        returns (uint256 registrationSlot)
+    {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
             let m := mload(0x40)
@@ -101,8 +134,8 @@ library RegistrationLib {
             mstore(add(m, 0x34), claimHash)
             mstore(add(m, 0x54), typehash)
 
-            // Derive and load active registration storage slot to get registration status.
-            registered := sload(keccak256(add(m, 0x1c), 0x58))
+            // Derive active registration storage slot.
+            registrationSlot := keccak256(add(m, 0x1c), 0x58)
         }
     }
 }

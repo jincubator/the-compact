@@ -192,7 +192,7 @@ library ClaimProcessorLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         uint256[2][] memory idsAndAmounts
-    ) private view {
+    ) private {
         bytes calldata sponsorSignature;
         assembly ("memory-safe") {
             // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
@@ -202,7 +202,7 @@ library ClaimProcessorLib {
         }
 
         // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
-        messageHash.hasValidSponsorOrRegistration(
+        messageHash.validateSponsorAndConsumeRegistration(
             sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash
         );
     }
