@@ -145,7 +145,7 @@ contract RegistrationLogic is ConstructorLogic {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      * @return registered Whether the compact has been registered.
      */
-    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
+    function _isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         view
         returns (bool registered)

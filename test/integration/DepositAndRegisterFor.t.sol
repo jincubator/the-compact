@@ -79,7 +79,7 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+                bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
                 assert(isRegistered);
             }
         }
@@ -206,7 +206,7 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+                bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
                 assert(isRegistered);
             }
         }
@@ -339,8 +339,7 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isRegistered =
-                    theCompact.getRegistrationStatus(swapper, claimHash, batchCompactWithWitnessTypehash);
+                bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchCompactWithWitnessTypehash);
                 assert(isRegistered);
             }
         }

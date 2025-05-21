@@ -33,7 +33,7 @@ contract RegistrationLogicTest is Test {
 
         logic.register(sponsor, claimHash, typehash);
 
-        bool isRegistered_ = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered_ = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered_, "Registration should be active");
     }
 
@@ -56,7 +56,7 @@ contract RegistrationLogicTest is Test {
             bytes32 claimHash = claimHashesAndTypehashes[i][0];
             bytes32 typehash = claimHashesAndTypehashes[i][1];
 
-            bool isRegistered_ = logic.getRegistrationStatus(address(this), claimHash, typehash);
+            bool isRegistered_ = logic.isRegistered(address(this), claimHash, typehash);
             assertTrue(isRegistered_, "Registration should be active");
         }
     }
@@ -73,7 +73,7 @@ contract RegistrationLogicTest is Test {
             logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        bool isRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration should be active");
 
         // Verify the generated claimHash matches expected
@@ -96,7 +96,7 @@ contract RegistrationLogicTest is Test {
             logic.registerUsingBatchClaimWithWitness(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        bool isRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration should be active");
 
         // Verify the generated claimHash matches expected
@@ -105,11 +105,11 @@ contract RegistrationLogicTest is Test {
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
     }
 
-    function test_getRegistrationStatus_nonexistent() public {
+    function test_isRegistered_nonexistent() public {
         bytes32 claimHash = keccak256("look ma, no claim");
         bytes32 typehash = COMPACT_TYPEHASH;
 
-        bool isRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertFalse(isRegistered, "Registration for nonexistent claim should be inactive");
     }
 
@@ -121,7 +121,7 @@ contract RegistrationLogicTest is Test {
         logic.register(address(0), claimHash, typehash);
 
         // Verify registration for zero address
-        bool isRegistered = logic.getRegistrationStatus(address(0), claimHash, typehash);
+        bool isRegistered = logic.isRegistered(address(0), claimHash, typehash);
         assertTrue(isRegistered, "Registration for zero address should be active");
     }
 
@@ -133,7 +133,7 @@ contract RegistrationLogicTest is Test {
         logic.register(sponsor, claimHash, typehash);
 
         // Verify registration with zero hash
-        bool isRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration with zero hash should be active");
     }
 
@@ -143,7 +143,7 @@ contract RegistrationLogicTest is Test {
 
         // First registration
         logic.register(sponsor, claimHash, typehash);
-        bool firstIsRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool firstIsRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(firstIsRegistered, "First registration should be active");
 
         // Jump ahead in time (should have no effect on registration status)
@@ -151,7 +151,7 @@ contract RegistrationLogicTest is Test {
 
         // Re-register the same claim
         logic.register(sponsor, claimHash, typehash);
-        bool secondIsRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool secondIsRegistered = logic.isRegistered(sponsor, claimHash, typehash);
 
         // Verify still registered
         assertTrue(secondIsRegistered, "Re-registration should still be active");
@@ -190,7 +190,7 @@ contract RegistrationLogicTest is Test {
             bytes32 claimHash = duplicateEntries[i][0];
             bytes32 entryTypehash = duplicateEntries[i][1];
 
-            bool isRegistered = logic.getRegistrationStatus(address(this), claimHash, entryTypehash);
+            bool isRegistered = logic.isRegistered(address(this), claimHash, entryTypehash);
             assertTrue(isRegistered, "Registration should be active");
         }
     }
@@ -207,7 +207,7 @@ contract RegistrationLogicTest is Test {
             address(0), tokenId, amount, address(0), nonce, expires, typehash, witness
         );
 
-        bool isRegistered = logic.getRegistrationStatus(address(0), claimHash, typehash);
+        bool isRegistered = logic.isRegistered(address(0), claimHash, typehash);
         assertTrue(isRegistered, "Registration with zero values should be active");
     }
 
@@ -223,7 +223,7 @@ contract RegistrationLogicTest is Test {
             logic.registerUsingBatchClaimWithWitness(sponsor, emptyArray, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        bool isRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration with empty array should be active");
     }
 
@@ -241,7 +241,7 @@ contract RegistrationLogicTest is Test {
             logic.registerUsingBatchClaimWithWitness(sponsor, maxValues, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        bool isRegistered = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration with maximum values should be active");
     }
 

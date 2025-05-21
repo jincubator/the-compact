@@ -594,10 +594,7 @@ interface ITheCompact {
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
      * @return isActive Whether the compact registration is currently active.
      */
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
-        external
-        view
-        returns (bool isActive);
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive);
 
     /**
      * @notice External view function for checking the forced withdrawal status of a resource

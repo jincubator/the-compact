@@ -20,8 +20,8 @@ contract MockRegistrationLogic is TheCompactLogic {
         return _registerBatch(claimHashesAndTypehashes);
     }
 
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool) {
-        return _getRegistrationStatus(sponsor, claimHash, typehash);
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool) {
+        return _isRegistered(sponsor, claimHash, typehash);
     }
 
     function registerUsingClaimWithWitness(

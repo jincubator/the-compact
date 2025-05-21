@@ -274,12 +274,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getForcedWithdrawalStatus(account, id);
     }
 
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
-        external
-        view
-        returns (bool isActive)
-    {
-        isActive = _getRegistrationStatus(sponsor, claimHash, typehash);
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive) {
+        isActive = _isRegistered(sponsor, claimHash, typehash);
     }
 
     function getEmissaryStatus(address sponsor, bytes12 lockTag)

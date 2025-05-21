@@ -197,7 +197,7 @@ This supports:
 -   Smart wallet / EIP-7702 enabled sponsors with alternative signature logic.
 -   Chained deposit-and-register operations.
 
-Registration can be done by the sponsor or a third party (if they provide the sponsor's signature for `registerFor` type functions, or if they are providing the deposited tokens). When registering, the duration is inferred from the _shortest_ reset period of the involved locks. Registered compacts cannot be unregistered; they can be invalidated by the allocator consuming the nonce or by letting them expire.
+Registration can be done by the sponsor or a third party (if they provide the sponsor's signature for `registerFor` type functions, or if they are providing the deposited tokens). Registrations do not expire, and registered compacts cannot be unregistered; they can be invalidated by the allocator consuming the nonce or by letting them expire.
 
 ### Claimant Processing & Structure
 When an arbiter submits a claim, they provide an array of `Component` structs. Each `Component` specifies an `amount` and a `claimant`.
@@ -408,7 +408,7 @@ Allocators are crucial infrastructure for ensuring resource lock integrity.
 ## View Functions
 The Compact provides several view functions defined in the [`ITheCompact`](./src/interfaces/ITheCompact.sol) interface for querying state:
 -   [`getLockDetails`](./src/interfaces/ITheCompact.sol#L582): Retrieves details (token, allocator, reset period, scope, lockTag) for a resource lock ID.
--   [`getRegistrationStatus`](./src/interfaces/ITheCompact.sol#L598): Checks if a compact is registered and its registration time.
+-   [`isRegistered`](./src/interfaces/ITheCompact.sol#L598): Checks if a compact is currently registered.
 -   [`getForcedWithdrawalStatus`](./src/interfaces/ITheCompact.sol#L613): Checks the current forced withdrawal status (Disabled, Pending, Enabled) for an account and lock ID.
 -   [`getEmissaryStatus`](./src/interfaces/ITheCompact.sol#L628): Gets the current emissary status (Disabled, Scheduled, Enabled) for a sponsor and lock tag.
 -   [`hasConsumedAllocatorNonce`](./src/interfaces/ITheCompact.sol#L640): Checks if an allocator has consumed a specific nonce.

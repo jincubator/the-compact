@@ -176,7 +176,7 @@ contract Permit2DepositAndRegisterTest is Setup {
             vm.snapshotGasLastCall("depositAndRegisterWithWitnessViaPermit2");
             assertEq(returnedId, claim.id);
 
-            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
             assert(isRegistered);
         }
 
@@ -434,7 +434,7 @@ contract Permit2DepositAndRegisterTest is Setup {
             assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
             assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
 
-            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, typehash);
             assert(isRegistered);
         }
 
@@ -803,7 +803,7 @@ contract Permit2DepositAndRegisterTest is Setup {
             vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
             assertEq(returnedId, claim.id);
 
-            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactTypehash);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactTypehash);
             assert(isRegistered);
         }
 
@@ -1049,7 +1049,7 @@ contract Permit2DepositAndRegisterTest is Setup {
             assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
             assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
 
-            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, typehash);
             assert(isRegistered);
         }
 
