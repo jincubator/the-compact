@@ -592,13 +592,12 @@ interface ITheCompact {
      * @param sponsor   The account that registered the compact.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
-     * @return isActive              Whether the compact registration is currently active.
-     * @return registrationTimestamp The timestamp at which the compact was registered.
+     * @return isActive Whether the compact registration is currently active.
      */
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
         external
         view
-        returns (bool isActive, uint256 registrationTimestamp);
+        returns (bool isActive);
 
     /**
      * @notice External view function for checking the forced withdrawal status of a resource

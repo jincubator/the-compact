@@ -277,10 +277,9 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
         external
         view
-        returns (bool isActive, uint256 registrationTimestamp)
+        returns (bool isActive)
     {
-        registrationTimestamp = _getRegistrationStatus(sponsor, claimHash, typehash);
-        isActive = registrationTimestamp != 0;
+        isActive = _getRegistrationStatus(sponsor, claimHash, typehash);
     }
 
     function getEmissaryStatus(address sponsor, bytes12 lockTag)
