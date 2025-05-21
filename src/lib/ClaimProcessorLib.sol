@@ -50,7 +50,6 @@ library ClaimProcessorLib {
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param idsAndAmounts            The claimable resource lock IDs and amounts.
      * @param typehash                 The EIP-712 typehash used for the claim message.
-     * @param shortestResetPeriod      The shortest reset period across all resource locks on the compact.
      * @return sponsor                 The extracted address of the claim sponsor.
      */
     function validate(
@@ -60,8 +59,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
-        uint256[2][] memory idsAndAmounts,
-        uint256 shortestResetPeriod
+        uint256[2][] memory idsAndAmounts
     ) internal returns (address sponsor) {
         // Extract sponsor, nonce, and expires from calldata.
         uint256 nonce;
@@ -86,7 +84,7 @@ library ClaimProcessorLib {
 
         // Validate that the sponsor has authorized the claim.
         _validateSponsor(
-            sponsor, messageHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts, shortestResetPeriod
+            sponsor, messageHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts
         );
 
         // Validate that the allocator has authorized the claim.
@@ -188,7 +186,6 @@ library ClaimProcessorLib {
      * @param sponsorDomainSeparator The domain separator for the sponsor's signature.
      * @param typehash               The EIP-712 typehash used for the claim message.
      * @param idsAndAmounts          The claimable resource lock IDs and amounts.
-     * @param shortestResetPeriod    The shortest reset period across all resource locks on this compact.
      */
     function _validateSponsor(
         address sponsor,
@@ -196,8 +193,7 @@ library ClaimProcessorLib {
         uint256 calldataPointer,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
-        uint256[2][] memory idsAndAmounts,
-        uint256 shortestResetPeriod
+        uint256[2][] memory idsAndAmounts
     ) private view {
         bytes calldata sponsorSignature;
         assembly ("memory-safe") {
@@ -209,7 +205,7 @@ library ClaimProcessorLib {
 
         // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
         messageHash.hasValidSponsorOrRegistration(
-            sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash, shortestResetPeriod
+            sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash
         );
     }
 

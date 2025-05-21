@@ -25,7 +25,7 @@ contract ComponentLibTester {
     function buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
         external
         pure
-        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod)
+        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId)
     {
         return ComponentLib._buildIdsAndAmounts(claims, sponsorDomainSeparator);
     }
@@ -136,14 +136,13 @@ contract ComponentLibTest is Test {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         claims[0] = _buildTestClaim(id, amount, portions);
 
-        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod) =
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
             tester.buildIdsAndAmounts(claims, bytes32(0)); // No sponsor domain sep => multichain allowed
 
         assertEq(idsAndAmounts.length, 1, "idsAndAmounts length mismatch");
         assertEq(idsAndAmounts[0][0], id, "ID mismatch");
         assertEq(idsAndAmounts[0][1], amount, "Amount mismatch");
         assertEq(firstAllocatorId, ALLOCATOR.usingAllocatorId(), "Allocator ID mismatch");
-        assertEq(shortestResetPeriod, uint256(ResetPeriod.OneDay), "Shortest period mismatch");
     }
 
     function testBuildIdsAndAmounts_Multiple_Valid() public view {
@@ -160,7 +159,7 @@ contract ComponentLibTest is Test {
         claims[0] = _buildTestClaim(id1, amount1, portions1);
         claims[1] = _buildTestClaim(id2, amount2, portions2);
 
-        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod) =
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
             tester.buildIdsAndAmounts(claims, bytes32(0));
 
         assertEq(idsAndAmounts.length, 2, "idsAndAmounts length mismatch");
@@ -169,7 +168,6 @@ contract ComponentLibTest is Test {
         assertEq(idsAndAmounts[1][0], id2);
         assertEq(idsAndAmounts[1][1], amount2);
         assertEq(firstAllocatorId, ALLOCATOR.usingAllocatorId(), "Allocator ID mismatch");
-        assertEq(shortestResetPeriod, uint256(ResetPeriod.OneHourAndFiveMinutes), "Shortest period mismatch"); // OneHour < OneDay
     }
 
     function testBuildIdsAndAmounts_RevertEmpty() public {

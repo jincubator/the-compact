@@ -176,11 +176,9 @@ contract Permit2DepositAndRegisterTest is Setup {
             vm.snapshotGasLastCall("depositAndRegisterWithWitnessViaPermit2");
             assertEq(returnedId, claim.id);
 
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered =
+                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            assert(isRegistered);
         }
 
         // Verify lock details
@@ -437,11 +435,8 @@ contract Permit2DepositAndRegisterTest is Setup {
             assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
             assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
 
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+            assert(isRegistered);
         }
 
         // Regenerate claim hash
@@ -809,11 +804,8 @@ contract Permit2DepositAndRegisterTest is Setup {
             vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
             assertEq(returnedId, claim.id);
 
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, compactTypehash);
+            assert(isRegistered);
         }
 
         // Verify lock details
@@ -1058,11 +1050,8 @@ contract Permit2DepositAndRegisterTest is Setup {
             assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
             assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
 
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+            assert(isRegistered);
         }
 
         // Regenerate claim hash

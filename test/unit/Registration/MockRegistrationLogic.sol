@@ -23,7 +23,7 @@ contract MockRegistrationLogic is TheCompactLogic {
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
         external
         view
-        returns (uint256)
+        returns (bool)
     {
         return _getRegistrationStatus(sponsor, claimHash, typehash);
     }

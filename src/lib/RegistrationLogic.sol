@@ -143,14 +143,14 @@ contract RegistrationLogic is ConstructorLogic {
      * @param sponsor   The account that registered the claim hash.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
-     * @return registrationTimestamp The timestamp at which the registration was made.
+     * @return registered Whether the compact has been registered.
      */
     function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         view
-        returns (uint256 registrationTimestamp)
+        returns (bool registered)
     {
-        registrationTimestamp = sponsor.toRegistrationTimestamp(claimHash, typehash);
+        registered = sponsor.isRegistered(claimHash, typehash);
     }
 
     //// Registration of specific claims ////

@@ -42,11 +42,11 @@ library RegistrationLib {
             mstore(add(m, 0x34), claimHash)
             mstore(add(m, 0x54), typehash)
 
-            // Derive and load active registration storage slot to get current expiration.
-            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
+            // Derive active registration storage slot.
+            let registrationSlot := keccak256(add(m, 0x1c), 0x58)
 
-            // Store registration time in active registration storage slot.
-            sstore(cutoffSlot, timestamp())
+            // Store 1 (true) in active registration storage slot.
+            sstore(registrationSlot, 1)
 
             // Emit the CompactRegistered event:
             //  - topic1: CompactRegistered event signature
@@ -86,12 +86,12 @@ library RegistrationLib {
      * @param sponsor   The account that registered the claim hash.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
-     * @return registrationTimestamp The timestamp at which the registration occurred.
+     * @return registered Whether the compact has been registered.
      */
-    function toRegistrationTimestamp(address sponsor, bytes32 claimHash, bytes32 typehash)
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         view
-        returns (uint256 registrationTimestamp)
+        returns (bool registered)
     {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
@@ -103,8 +103,8 @@ library RegistrationLib {
             mstore(add(m, 0x34), claimHash)
             mstore(add(m, 0x54), typehash)
 
-            // Derive and load active registration storage slot to get registration timestamp.
-            registrationTimestamp := sload(keccak256(add(m, 0x1c), 0x58))
+            // Derive and load active registration storage slot to get registration status.
+            registered := sload(keccak256(add(m, 0x1c), 0x58))
         }
     }
 }

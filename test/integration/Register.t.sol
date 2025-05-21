@@ -80,10 +80,9 @@ contract RegisterTest is Setup {
         }
 
         {
-            (bool isActive, uint256 registeredAt) =
+            bool isRegistered =
                 theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            assert(isRegistered);
         }
 
         vm.prank(arbiter);
@@ -170,10 +169,9 @@ contract RegisterTest is Setup {
         }
 
         {
-            (bool isActive, uint256 registeredAt) =
+            bool isRegistered =
                 theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            assert(isRegistered);
         }
 
         vm.prank(arbiter);

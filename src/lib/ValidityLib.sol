@@ -129,7 +129,6 @@ library ValidityLib {
      * @param signature           The signature to verify.
      * @param domainSeparator     The domain separator to combine with the message hash.
      * @param typehash            The EIP-712 typehash used for the claim message.
-     * @param shortestResetPeriod The shortest reset period across all resource locks on the compact.
      */
     function hasValidSponsorOrRegistration(
         bytes32 claimHash,
@@ -137,19 +136,13 @@ library ValidityLib {
         bytes calldata signature,
         bytes32 domainSeparator,
         uint256[2][] memory idsAndAmounts,
-        bytes32 typehash,
-        uint256 shortestResetPeriod
+        bytes32 typehash
     ) internal view {
-        // Get registration status early if no signature is supplied.
-        bool checkedRegistrationPeriod;
-        if (signature.length == 0) {
-            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(claimHash, typehash);
+        bool registered = expectedSigner.isRegistered(claimHash, typehash);
 
-            if ((registrationTimestamp != 0).and(registrationTimestamp + shortestResetPeriod > block.timestamp)) {
-                return;
-            }
-
-            checkedRegistrationPeriod = true;
+        // If no signature is supplied and the claim is registered, return early.
+        if (signature.length == 0 && registered) {
+            return;
         }
 
         // Apply domain separator to message hash to derive the digest.
@@ -158,15 +151,6 @@ library ValidityLib {
         // First, check signature against digest with ECDSA (or ensure sponsor is caller).
         if (expectedSigner.isValidECDSASignatureCalldata(digest, signature)) {
             return;
-        }
-
-        // Next, check for an active registration if not yet checked.
-        if (!checkedRegistrationPeriod) {
-            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(claimHash, typehash);
-
-            if ((registrationTimestamp != 0).and(registrationTimestamp + shortestResetPeriod > block.timestamp)) {
-                return;
-            }
         }
 
         // Then, check EIP1271 using the digest, supplying half of available gas.

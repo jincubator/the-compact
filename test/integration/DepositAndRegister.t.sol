@@ -75,11 +75,9 @@ contract DepositAndRegisterTest is Setup {
 
         // Verify claim hash was registered
         {
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered =
+                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            assert(isRegistered);
         }
 
         // Prepare claim
@@ -189,11 +187,9 @@ contract DepositAndRegisterTest is Setup {
 
         // Verify claim hash was registered
         {
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered =
+                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            assert(isRegistered);
         }
 
         // Prepare claim
@@ -313,13 +309,11 @@ contract DepositAndRegisterTest is Setup {
 
         // Verify claim hash was registered
         {
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(
-                swapper, claimHashesAndTypehashes[0][0], claimHashesAndTypehashes[0][1]
-            );
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered =
+                theCompact.getRegistrationStatus(
+                    swapper, claimHashesAndTypehashes[0][0], claimHashesAndTypehashes[0][1]
+                );
+            assert(isRegistered);
         }
 
         // Prepare claim
