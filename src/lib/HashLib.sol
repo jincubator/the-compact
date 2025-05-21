@@ -714,7 +714,8 @@ library HashLib {
             mstore(add(m, 0xe0), witness)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0x100)
+            // Do not include witness hash for no-witness case.
+            messageHash := keccak256(m, add(0xe0, shl(5, iszero(eq(typehash, COMPACT_TYPEHASH)))))
         }
     }
 
@@ -754,7 +755,8 @@ library HashLib {
             mstore(add(m, 0xc0), witness)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
+            // Do not include witness hash for no-witness case.
+            messageHash := keccak256(m, add(0xc0, shl(5, iszero(eq(typehash, BATCH_COMPACT_TYPEHASH)))))
         }
     }
 }

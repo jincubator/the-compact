@@ -88,7 +88,7 @@ contract RegisterForTest is Setup {
         bytes32 batchTypehash = keccak256(
             "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
         );
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+        bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
 
         CreateBatchClaimHashWithWitnessArgs memory args = CreateBatchClaimHashWithWitnessArgs({
             typehash: batchTypehash,
@@ -140,7 +140,7 @@ contract RegisterForTest is Setup {
             // Create idsAndAmounts array for this chain
             uint256[2][] memory idsAndAmounts = new uint256[2][](1);
             idsAndAmounts[0] = [id, amount];
-            bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+            bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
 
             // Create element hash for this chain
             bytes32 elementHash =
@@ -214,7 +214,7 @@ contract RegisterForTest is Setup {
         bytes32 batchTypehash = keccak256(
             "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
         );
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+        bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
 
         CreateBatchClaimHashWithWitnessArgs memory args = CreateBatchClaimHashWithWitnessArgs({
             typehash: batchTypehash,

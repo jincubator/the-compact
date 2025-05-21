@@ -535,14 +535,6 @@ contract Permit2DepositAndRegisterTest is Setup {
         assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[2]), 1e18);
     }
 
-    function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
-        bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
-        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
-        }
-        return keccak256(abi.encodePacked(hashes));
-    }
-
     function test_revert_InvalidCompactCategory() public virtual {
         // Setup test parameters
         uint256 amount = 1e18;
@@ -717,7 +709,16 @@ contract Permit2DepositAndRegisterTest is Setup {
         {
             address arbiter = 0x2222222222222222222222222222222222222222;
             claimHash = _createClaimHash(
-                compactTypehash, arbiter, claim.sponsor, claim.nonce, claim.expires, claim.id, claim.allocatedAmount
+                CreateClaimHashWithWitnessArgs({
+                    typehash: compactTypehash,
+                    arbiter: arbiter,
+                    sponsor: claim.sponsor,
+                    nonce: claim.nonce,
+                    expires: claim.expires,
+                    id: claim.id,
+                    amount: claim.allocatedAmount,
+                    witness: bytes32(0)
+                })
             );
         }
 
