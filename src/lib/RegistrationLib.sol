@@ -91,7 +91,7 @@ library RegistrationLib {
         view
         returns (bool registered)
     {
-        uint256 registrationSlot = _deriveRegistrationSlot(sponsor, claimHash, typehash);
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
             // Load registration storage slot to get registration status.
             registered := sload(registrationSlot)
@@ -104,11 +104,14 @@ library RegistrationLib {
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      */
-    function consumeRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
-        uint256 registrationSlot = _deriveRegistrationSlot(sponsor, claimHash, typehash);
+    function consumeRegistrationIfRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) internal returns (bool consumed) {
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
             // Store 0 (false) in registration storage slot.
-            sstore(registrationSlot, 0)
+            consumed := sload(registrationSlot)
+            if iszero(iszero(consumed)) {
+                sstore(registrationSlot, 0)
+            }
         }
     }
 
@@ -119,7 +122,7 @@ library RegistrationLib {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      * @return registrationSlot The storage slot for the registration.
      */
-    function _deriveRegistrationSlot(address sponsor, bytes32 claimHash, bytes32 typehash)
+    function deriveRegistrationSlot(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         pure
         returns (uint256 registrationSlot)
