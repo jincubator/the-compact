@@ -24,12 +24,12 @@ function getLockTag(allocatorId: bigint, scope: bigint, resetPeriod: bigint) {
   return (scope << 95n) | (resetPeriod << 92n) | allocatorId;
 }
 
-function getAllocatorId(allocator: Address | bigint) {  
+function getAllocatorId(allocator: Address | bigint) {
   // Calculate compact flag
   // First, count leading zero nibbles in the address
   let leadingZeros = 0;
   let mask = 0xf000000000000000000000000000000000000000n;
-  
+
   for (let i = 0; i < 40; i++) {
     if ((BigInt(allocator) & mask) !== 0n) {
       break;
@@ -37,7 +37,7 @@ function getAllocatorId(allocator: Address | bigint) {
     leadingZeros++;
     mask = mask >> 4n;
   }
-  
+
   // Calculate the compact flag for the address:
   // - 0-3 leading zero nibbles: 0
   // - 4-17 leading zero nibbles: number of leading zeros minus 3
@@ -48,10 +48,10 @@ function getAllocatorId(allocator: Address | bigint) {
   } else if (leadingZeros >= 4) {
     compactFlag = BigInt(leadingZeros - 3);
   }
-  
+
   // Extract the last 88 bits of the address
-  const last88Bits = BigInt(allocator) & 0xFFFFFFFFFFFFFFFFFFFFFFn;
-  
+  const last88Bits = BigInt(allocator) & 0xffffffffffffffffffffffn;
+
   // Combine the compact flag (4 bits) with the last 88 bits
   return (compactFlag << 88n) | last88Bits;
 }
@@ -130,7 +130,7 @@ function getTypes(message: CompactData) {
 function getClaimPayload(
   message: CompactData,
   sponsorSignature: Hex,
-  claimants: {lockTag: bigint, claimant: Address, amount: bigint}[]
+  claimants: { lockTag: bigint; claimant: Address; amount: bigint }[]
 ) {
   return {
     allocatorData: "0x" as Hex,
@@ -142,7 +142,7 @@ function getClaimPayload(
     witnessTypestring: "uint256 witnessArgument",
     id: message.id,
     allocatedAmount: message.amount,
-    claimants: claimants.map(({lockTag, claimant, amount}) => ({
+    claimants: claimants.map(({ lockTag, claimant, amount }) => ({
       claimant: getClaimant(lockTag, claimant),
       amount: amount,
     })),
