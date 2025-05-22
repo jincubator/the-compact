@@ -110,9 +110,8 @@ library RegistrationLib {
     {
         uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
-            // Store 0 (false) in registration storage slot.
             consumed := sload(registrationSlot)
-            if iszero(iszero(consumed)) { sstore(registrationSlot, 0) }
+            if consumed { sstore(registrationSlot, 0) }
         }
     }
 

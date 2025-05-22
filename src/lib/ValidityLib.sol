@@ -138,10 +138,7 @@ library ValidityLib {
         uint256[2][] memory idsAndAmounts,
         bytes32 typehash
     ) internal {
-        bool registered = expectedSigner.consumeRegistrationIfRegistered(claimHash, typehash);
-
-        // If no signature is supplied and the claim is registered, return early.
-        if (signature.length == 0 && registered) {
+        if (expectedSigner.consumeRegistrationIfRegistered(claimHash, typehash)) {
             return;
         }
 
