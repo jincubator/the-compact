@@ -1,9 +1,10 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { formatEther, parseEther, toHex, zeroAddress } from "viem";
+import { formatEther, keccak256, parseEther, toBytes, toHex, zeroAddress, zeroHash } from "viem";
 import {
   getAllocatorId,
+  getClaimHash,
   getClaimPayload,
   getLockTag,
   getSignedCompact,
@@ -128,6 +129,123 @@ describe("Compact Protocol E2E", function () {
     );
 
     // 3. Arbiter submits a claim
+    const claimPayload = getClaimPayload(compactData, sponsorSignature, [
+      {
+        lockTag: 0n, // withdraw underlying
+        claimant: filler.account.address,
+        amount: compactData.amount,
+      },
+    ]);
+
+    const fillerBalanceBefore = await publicClient.getBalance({
+      address: filler.account.address,
+    });
+    const contractBalanceBefore = await publicClient.getBalance({
+      address: compactContract.address,
+    });
+
+    await compactContract.write.claim([claimPayload], {
+      account: arbiter.account,
+    });
+
+    const claimEvents = await compactContract.getEvents.Claim({
+      sponsor: sponsor.account.address,
+      allocator: alwaysOKAllocator.address,
+      arbiter: arbiter.account.address,
+    });
+    expect(
+      claimEvents.length > 0,
+      "Claim event not found or has incorrect parameters."
+    ).to.be.true;
+
+    const fillerBalanceAfter = await publicClient.getBalance({
+      address: filler.account.address,
+    });
+    expect(fillerBalanceAfter).to.equal(
+      fillerBalanceBefore + compactData.amount
+    );
+
+    const contractBalanceAfter = await publicClient.getBalance({
+      address: compactContract.address,
+    });
+    expect(contractBalanceAfter).to.equal(
+      contractBalanceBefore - compactData.amount
+    );
+
+    const sponsorLockBalanceAfterClaim = await compactContract.read.balanceOf([
+      sponsorAddress,
+      tokenId,
+    ]);
+    expect(
+      sponsorLockBalanceAfterClaim,
+      "Sponsor should have 0 tokens in the lock"
+    ).to.equal(0n);
+  });
+
+  it("should process a claim with a registered compact", async function () {
+    const {
+      compactContract,
+      alwaysOKAllocator,
+      sponsor,
+      arbiter,
+      filler,
+      publicClient,
+    } = await loadFixture(deployCompactFixture);
+
+    const sponsorAddress = sponsor.account.address;
+    const scope = 0n; // Scope.Multichain
+    const resetPeriod = 3n; // ResetPeriod.TenMinutes
+    const depositAmount = parseEther("1.0"); // 1 ETH
+    const allocatorId = getAllocatorId(alwaysOKAllocator.address);
+    const lockTag = getLockTag(allocatorId, scope, resetPeriod);
+    const tokenId = getTokenId(lockTag, 0n);
+    const compactData = {
+      arbiter: arbiter.account.address,
+      sponsor: sponsor.account.address,
+      nonce: 0n,
+      expires: BigInt(Math.floor(Date.now() / 1000) + 600 + 60), // 11 minutes from now
+      id: tokenId,
+      amount: depositAmount,
+      mandate: {
+        witnessArgument: 42n,
+      },
+    };
+
+    const claimHash = getClaimHash(compactContract.address, compactData);
+    const typehash = keccak256(toBytes("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)"));
+
+    // 1. Sponsor deposits native tokens
+    await compactContract.write.depositNativeAndRegister(
+      [toHex(lockTag), claimHash, typehash],
+      {
+        account: sponsor.account,
+        value: depositAmount,
+      }
+    );
+
+    const [isRegistered] = await compactContract.read.getRegistrationStatus([sponsorAddress, claimHash, typehash]);
+    expect(isRegistered).to.be.true;
+
+    const transferEvents = await compactContract.getEvents.Transfer({
+      from: zeroAddress,
+      to: sponsorAddress,
+      id: tokenId,
+    });
+    expect(
+      transferEvents.length > 0,
+      "ERC6909 Transfer event for depositNative not found or has incorrect parameters."
+    ).to.be.true;
+    expect(
+      await compactContract.read.balanceOf([sponsorAddress, tokenId]),
+      `Sponsor should have ${formatEther(depositAmount)} tokens in the lock`
+    ).to.equal(depositAmount);
+
+    const sponsorSignature = await getSignedCompact(
+      compactContract.address,
+      sponsor.account.address,
+      compactData
+    );
+
     const claimPayload = getClaimPayload(compactData, sponsorSignature, [
       {
         lockTag: 0n, // withdraw underlying
