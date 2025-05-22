@@ -218,16 +218,6 @@ contract ComponentLibTest is Test {
         tester.verifyAndProcessComponents(recipients, address(this), id, allocatedAmount);
     }
 
-    function testVerifyAndProcessComponents_EmptyClaimants() public {
-        uint256 id = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
-        uint256 allocatedAmount = 100;
-        Component[] memory recipients = new Component[](0);
-
-        // Empty array sets the error buffer to 0, which causes a revert with AllocatedAmountExceeded
-        vm.expectRevert(abi.encodeWithSelector(ITheCompact.AllocatedAmountExceeded.selector, allocatedAmount, 0));
-        tester.verifyAndProcessComponents(recipients, address(this), id, allocatedAmount);
-    }
-
     function testVerifyAndProcessComponents_Overflow() public {
         uint256 id = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
         uint256 allocatedAmount = type(uint256).max;

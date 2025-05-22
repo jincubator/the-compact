@@ -266,7 +266,7 @@ library ComponentLib {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
         uint256 spentAmount = 0;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
+        uint256 errorBuffer = 0;
 
         unchecked {
             // Process each component while tracking total amount and checking for overflow.

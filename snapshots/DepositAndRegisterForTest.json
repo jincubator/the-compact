@@ -1,7 +1,7 @@
 {
-  "batchDepositRegisterFor": "79621",
-  "depositERC20AndRegisterForNoWitness": "78568",
+  "batchDepositRegisterFor": "79637",
+  "depositERC20AndRegisterForNoWitness": "78584",
   "depositNativeAndRegisterFor": "50698",
   "depositNativeAndRegisterForNoWitness": "50692",
-  "depositRegisterFor": "78574"
+  "depositRegisterFor": "78590"
 }

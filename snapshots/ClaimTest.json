@@ -1,5 +1,7 @@
 {
-  "claimAndWithdraw": "119080",
-  "splitBatchClaimWithWitness": "150587",
-  "splitClaimWithWitness": "94718"
+  "cancelBatchClaimWithWitness": "49526",
+  "cancelClaim": "44189",
+  "claimAndWithdraw": "119077",
+  "splitBatchClaimWithWitness": "150578",
+  "splitClaimWithWitness": "94715"
 }
