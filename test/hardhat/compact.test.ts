@@ -300,9 +300,16 @@ describe("Compact Protocol E2E", function () {
       arbiter: arbiter.account.address,
     });
     expect(
-      claimEvents.length > 0,
+      claimEvents.length === 1,
       "Claim event not found or has incorrect parameters."
     ).to.be.true;
+
+    expect(claimEvents[0].args.claimHash, "Claim hash should match registered claim hash").to.equal(
+      claimHash
+    );
+
+    console.log(claimHash);
+    console.log(claimEvents);
 
     const fillerBalanceAfter = await publicClient.getBalance({
       address: filler.account.address,
