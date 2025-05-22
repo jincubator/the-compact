@@ -104,14 +104,15 @@ library RegistrationLib {
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      */
-    function consumeRegistrationIfRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) internal returns (bool consumed) {
+    function consumeRegistrationIfRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        returns (bool consumed)
+    {
         uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
             // Store 0 (false) in registration storage slot.
             consumed := sload(registrationSlot)
-            if iszero(iszero(consumed)) {
-                sstore(registrationSlot, 0)
-            }
+            if iszero(iszero(consumed)) { sstore(registrationSlot, 0) }
         }
     }
 
