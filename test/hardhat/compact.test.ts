@@ -1,12 +1,23 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { formatEther, keccak256, parseEther, toBytes, toHex, zeroAddress, zeroHash } from "viem";
+import {
+  boolToHex,
+  formatEther,
+  hexToBool,
+  keccak256,
+  parseEther,
+  toBytes,
+  toHex,
+  zeroAddress,
+  zeroHash,
+} from "viem";
 import {
   getAllocatorId,
   getClaimHash,
   getClaimPayload,
   getLockTag,
+  getRegistrationSlot,
   getSignedCompact,
   getTokenId,
 } from "./helpers";
@@ -212,7 +223,11 @@ describe("Compact Protocol E2E", function () {
     };
 
     const claimHash = getClaimHash(compactContract.address, compactData);
-    const typehash = keccak256(toBytes("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)"));
+    const typehash = keccak256(
+      toBytes(
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)"
+      )
+    );
 
     // 1. Sponsor deposits native tokens
     await compactContract.write.depositNativeAndRegister(
@@ -223,8 +238,22 @@ describe("Compact Protocol E2E", function () {
       }
     );
 
-    const [isRegistered] = await compactContract.read.getRegistrationStatus([sponsorAddress, claimHash, typehash]);
-    expect(isRegistered).to.be.true;
+    const calculatedSlot = getRegistrationSlot(
+      sponsorAddress,
+      claimHash,
+      typehash
+    );
+    expect(await compactContract.read.extsload([calculatedSlot])).to.equal(
+      boolToHex(true, { size: 32 })
+    );
+
+    const isRegistered = await compactContract.read.isRegistered([
+      sponsorAddress,
+      claimHash,
+      typehash,
+    ]);
+    expect(isRegistered, "Compact should be registered after deposit").to.be
+      .true;
 
     const transferEvents = await compactContract.getEvents.Transfer({
       from: zeroAddress,
@@ -297,5 +326,18 @@ describe("Compact Protocol E2E", function () {
       sponsorLockBalanceAfterClaim,
       "Sponsor should have 0 tokens in the lock"
     ).to.equal(0n);
+
+    const storageSlot = await compactContract.read.extsload([calculatedSlot]);
+    expect(storageSlot, "Storage slot should be 0 after claim").to.equal(
+      boolToHex(false, { size: 32 })
+    );
+
+    const isRegisteredAfterClaim = await compactContract.read.isRegistered([
+      sponsorAddress,
+      claimHash,
+      typehash,
+    ]);
+    expect(isRegisteredAfterClaim, "Compact should be unregistered after claim")
+      .to.be.false;
   });
 });

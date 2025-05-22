@@ -6,6 +6,9 @@ import {
   Address,
   hashTypedData,
   Hex,
+  toHex,
+  concatHex,
+  Hash,
 } from "viem";
 
 type CompactData = {
@@ -149,6 +152,16 @@ function getClaimPayload(
   };
 }
 
+function getRegistrationSlot(
+  sponsor: Address,
+  claimHash: Hash,
+  typehash: Hash
+): Hash {
+  // _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0 -> 4 bytes.
+  const scopeHex = toHex(0x68a30dd0n, { size: 4 });
+  return keccak256(concatHex([scopeHex, sponsor, claimHash, typehash]));
+}
+
 export {
   getLockTag,
   getAllocatorId,
@@ -158,4 +171,5 @@ export {
   getClaimHash,
   getClaimant,
   getClaimPayload,
+  getRegistrationSlot,
 };

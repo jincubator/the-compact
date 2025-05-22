@@ -25,6 +25,7 @@ const config: HardhatUserConfig = {
       enableRip7212: true,
       enableTransientStorage: true,
       hardfork: "cancun",
+      loggingEnabled: true,
     },
   },
   paths: {
