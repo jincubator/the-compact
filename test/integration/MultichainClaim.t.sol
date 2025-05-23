@@ -517,18 +517,11 @@ contract MultichainClaimTest is Setup {
     }
 
     function test_cancelMultichainClaimWithWitness() public {
-        // Setup test parameters
-        TestParams memory params;
-        params.resetPeriod = ResetPeriod.TenMinutes;
-        params.scope = Scope.Multichain;
-        params.nonce = 0;
-        params.deadline = block.timestamp + 1000;
-
         // Initialize multichain claim
         MultichainClaim memory claim;
         claim.sponsor = swapper;
-        claim.nonce = params.nonce;
-        claim.expires = params.deadline;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
         claim.witnessTypestring = witnessTypestring;
 
         // Set up chain IDs
@@ -742,7 +735,7 @@ contract MultichainClaimTest is Setup {
                 anotherClaim.witnessTypestring = claim.witnessTypestring;
                 anotherClaim.additionalChains = additionalChains;
                 anotherClaim.chainIndex = 0;
-                anotherClaim.notarizedChainId = notarizedChainId; // Changed from exogenousChainId to notarizedChainId
+                anotherClaim.notarizedChainId = notarizedChainId;
                 anotherClaim.id = anotherId;
                 anotherClaim.allocatedAmount = 1e18;
                 anotherClaim.claimants = new Component[](0); // add empty claimants
@@ -768,7 +761,7 @@ contract MultichainClaimTest is Setup {
 
                 vm.prank(0x2222222222222222222222222222222222222222);
                 vm.expectRevert(
-                    abi.encodeWithSelector(ConsumerLib.InvalidNonce.selector, allocator, claim.nonce),
+                    abi.encodeWithSelector(ConsumerLib.InvalidNonce.selector, allocator, 0 /*nonce*/),
                     address(theCompact)
                 );
                 theCompact.exogenousClaim(anotherClaim);
