@@ -330,7 +330,7 @@ describe("Compact Protocol E2E", function () {
       amount: depositAmount,
     };
 
-    const claimHash = getClaimHash(compactContract.address, compactData);
+    const claimHash = getClaimHash(compactData);
     const typehash = keccak256(
       toBytes(
         "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
@@ -417,9 +417,6 @@ describe("Compact Protocol E2E", function () {
     expect(claimEvents[0].args.claimHash, "Claim hash should match registered claim hash").to.equal(
       claimHash
     );
-
-    console.log(claimHash);
-    console.log(claimEvents);
 
     const fillerBalanceAfter = await publicClient.getBalance({
       address: filler.account.address,
