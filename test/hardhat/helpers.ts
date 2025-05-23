@@ -1,11 +1,14 @@
 import hre from "hardhat";
 import {
-  keccak256,
-  encodePacked,
-  encodeAbiParameters,
   Address,
-  hashTypedData,
+  concatHex,
+  encodeAbiParameters,
+  Hash,
+  hashStruct,
   Hex,
+  keccak256,
+  toBytes,
+  zeroHash,
 } from "viem";
 
 type CompactData = {
@@ -65,9 +68,7 @@ function getClaimant(lockTag: bigint, receiver: bigint | Address) {
 }
 
 function getSimpleWitnessHash(witnessArgument: bigint) {
-  const typeHash = keccak256(
-    encodePacked(["string"], ["Mandate(uint256 witnessArgument)"])
-  );
+  const typeHash = keccak256(toBytes("Mandate(uint256 witnessArgument)"));
 
   const encodedData = encodeAbiParameters(
     [{ type: "bytes32" }, { type: "uint256" }],
@@ -87,7 +88,7 @@ async function getSignedCompact(
     domain: {
       name: "The Compact",
       version: "1",
-      chainId: BigInt(hre.network.config.chainId!),
+      chainId: hre.network.config.chainId!,
       verifyingContract: theCompact,
     },
     types: getTypes(message),
@@ -96,17 +97,11 @@ async function getSignedCompact(
   });
 }
 
-function getClaimHash(theCompact: Address, message: CompactData) {
-  return hashTypedData({
-    domain: {
-      name: "The Compact",
-      version: "1",
-      chainId: BigInt(hre.network.config.chainId!),
-      verifyingContract: theCompact,
-    },
+function getClaimHash(message: CompactData) {
+  return hashStruct({
     types: getTypes(message),
     primaryType: "Compact",
-    message,
+    data: message,
   });
 }
 
@@ -133,13 +128,15 @@ function getClaimPayload(
   claimants: { lockTag: bigint; claimant: Address; amount: bigint }[]
 ) {
   return {
-    allocatorData: "0x" as Hex,
+    allocatorData: zeroHash,
     sponsorSignature,
     sponsor: message.sponsor,
     nonce: message.nonce,
     expires: message.expires,
-    witness: getSimpleWitnessHash(message.mandate?.witnessArgument ?? 0n),
-    witnessTypestring: "uint256 witnessArgument",
+    witness: message.mandate
+      ? getSimpleWitnessHash(message.mandate.witnessArgument)
+      : zeroHash,
+    witnessTypestring: message.mandate ? "uint256 witnessArgument" : "",
     id: message.id,
     allocatedAmount: message.amount,
     claimants: claimants.map(({ lockTag, claimant, amount }) => ({
@@ -149,13 +146,23 @@ function getClaimPayload(
   };
 }
 
+function getRegistrationSlot(
+  sponsor: Address,
+  claimHash: Hash,
+  typehash: Hash
+): Hash {
+  // _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0 -> 4 bytes.
+  return keccak256(concatHex(["0x68a30dd0", sponsor, claimHash, typehash]));
+}
+
 export {
-  getLockTag,
   getAllocatorId,
-  getTokenId,
-  getSimpleWitnessHash,
-  getSignedCompact,
-  getClaimHash,
   getClaimant,
+  getClaimHash,
   getClaimPayload,
+  getLockTag,
+  getRegistrationSlot,
+  getSignedCompact,
+  getSimpleWitnessHash,
+  getTokenId,
 };

@@ -245,8 +245,7 @@ library HashLib {
                     calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
                     // Prepare final components of message data: id and amount.
-                    mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
-                    mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
+                    calldatacopy(add(m, 0xa0), add(claim, 0xe0), 0x40)
 
                     // Derive the message hash from the prepared data.
                     derivedMessageHash := keccak256(m, 0xe0)
@@ -277,12 +276,15 @@ library HashLib {
                 mstore(m, derivedTypehash)
                 mstore(add(m, 0x20), caller()) // arbiter: msg.sender
 
+                // Clear sponsor memory location as an added precaution so that
+                // upper bits of sponsor do not need to be copied from calldata.
+                mstore(add(m, 0x40), 0)
+
                 // Next data segment copied from calldata: sponsor, nonce, expires.
-                calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
+                calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
                 // Prepare final components of message data: id, amount, & witness.
-                mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
-                mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
+                calldatacopy(add(m, 0xa0), add(claim, 0xe0), 0x40) // id & amount
                 mstore(add(m, 0xe0), calldataload(add(claim, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
@@ -328,7 +330,7 @@ library HashLib {
                     mstore(add(m, 0x40), 0)
 
                     // Next data segment copied from calldata: sponsor, nonce, expires.
-                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54) // sponsor, nonce, expires
+                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
                     // Prepare final component of message data: idsAndAmountsHash.
                     mstore(add(m, 0xa0), idsAmountsHash)
@@ -362,8 +364,12 @@ library HashLib {
                 mstore(m, derivedTypehash)
                 mstore(add(m, 0x20), caller()) // arbiter: msg.sender
 
+                // Clear sponsor memory location as an added precaution so that
+                // upper bits of sponsor do not need to be copied from calldata.
+                mstore(add(m, 0x40), 0)
+
                 // Next data segment copied from calldata: sponsor, nonce, expires.
-                calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
+                calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
                 // Prepare final components of message data: idsAndAmountsHash & witness.
                 mstore(add(m, 0xa0), idsAmountsHash)
@@ -434,8 +440,12 @@ library HashLib {
             // Prepare next component of message data: multichain compact typehash.
             mstore(m, multichainCompactTypehash)
 
-            // Copy final message data components from calldata: sponsor, nonce & expires.
-            calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60)
+            // Clear sponsor memory location as an added precaution so that
+            // upper bits of sponsor do not need to be copied from calldata.
+            mstore(add(m, 0x20), 0)
+
+            // Next data segment copied from calldata: sponsor, nonce, expires.
+            calldatacopy(add(m, 0x2c), add(claim, 0x4c), 0x54)
 
             // Derive the message hash from the prepared data.
             messageHash := keccak256(m, 0xa0)
@@ -515,8 +525,12 @@ library HashLib {
             // Prepare next component of message data: multichain compact typehash.
             mstore(m, multichainCompactTypehash)
 
-            // Copy final message data components from calldata: sponsor, nonce & expires.
-            calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60)
+            // Clear sponsor memory location as an added precaution so that
+            // upper bits of sponsor do not need to be copied from calldata.
+            mstore(add(m, 0x20), 0)
+
+            // Next data segment copied from calldata: sponsor, nonce, expires.
+            calldatacopy(add(m, 0x2c), add(claim, 0x4c), 0x54)
 
             // Derive the message hash from the prepared data.
             messageHash := keccak256(m, 0xa0)

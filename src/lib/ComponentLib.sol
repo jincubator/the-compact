@@ -103,7 +103,7 @@ library ComponentLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
             validation
     ) internal {
         // Declare variables for parameters that will be extracted from calldata.
@@ -137,8 +137,7 @@ library ComponentLib {
             domainSeparator,
             sponsorDomainSeparator,
             typehash,
-            idsAndAmounts,
-            id.toResetPeriod().toSeconds()
+            idsAndAmounts
         );
 
         // Verify the resource lock scope is compatible with the provided domain separator.
@@ -167,7 +166,7 @@ library ComponentLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
             validation
     ) internal {
         // Declare variable for BatchClaimComponent array that will be extracted from calldata.
@@ -179,8 +178,8 @@ library ComponentLib {
             claims.length := calldataload(claimsPtr)
         }
 
-        // Parse into idsAndAmounts & extract shortest reset period & first allocatorId.
-        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod) =
+        // Parse into idsAndAmounts & extract first allocatorId.
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
             _buildIdsAndAmounts(claims, sponsorDomainSeparator);
 
         // Validate the claim and extract the sponsor address.
@@ -191,8 +190,7 @@ library ComponentLib {
             domainSeparator,
             sponsorDomainSeparator,
             typehash,
-            idsAndAmounts,
-            shortestResetPeriod.asResetPeriod().toSeconds()
+            idsAndAmounts
         );
 
         unchecked {
@@ -211,7 +209,7 @@ library ComponentLib {
     function _buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
         internal
         pure
-        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod)
+        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId)
     {
         uint256 totalClaims = claims.length;
         if (totalClaims == 0) {
@@ -222,7 +220,6 @@ library ComponentLib {
         BatchClaimComponent calldata claimComponent = claims[0];
         uint256 id = claimComponent.id;
         firstAllocatorId = id.toAllocatorId();
-        shortestResetPeriod = id.toResetPeriod().asUint256();
 
         // Initialize idsAndAmounts array and register the first element.
         idsAndAmounts = new uint256[2][](totalClaims);
@@ -236,8 +233,6 @@ library ComponentLib {
             for (uint256 i = 1; i < totalClaims; ++i) {
                 claimComponent = claims[i];
                 id = claimComponent.id;
-
-                shortestResetPeriod = shortestResetPeriod.min(id.toResetPeriod().asUint256());
 
                 errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
                     id.scopeNotMultichain(sponsorDomainSeparator)
