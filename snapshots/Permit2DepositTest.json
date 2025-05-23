@@ -1,5 +1,5 @@
 {
-  "depositBatchViaPermit2NativeAndERC20": "122375",
-  "depositBatchViaPermit2SingleERC20": "97537",
+  "depositBatchViaPermit2NativeAndERC20": "122353",
+  "depositBatchViaPermit2SingleERC20": "97515",
   "depositERC20ViaPermit2AndURI": "93494"
 }

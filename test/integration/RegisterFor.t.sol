@@ -71,10 +71,8 @@ contract RegisterForTest is Setup {
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        (bool isActive, uint256 registrationTimestamp) =
-            theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-        assertTrue(isActive);
-        assertEq(registrationTimestamp, block.timestamp);
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+        assertTrue(isRegistered);
     }
 
     function test_registerBatchFor() public {
@@ -117,10 +115,8 @@ contract RegisterForTest is Setup {
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        (bool isActive, uint256 registrationTimestamp) =
-            theCompact.getRegistrationStatus(swapper, claimHash, batchTypehash);
-        assertTrue(isActive);
-        assertEq(registrationTimestamp, block.timestamp);
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchTypehash);
+        assertTrue(isRegistered);
     }
 
     function test_registerMultichainFor() public {
@@ -178,10 +174,8 @@ contract RegisterForTest is Setup {
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        (bool isActive, uint256 registrationTimestamp) =
-            theCompact.getRegistrationStatus(swapper, claimHash, multichainTypehash);
-        assertTrue(isActive);
-        assertEq(registrationTimestamp, block.timestamp);
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, multichainTypehash);
+        assertTrue(isRegistered);
     }
 
     function test_registerFor_invalidSignature() public {

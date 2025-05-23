@@ -11,9 +11,6 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
 
 import { BatchClaimComponent } from "../types/Components.sol";
 
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Scope } from "../types/Scope.sol";
-
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { ClaimHashFunctionCastLib } from "./ClaimHashFunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
