@@ -1,16 +1,14 @@
 import hre from "hardhat";
 import {
-  keccak256,
-  encodePacked,
-  encodeAbiParameters,
   Address,
-  toBytes,
-  Hex,
-  toHex,
   concatHex,
+  encodeAbiParameters,
   Hash,
-  zeroHash,
+  hashStruct,
+  Hex,
+  keccak256,
   toBytes,
+  zeroHash,
 } from "viem";
 
 type CompactData = {
@@ -100,101 +98,27 @@ async function getSignedCompact(
 }
 
 function getClaimHash(message: CompactData) {
-  return keccak256(
-    message.mandate ?
-      encodeAbiParameters(
-        [
-          { type: 'bytes32' }, // COMPACT_TYPEHASH
-          { type: 'address' }, // arbiter
-          { type: 'address' }, // sponsor
-          { type: 'uint256' }, // nonce
-          { type: 'uint256' }, // expires
-          { type: 'uint256' }, // id
-          { type: 'uint256' }, // amount
-          { type: 'bytes32' }, // mandateHash
-        ],
-        [
-          keccak256(toBytes('Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)')),
-          message.arbiter as `0x${string}`,
-          message.sponsor as `0x${string}`,
-          BigInt(message.nonce),
-          BigInt(message.expires),
-          BigInt(message.id),
-          BigInt(message.amount),
-          keccak256(encodeAbiParameters(
-            [
-              { type: 'bytes32' },
-              { type: 'uint256' },
-            ],
-            [
-              keccak256(toBytes('Mandate(uint256 witnessArgument)')),
-              BigInt(message.mandate.witnessArgument),
-            ]
-          )),
-        ]
-      ) :
-      encodeAbiParameters(
-        [
-          { type: 'bytes32' }, // COMPACT_TYPEHASH
-          { type: 'address' }, // arbiter
-          { type: 'address' }, // sponsor
-          { type: 'uint256' }, // nonce
-          { type: 'uint256' }, // expires
-          { type: 'uint256' }, // id
-          { type: 'uint256' }, // amount
-        ],
-        [
-          keccak256(toBytes('Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)')),
-          message.arbiter as `0x${string}`,
-          message.sponsor as `0x${string}`,
-          BigInt(message.nonce),
-          BigInt(message.expires),
-          BigInt(message.id),
-          BigInt(message.amount),
-        ]
-    )
-  );
+  return hashStruct({
+    types: getTypes(message),
+    primaryType: "Compact",
+    data: message,
+  });
 }
 
 function getTypes(message: CompactData) {
-  if (message.mandate) {
-    return {
-      EIP712Domain: [
-        { name: 'name', type: 'string' },
-        { name: 'version', type: 'string' },
-        { name: 'chainId', type: 'uint256' },
-        { name: 'verifyingContract', type: 'address' },
-      ],
-      Compact: [
-        { name: 'arbiter', type: 'address' },
-        { name: 'sponsor', type: 'address' },
-        { name: 'nonce', type: 'uint256' },
-        { name: 'expires', type: 'uint256' },
-        { name: 'id', type: 'uint256' },
-        { name: 'amount', type: 'uint256' },
-        { name: 'mandate', type: 'Mandate' },
-      ],
-      Mandate: [
-        { name: 'witnessArgument', type: 'uint256' },
-      ],
-    };
-  }
-
   return {
-    EIP712Domain: [
-      { name: 'name', type: 'string' },
-      { name: 'version', type: 'string' },
-      { name: 'chainId', type: 'uint256' },
-      { name: 'verifyingContract', type: 'address' },
-    ],
     Compact: [
-      { name: 'arbiter', type: 'address' },
-      { name: 'sponsor', type: 'address' },
-      { name: 'nonce', type: 'uint256' },
-      { name: 'expires', type: 'uint256' },
-      { name: 'id', type: 'uint256' },
-      { name: 'amount', type: 'uint256' },
+      { name: "arbiter", type: "address" },
+      { name: "sponsor", type: "address" },
+      { name: "nonce", type: "uint256" },
+      { name: "expires", type: "uint256" },
+      { name: "id", type: "uint256" },
+      { name: "amount", type: "uint256" },
+      ...(message.mandate ? [{ name: "mandate", type: "Mandate" }] : []),
     ],
+    ...(message.mandate
+      ? { Mandate: [{ name: "witnessArgument", type: "uint256" }] }
+      : {}),
   };
 }
 
@@ -212,9 +136,7 @@ function getClaimPayload(
     witness: message.mandate
       ? getSimpleWitnessHash(message.mandate.witnessArgument)
       : zeroHash,
-    witnessTypestring: message.mandate
-      ? "uint256 witnessArgument"
-      : "",
+    witnessTypestring: message.mandate ? "uint256 witnessArgument" : "",
     id: message.id,
     allocatedAmount: message.amount,
     claimants: claimants.map(({ lockTag, claimant, amount }) => ({
@@ -234,13 +156,13 @@ function getRegistrationSlot(
 }
 
 export {
-  getLockTag,
   getAllocatorId,
-  getTokenId,
-  getSimpleWitnessHash,
-  getSignedCompact,
-  getClaimHash,
   getClaimant,
+  getClaimHash,
   getClaimPayload,
+  getLockTag,
   getRegistrationSlot,
+  getSignedCompact,
+  getSimpleWitnessHash,
+  getTokenId,
 };

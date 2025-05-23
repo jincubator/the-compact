@@ -411,8 +411,6 @@ describe("Compact Protocol E2E", function () {
       claimEvents.length === 1,
       "Claim event not found or has incorrect parameters."
     ).to.be.true;
-    console.log("claimHash", claimHash);
-    console.log("claimEvents", claimEvents);
 
     expect(claimEvents[0].args.claimHash, "Claim hash should match registered claim hash").to.equal(
       claimHash

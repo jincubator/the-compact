@@ -242,7 +242,7 @@ library HashLib {
                     mstore(add(m, 0x40), 0)
 
                     // Next data segment copied from calldata: sponsor, nonce & expires.
-                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
+                    calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
 
                     // Prepare final components of message data: id and amount.
                     calldatacopy(add(m, 0xa0), add(claim, 0xe0), 0x40)
