@@ -8,7 +8,7 @@ import { DomainLib } from "./DomainLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { MetadataRenderer } from "./MetadataRenderer.sol";
 
-import { Tstorish } from "tstorish/Tstorish.sol";
+import { Tstorish } from "./Tstorish.sol";
 
 /**
  * @title ConstructorLogic
@@ -59,23 +59,31 @@ contract ConstructorLogic is Tstorish {
      * Called as part of functions that require reentrancy protection. Reverts if called
      * again before the reentrancy guard has been cleared.
      * @dev Note that the caller is set to the value; this enables external contracts to
-     * ascertain the account originating the ongoing call while handling the call as long
-     * as exttload is available.
+     * ascertain the account originating the ongoing call while handling the call using
+     * exttload. Also note that the value is actually set to a value of 1 when cleared;
+     * this results in a significant efficiency improvement for environments that do not
+     * yet support tstore, and additionally provides a mechanism to determine whether the
+     * contract has been entered in a previous stage of the current transaction for
+     * environments that do support it.
      */
     function _setReentrancyGuard() internal {
+        // Retrieve the current reentrancy sentinel value.
         uint256 entered = _getTstorish(_REENTRANCY_GUARD_SLOT);
 
         assembly ("memory-safe") {
-            if entered {
+            // Consider any value over 1 as indicating that reentrancy is disallowed.
+            if gt(entered, 1) {
                 // revert ReentrantCall(address existingCaller)
                 mstore(0, 0xf57c448b)
                 mstore(0x20, entered)
                 revert(0x1c, 0x24)
             }
 
+            // Use the address of the caller for the updated sentinel value.
             entered := caller()
         }
 
+        // Store the updated sentinel value.
         _setTstorish(_REENTRANCY_GUARD_SLOT, entered);
     }
 
@@ -84,7 +92,9 @@ contract ConstructorLogic is Tstorish {
      * Called as part of functions that require reentrancy protection.
      */
     function _clearReentrancyGuard() internal {
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+        // Store a value of 1 for the updated sentinel value. This indicates that the
+        // contract can be entered again while keeping the sentinel storage slot dirty.
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
     }
 
     /**
