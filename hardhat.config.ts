@@ -24,7 +24,7 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       enableRip7212: true,
       enableTransientStorage: true,
-      hardfork: "cancun",
+      hardfork: "prague",
       loggingEnabled: true,
     },
   },
