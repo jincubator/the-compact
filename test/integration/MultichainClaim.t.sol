@@ -761,7 +761,7 @@ contract MultichainClaimTest is Setup {
 
                 vm.prank(0x2222222222222222222222222222222222222222);
                 vm.expectRevert(
-                    abi.encodeWithSelector(ConsumerLib.InvalidNonce.selector, allocator, 0 /*nonce*/),
+                    abi.encodeWithSelector(ConsumerLib.InvalidNonce.selector, allocator, 0 /*nonce*/ ),
                     address(theCompact)
                 );
                 theCompact.exogenousClaim(anotherClaim);
