@@ -42,11 +42,13 @@ library TransferBenchmarkLib {
      */
     function setNativeTokenBenchmark(bytes32 salt) internal returns (uint256 benchmark) {
         assembly ("memory-safe") {
-            // Derive the target for  native token transfer using address.this & salt.
+            // Derive the target for native token transfer using address.this & salt.
             mstore(0, address())
             mstore(0x20, salt)
-            let target := shr(keccak256(0x0c, 0x34), 96)
+            let target := shr(0x60, keccak256(0x0c, 0x34))
 
+            // First: measure transfer cost to an uncreated account — note that the
+            // balance check prior to making the transfer will warm the account.
             // Ensure callvalue is exactly 2 wei and the target balance is zero.
             if or(iszero(eq(callvalue(), 2)), iszero(iszero(balance(target)))) {
                 mstore(0, 0x9f608b8a)
@@ -54,29 +56,58 @@ library TransferBenchmarkLib {
             }
 
             // Get gas before first call.
-            let firstStart := gas()
+            let gasCheckpointOne := gas()
 
             // Perform the first call, sending 1 wei.
             let success1 := call(gas(), target, 1, codesize(), 0, codesize(), 0)
 
             // Get gas before second call.
-            let secondStart := gas()
+            let gasCheckpointTwo := gas()
 
             // Perform the second call, sending 1 wei.
             let success2 := call(gas(), target, 1, codesize(), 0, codesize(), 0)
 
             // Get gas after second call.
-            let secondEnd := gas()
+            let gasCheckpointThree := gas()
 
-            // Derive the benchmark cost using the first call.
-            benchmark := sub(firstStart, secondStart)
+            // Derive a second address directly from the salt where a simple balance
+            // check can be performed to assess the cost of warming an account.
+            let balanceOne := balance(salt)
+
+            // Get gas after the first balance check.
+            let gasCheckpointFour := gas()
+
+            // Check balance again now that the account is warm.
+            let balanceTwo := balance(salt)
+
+            // Get gas after second balance check.
+            let gasCheckpointFive := gas()
+
+            // Determine the cost of the first transfer to the uncreated account.
+            let transferToWarmUncreatedAccountCost := sub(gasCheckpointOne, gasCheckpointTwo)
+
+            // Determine the difference between the cost of the first balance check
+            // and the cost of the second balance check.
+            let warmAccountAccessCost :=
+                sub(sub(gasCheckpointThree, gasCheckpointFour), sub(gasCheckpointFour, gasCheckpointFive))
 
             // Ensure that both calls succeeded and that the cost of the first call
-            // exceeded that of the second, indicating that the account was not warm.
-            if or(or(iszero(success1), iszero(success2)), iszero(gt(benchmark, sub(secondStart, secondEnd)))) {
+            // exceeded that of the second, indicating that the account was created.
+            // Also ensure the first balance check cost exceeded the second, and use
+            // the balances to ensure the checks are not removed during optimization.
+            if or(
+                or(iszero(success1), iszero(success2)),
+                or(
+                    iszero(gt(transferToWarmUncreatedAccountCost, sub(gasCheckpointTwo, gasCheckpointThree))),
+                    or(iszero(warmAccountAccessCost), xor(balanceOne, balanceTwo))
+                )
+            ) {
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
+
+            // Derive benchmark cost using first transfer cost and warm access cost.
+            benchmark := add(transferToWarmUncreatedAccountCost, warmAccountAccessCost)
 
             // Store the benchmark in the appropriate scope.
             sstore(_NATIVE_TOKEN_BENCHMARK_SCOPE, benchmark)

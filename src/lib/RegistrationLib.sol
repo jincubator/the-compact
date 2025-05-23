@@ -21,6 +21,8 @@ library RegistrationLib {
     uint256 private constant _COMPACT_REGISTERED_SIGNATURE =
         0x52dd3aeaf9d70bfcfdd63526e155ba1eea436e7851acf5c950299321c671b927;
 
+    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
+
     // Storage scope for active registrations:
     // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
     uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
@@ -32,19 +34,8 @@ library RegistrationLib {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      */
     function registerCompact(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
-            // Retrieve the current free memory pointer.
-            let m := mload(0x40)
-
-            // Pack data for deriving active registration storage slot.
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-
-            // Derive active registration storage slot.
-            let registrationSlot := keccak256(add(m, 0x1c), 0x58)
-
             // Store 1 (true) in active registration storage slot.
             sstore(registrationSlot, 1)
 
@@ -52,8 +43,9 @@ library RegistrationLib {
             //  - topic1: CompactRegistered event signature
             //  - topic2: sponsor address (sanitized)
             //  - data: [claimHash, typehash]
-            log2(add(m, 0x34), 0x40, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
+            // log2(claimHash, 0x40, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
         }
+        emit CompactRegistered(sponsor, claimHash, typehash);
     }
 
     /**
@@ -91,7 +83,7 @@ library RegistrationLib {
         view
         returns (bool registered)
     {
-        uint256 registrationSlot = _deriveRegistrationSlot(sponsor, claimHash, typehash);
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
             // Load registration storage slot to get registration status.
             registered := sload(registrationSlot)
@@ -104,11 +96,14 @@ library RegistrationLib {
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      */
-    function consumeRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
-        uint256 registrationSlot = _deriveRegistrationSlot(sponsor, claimHash, typehash);
+    function consumeRegistrationIfRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        returns (bool consumed)
+    {
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
-            // Store 0 (false) in registration storage slot.
-            sstore(registrationSlot, 0)
+            consumed := sload(registrationSlot)
+            if consumed { sstore(registrationSlot, 0) }
         }
     }
 
@@ -119,7 +114,7 @@ library RegistrationLib {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      * @return registrationSlot The storage slot for the registration.
      */
-    function _deriveRegistrationSlot(address sponsor, bytes32 claimHash, bytes32 typehash)
+    function deriveRegistrationSlot(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         pure
         returns (uint256 registrationSlot)
