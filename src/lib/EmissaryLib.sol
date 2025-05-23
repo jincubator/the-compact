@@ -67,19 +67,42 @@ library EmissaryLib {
         pure
         returns (EmissaryConfig storage config)
     {
+        // Pack and hash scope, sponsor, and lock tag to derive emissary config storage slot.
         assembly ("memory-safe") {
-            // Pack data for computing storage slot.
-            mstore(0x14, sponsor) // Offset 0x14 (20 bytes): Store 20-byte sponsor address
-            mstore(0, _EMISSARY_SCOPE) // Offset 0 (0 bytes): Store 4-byte scope value
-            mstore(0x20, lockTag) // Offset 0x20 (12 bytes): Store 12-byte lock tag
+            // Start by writing the sponsor address to scratch space so that the 20 bytes of
+            // address data are placed at memory location 0x20. The first 12 bytes of the
+            // variable for the sponsor are unused and overwritten by the subsequent write.
+            mstore(0x14, sponsor)
+
+            // Next, write the emissary scope value to scratch space so that the 4 bytes of
+            // scope data are placed at the memory location 0x1c. The first 28 bytes of the
+            // variable for the emissary scope are unused and will be omitted from the slot
+            // derivation; a right-aligned value is preferred over a left-aligned one like
+            // bytes4 to reduce code size requirements without needing bitshift operations.
+            mstore(0, _EMISSARY_SCOPE)
+
+            // Then, write the lock tag value to scratch space so that the 12 bytes of
+            // lock tag data are placed at memory location 0x34. This data is left-aligned
+            // and so it can be placed directly at the intended memory location, and the
+            // final 20 bytes will not be included in the slot derivation. Note that these
+            // unused least-significant bits will overflow into the free memory pointer and
+            // will need to be cleared in a subsequent step if there are any dirty lower bits
+            // on the lockTag value. Since a valid free memory pointer can never grow to a
+            // value that would require the 20 most-significant bytes in the pointer (as this
+            // would certainly exhaust memory long before they were needed), these bytes can
+            // safely be used as long as they are cleared before accessing the pointer again.
+            mstore(0x34, lockTag)
 
             // Compute storage slot from packed data.
-            // Start at offset 0x1c (28 bytes), which includes:
-            // - The 4 bytes of _EMISSARY_SCOPE (which is stored at position 0x00)
-            // - The entire 20-byte sponsor address (which starts at position 0x14)
-            // - The entire 12-byte lock tag (which starts at position 0x34)
-            // Hash 0x24 (36 bytes) of data in total
+            // Start at offset 0x1c (28 bytes) and hash 0x24 (36 bytes) of data in total:
+            // - _EMISSARY_SCOPE (4 bytes from at 0x1c to 0x20)
+            // - Sponsor address (20 bytes from 0x20 to 0x34)
+            // - Lock tag (12 bytes from 0x34 to 0x40)
             config.slot := keccak256(0x1c, 0x24)
+
+            // Finally, wipe the leftmost 20 bytes of the free memory pointer that may have
+            // been set when writing the lock tag (assuming dirty lower bits were present).
+            mstore(0x34, 0)
         }
     }
 
