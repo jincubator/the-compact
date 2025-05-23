@@ -206,6 +206,16 @@ library ComponentLib {
         }
     }
 
+    /**
+     * @notice Internal function for building an array of resource lock IDs and their allocated
+     * amounts from batch claim components. Also extracts the allocator ID from the first item
+     * for validation purposes. Verifies that all claims use the same allocator and have valid
+     * scopes.
+     * @param claims                 Array of batch claim components to process.
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @return idsAndAmounts         Array of [id, allocatedAmount] pairs for each claim component.
+     * @return firstAllocatorId      The allocator ID extracted from the first claim component.
+     */
     function _buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
         internal
         pure
@@ -265,8 +275,8 @@ library ComponentLib {
     ) internal {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
-        uint256 spentAmount = 0;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
+        uint256 spentAmount;
+        uint256 errorBuffer;
 
         unchecked {
             // Process each component while tracking total amount and checking for overflow.
@@ -298,6 +308,7 @@ library ComponentLib {
 
     /**
      * @notice Internal pure function for summing all amounts in a Component array.
+     * Checks for arithmetic overflow during summation and reverts if detected.
      * @param recipients A Component struct array containing transfer details.
      * @return sum Total amount across all components.
      */
@@ -305,8 +316,8 @@ library ComponentLib {
         // Retrieve the total number of components.
         uint256 totalComponents = recipients.length;
 
-        uint256 errorBuffer;
         uint256 amount;
+        uint256 errorBuffer;
         unchecked {
             // Iterate over each additional component in calldata.
             for (uint256 i = 0; i < totalComponents; ++i) {
