@@ -1,10 +1,10 @@
 {
   "batchClaimRegisteredWithDeposit": "150381",
   "batchClaimRegisteredWithDepositWithWitness": "145198",
-  "batchDepositAndRegisterViaPermit2": "208244",
-  "batchDepositAndRegisterWithWitnessViaPermit2": "208339",
+  "batchDepositAndRegisterViaPermit2": "208276",
+  "batchDepositAndRegisterWithWitnessViaPermit2": "208371",
   "claim": "89127",
   "claimWithWitness": "89317",
-  "depositAndRegisterViaPermit2": "117265",
-  "depositAndRegisterWithWitnessViaPermit2": "117364"
+  "depositAndRegisterViaPermit2": "117281",
+  "depositAndRegisterWithWitnessViaPermit2": "117380"
 }
