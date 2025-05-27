@@ -49,8 +49,8 @@ library EmissaryLib {
     uint96 constant NOT_SCHEDULED = type(uint96).max;
 
     // Storage slot for emissary configurations
-    // Maps: keccak256(_EMISSARY_SCOPE) => EmissarySlot
-    uint256 private constant _EMISSARY_SCOPE = 0x2d5c707;
+    // Maps: keccak256("_EMISSARY_SCOPE") => EmissarySlot
+    uint256 private constant _EMISSARY_SCOPE = 0x2d5c707e;
 
     // bytes4(keccak256("verifyClaim(address,bytes32,bytes32,bytes,bytes12)")).
     uint32 private constant _VERIFY_CLAIM_SELECTOR = 0xf699ba1c;
