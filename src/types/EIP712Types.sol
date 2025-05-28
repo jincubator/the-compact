@@ -155,7 +155,7 @@ bytes32 constant COMPACT_BATCH_ACTIVATION_TYPEHASH = 0x25686dcdaf36339365d8aad4b
 
 /// @dev `keccak256(bytes("BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Commitment[] commitments)Commitment(bytes12 lockTag,address token,uint256 amount)"))`.
 bytes32 constant BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH =
-    0xccd1083bf76e8cc4025444a9a97d4a6eeab40d6d806c020d80dd5b20b554833c;
+    0x448facb3d9c50e905545c39bd9713ec2040fded615c41841fe7ae9f26001247e;
 
 // abi.decode(bytes("Activation witness)Activation(ad"), (bytes32))
 bytes32 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE =
