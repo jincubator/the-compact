@@ -86,6 +86,38 @@ contract ExtsloadTest is Setup {
         assertEq(storedAllocator2, anotherAllocator, "Stored allocator2 does not match expected allocator");
     }
 
+    function test_extsload_emptySlots() public {
+        // Register multiple allocators
+        (uint96 allocatorId1,) = _registerAllocator(allocator);
+
+        address anotherAllocator = address(0x1111111111111111111111111111111111111111);
+        vm.prank(anotherAllocator);
+        uint96 allocatorId2 = theCompact.__registerAllocator(anotherAllocator, "");
+
+        // Derive the storage slots for the allocators.
+        bytes32 allocatorSlot1 = bytes32(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED | allocatorId1);
+        bytes32 allocatorSlot2 = bytes32(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED | allocatorId2);
+
+        // Create an array of slots to read.
+        bytes32[] memory slots = new bytes32[](5);
+        slots[0] = allocatorSlot1;
+        slots[1] = allocatorSlot2;
+
+        // Read the allocator addresses from storage using Extsload.
+        bytes32[] memory storedValues = theCompact.extsload(slots);
+
+        // Convert the bytes32 values to addresses.
+        address storedAllocator1 = address(uint160(uint256(storedValues[0])));
+        address storedAllocator2 = address(uint160(uint256(storedValues[1])));
+
+        // Verify that the stored allocators match the expected allocators.
+        assertEq(storedAllocator1, allocator, "Stored allocator1 does not match expected allocator");
+        assertEq(storedAllocator2, anotherAllocator, "Stored allocator2 does not match expected allocator");
+        assertEq(storedValues[2], bytes32(0), "Stored allocator3 should be 0");
+        assertEq(storedValues[3], bytes32(0), "Stored allocator4 should be 0");
+        assertEq(storedValues[4], bytes32(0), "Stored allocator5 should be 0");
+    }
+
     /**
      * @notice Test the exttload function for reading a value from transient storage.
      * Note: This test is more limited since transient storage (tstore/tload) is a newer EVM feature
