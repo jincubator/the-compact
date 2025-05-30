@@ -41,7 +41,6 @@ library EmissaryLib {
 
     error EmissaryAssignmentUnavailable(uint256 assignAt);
     error InvalidLockTag();
-    error InvalidEmissaryStatus();
 
     event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
     event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 indexed assignableAt);
@@ -290,17 +289,15 @@ library EmissaryLib {
         currentEmissary = emissaryConfig.emissary;
 
         // Determine the emissary's status based on its current state:
-        // - If there is no current emissary, the status is Disabled.
+        // - If there is no current emissary, the status is Disabled and assignableAt must be zero.
         // - If assignableAt is NOT_SCHEDULED, the emissary is Enabled and active.
         // - If assignableAt is set to a future timestamp, the emissary is Scheduled for reassignment.
         if (currentEmissary == address(0)) {
             status = EmissaryStatus.Disabled;
         } else if (assignableAt == NOT_SCHEDULED) {
             status = EmissaryStatus.Enabled;
-        } else if (assignableAt != 0) {
-            status = EmissaryStatus.Scheduled;
         } else {
-            revert InvalidEmissaryStatus();
+            status = EmissaryStatus.Scheduled;
         }
     }
 }
