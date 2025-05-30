@@ -94,11 +94,11 @@ contract ClaimHashLibTester {
     }
 
     function callToIdsAndAmountsHash(BatchClaimComponent[] calldata claims) external pure returns (uint256) {
-        return claims.toIdsAndAmountsHash();
+        return claims.toCommitmentsHash();
     }
 
     function callToIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts) external pure returns (bytes32) {
-        return idsAndAmounts.toIdsAndAmountsHash(new uint256[](0));
+        return idsAndAmounts.toCommitmentsHash(new uint256[](0));
     }
 }
 

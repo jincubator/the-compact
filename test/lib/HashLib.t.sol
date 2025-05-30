@@ -522,7 +522,7 @@ contract HashLibTester {
         pure
         returns (bytes32 idsAndAmountsHash)
     {
-        return idsAndAmounts.toIdsAndAmountsHash(replacementAmounts);
+        return idsAndAmounts.toCommitmentsHash(replacementAmounts);
     }
 
     function callToIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
@@ -530,7 +530,7 @@ contract HashLibTester {
         pure
         returns (uint256 idsAndAmountsHash)
     {
-        return claims.toIdsAndAmountsHash();
+        return claims.toCommitmentsHash();
     }
 
     function callToFlatMessageHashWithWitness(

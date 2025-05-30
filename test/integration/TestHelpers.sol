@@ -146,7 +146,7 @@ contract TestHelpers is Test {
         bytes32[] memory elementHashes = new bytes32[](elements.length);
         for (uint256 i = 0; i < elements.length; ++i) {
             elementHashes[i] = _createMultichainElementHash(
-                typeHash, elements[i].arbiter, elements[i].chainId, elements[i].idsAndAmounts, witnessHashes[i]
+                typeHash, elements[i].arbiter, elements[i].chainId, elements[i].commitments, witnessHashes[i]
             );
         }
         return keccak256(abi.encode(elementHashes));
