@@ -10,16 +10,13 @@ import { EmissaryLogic } from "../../src/lib/EmissaryLogic.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
 import { Setup } from "./Setup.sol";
 import { AlwaysOKEmissary } from "../../src/test/AlwaysOKEmissary.sol";
+import { AlwaysDenyingEmissary } from "../../src/test/AlwaysDenyingEmissary.sol";
+import { AlwaysRevertingEmissary } from "../../src/test/AlwaysRevertingEmissary.sol";
 import { CreateClaimHashWithWitnessArgs } from "./TestHelperStructs.sol";
 import { Claim } from "../../src/types/Claims.sol";
 import { BatchClaim } from "../../src/types/BatchClaims.sol";
 import { Component, BatchClaimComponent } from "../../src/types/Components.sol";
-import {
-    TestParams,
-    CreateBatchClaimHashWithWitnessArgs
-} from "./TestHelperStructs.sol";
-
-
+import { TestParams, CreateBatchClaimHashWithWitnessArgs } from "./TestHelperStructs.sol";
 
 contract EmissaryTest is Setup {
     function setUp() public override {
@@ -580,8 +577,6 @@ contract EmissaryTest is Setup {
             theCompact.assignEmissary(lockTag, emissary);
         }
 
-
-
         // Create idsAndAmounts and witness
         uint256[2][] memory idsAndAmounts;
         {
@@ -692,5 +687,293 @@ contract EmissaryTest is Setup {
             assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, anotherId), 1e18);
             assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, aThirdId), 1e18);
         }
+    }
+
+    function test_revert_invalidLockTag() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Initialize batch claim
+        BatchClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = block.timestamp + 1000;
+        claim.witnessTypestring = witnessTypestring;
+
+        // Register allocator and make deposits
+        uint256 id;
+        uint256 anotherId;
+        uint256 aThirdId;
+        {
+            bytes12 lockTag;
+            bytes12 anotherLockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+                // Create a lock tag with a different reset period
+                anotherLockTag = bytes12(
+                    bytes32(
+                        (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.OneHourAndFiveMinutes) << 252)
+                            | (uint256(allocatorId) << 160)
+                    )
+                );
+            }
+
+            id = _makeDeposit(swapper, 1e18, lockTag);
+            anotherId = _makeDeposit(swapper, address(token), 1e18, lockTag);
+            aThirdId = _makeDeposit(swapper, address(anotherToken), 1e18, anotherLockTag);
+
+            assertEq(theCompact.balanceOf(swapper, id), 1e18);
+            assertEq(theCompact.balanceOf(swapper, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(swapper, aThirdId), 1e18);
+
+            // Assign emissary
+            address emissary = address(new AlwaysOKEmissary());
+            vm.prank(swapper);
+            theCompact.assignEmissary(lockTag, emissary);
+        }
+
+        // Create idsAndAmounts and witness
+        uint256[2][] memory idsAndAmounts;
+        {
+            idsAndAmounts = new uint256[2][](3);
+            idsAndAmounts[0] = [id, 1e18];
+            idsAndAmounts[1] = [anotherId, 1e18];
+            idsAndAmounts[2] = [aThirdId, 1e18];
+
+            uint256 witnessArgument = 234;
+            claim.witness = _createCompactWitness(witnessArgument);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateBatchClaimHashWithWitnessArgs memory args;
+            {
+                args.typehash = keccak256(
+                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
+                );
+                args.arbiter = 0x2222222222222222222222222222222222222222;
+                args.sponsor = claim.sponsor;
+                args.nonce = claim.nonce;
+                args.expires = claim.expires;
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+                args.witness = claim.witness;
+            }
+
+            claimHash = _createBatchClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Create batch claim components
+        {
+            BatchClaimComponent[] memory claims = new BatchClaimComponent[](3);
+
+            // First claim component
+            {
+                uint256 claimantOne = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(id)), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+                uint256 claimantTwo = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
+                );
+
+                Component[] memory portions = new Component[](2);
+                portions[0] = Component({ claimant: claimantOne, amount: 4e17 });
+                portions[1] = Component({ claimant: claimantTwo, amount: 6e17 });
+
+                claims[0] = BatchClaimComponent({ id: id, allocatedAmount: 1e18, portions: portions });
+            }
+
+            // Second claim component
+            {
+                uint256 claimantThree = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(anotherId)), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+
+                Component[] memory anotherPortion = new Component[](1);
+                anotherPortion[0] = Component({ claimant: claimantThree, amount: 1e18 });
+
+                claims[1] = BatchClaimComponent({ id: anotherId, allocatedAmount: 1e18, portions: anotherPortion });
+            }
+
+            // Third claim component
+            {
+                uint256 claimantFour = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(aThirdId)), 0x3333333333333333333333333333333333333333), (uint256)
+                );
+
+                Component[] memory aThirdPortion = new Component[](1);
+                aThirdPortion[0] = Component({ claimant: claimantFour, amount: 1e18 });
+
+                claims[2] = BatchClaimComponent({ id: aThirdId, allocatedAmount: 1e18, portions: aThirdPortion });
+            }
+
+            claim.claims = claims;
+        }
+
+        // Execute claim
+        vm.expectRevert(abi.encodeWithSelector(EmissaryLib.InvalidLockTag.selector));
+        vm.prank(0x2222222222222222222222222222222222222222);
+        theCompact.batchClaim(claim);
+    }
+
+    function test_revert_invalidSignature() public {
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        (, bytes12 lockTag) = _registerAllocator(allocator);
+
+        address emissary = address(new AlwaysDenyingEmissary());
+        vm.prank(swapper);
+        theCompact.assignEmissary(lockTag, emissary);
+
+        uint256 id = _makeDeposit(swapper, amount, lockTag);
+
+        bytes32 claimHash;
+        bytes32 witness = _createCompactWitness(234);
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = swapper;
+            args.nonce = nonce;
+            args.expires = expires;
+            args.id = id;
+            args.amount = amount;
+            args.witness = witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        Claim memory claim;
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+            claim.sponsorSignature = hex"41414141414141414141";
+
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            claim.allocatorData = abi.encodePacked(r, vs);
+        }
+
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+
+            Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+
+            Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+            Component[] memory recipients = new Component[](2);
+            recipients[0] = splitOne;
+            recipients[1] = splitTwo;
+
+            claim.claimants = recipients;
+        }
+
+        claim.sponsor = swapper;
+        claim.nonce = nonce;
+        claim.expires = expires;
+        claim.witness = witness;
+        claim.witnessTypestring = witnessTypestring;
+        claim.id = id;
+        claim.allocatedAmount = amount;
+
+        vm.prank(arbiter);
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidSignature.selector));
+        theCompact.claim(claim);
+    }
+
+    function test_revert_allocatorReverts() public {
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        (, bytes12 lockTag) = _registerAllocator(allocator);
+
+        address emissary = address(new AlwaysRevertingEmissary());
+        vm.prank(swapper);
+        theCompact.assignEmissary(lockTag, emissary);
+
+        uint256 id = _makeDeposit(swapper, amount, lockTag);
+
+        bytes32 claimHash;
+        bytes32 witness = _createCompactWitness(234);
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = swapper;
+            args.nonce = nonce;
+            args.expires = expires;
+            args.id = id;
+            args.amount = amount;
+            args.witness = witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        Claim memory claim;
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+            claim.sponsorSignature = hex"41414141414141414141";
+
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            claim.allocatorData = abi.encodePacked(r, vs);
+        }
+
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+
+            Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+
+            Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+            Component[] memory recipients = new Component[](2);
+            recipients[0] = splitOne;
+            recipients[1] = splitTwo;
+
+            claim.claimants = recipients;
+        }
+
+        claim.sponsor = swapper;
+        claim.nonce = nonce;
+        claim.expires = expires;
+        claim.witness = witness;
+        claim.witnessTypestring = witnessTypestring;
+        claim.id = id;
+        claim.allocatedAmount = amount;
+
+        vm.prank(arbiter);
+        vm.expectRevert(abi.encodeWithSelector(AlwaysRevertingEmissary.AlwaysReverting.selector));
+        theCompact.claim(claim);
     }
 }

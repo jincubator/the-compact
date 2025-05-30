@@ -652,7 +652,11 @@ contract ClaimTest is Setup {
 
         // Execute claim
         vm.prank(arbiter);
-        vm.expectRevert(abi.encodeWithSelector(ITheCompact.AllocatedAmountExceeded.selector, claim.allocatedAmount, amountOne + amountTwo + 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITheCompact.AllocatedAmountExceeded.selector, claim.allocatedAmount, amountOne + amountTwo + 1
+            )
+        );
         theCompact.claim(claim);
     }
 }
