@@ -127,12 +127,15 @@ library TransferLib {
                 mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
             }
 
-            // Derive actual amount from balance change.
-            postWithdrawalAmount = initialBalance - token.balanceOf(address(this));
+            // Check balance after performing the withdrawal.
+            uint256 terminalBalance = token.balanceOf(address(this));
 
-            // Consider the withdrawal as having succeeded if any amount was withdrawn.
             assembly ("memory-safe") {
-                withdrawalSucceeded := or(withdrawalSucceeded, iszero(iszero(postWithdrawalAmount)))
+                // Consider the withdrawal as having succeeded if any amount was withdrawn.
+                withdrawalSucceeded := and(withdrawalSucceeded, lt(terminalBalance, initialBalance))
+
+                // Derive the realized withdrawal amount (with a minimum value of zero).
+                postWithdrawalAmount := mul(withdrawalSucceeded, sub(initialBalance, terminalBalance))
             }
         }
 
