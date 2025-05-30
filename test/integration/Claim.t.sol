@@ -569,4 +569,90 @@ contract ClaimTest is Setup {
         assertEq(theCompact.balanceOf(swapper, claim.id), claim.allocatedAmount);
         assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
     }
+
+    function test_revert_allocatedAmountExceeded() public {
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, claim.allocatedAmount + 1, lockTag); // deposit exceeds allocated amount
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+
+            claimHash = _createClaimHash(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne + 1 }); // exceeds allocated amount
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+                recipients = new Component[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+
+            claim.witnessTypestring = "";
+            claim.claimants = recipients;
+        }
+
+        // Execute claim
+        vm.prank(arbiter);
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.AllocatedAmountExceeded.selector, claim.allocatedAmount, amountOne + amountTwo + 1));
+        theCompact.claim(claim);
+    }
 }
