@@ -28,6 +28,8 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/t
 
 import { Component, TransferComponent, ComponentsById, BatchClaimComponent } from "../../src/types/Components.sol";
 
+import { Lock } from "../../src/types/EIP712Types.sol";
+
 import {
     TestParams,
     LockDetails,
@@ -156,10 +158,17 @@ contract TestHelpers is Test {
         bytes32 typeHash,
         address arbiter,
         uint256 chainId,
-        uint256[2][] memory idsAndAmounts,
+        Lock[] memory commitments,
         bytes32 witnessHash
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(typeHash, arbiter, chainId, idsAndAmounts, witnessHash));
+        bytes32 lockTypehash = keccak256(bytes("Lock(bytes12 lockTag, address token, uint256 amount)"));
+        bytes32[] memory lockHashes = new bytes32[](commitments.length);
+        for (uint256 i = 0; i < commitments.length; ++i) {
+            Lock memory lock = commitments[i];
+            lockHashes[i] = keccak256(abi.encode(lockTypehash, lock.lockTag, lock.token, lock.amount));
+        }
+
+        return keccak256(abi.encode(typeHash, arbiter, chainId, keccak256(abi.encode(lockHashes)), witnessHash));
     }
 
     function _createDigest(bytes32 domainSeparator, bytes32 hashValue) internal pure returns (bytes32) {

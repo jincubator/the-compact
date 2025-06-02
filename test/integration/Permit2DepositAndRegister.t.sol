@@ -10,7 +10,7 @@ import { Scope } from "../../src/types/Scope.sol";
 import { Component } from "../../src/types/Components.sol";
 import { Claim } from "../../src/types/Claims.sol";
 import { BatchClaim } from "../../src/types/BatchClaims.sol";
-import { Element } from "../../src/types/EIP712Types.sol";
+import { Element, Lock } from "../../src/types/EIP712Types.sol";
 import { DepositViaPermit2Lib } from "../../src/lib/DepositViaPermit2Lib.sol";
 import { EIP712, Setup } from "./Setup.sol";
 
@@ -582,13 +582,14 @@ contract Permit2DepositAndRegisterTest is Setup {
             Element[] memory elements = new Element[](1);
             bytes32[] memory witnessHashes = new bytes32[](1);
             {
-                uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-                idsAndAmounts[0][0] = id;
-                idsAndAmounts[0][1] = amount;
+                Lock[] memory commitments = new Lock[](1);
+                bytes12 lockTag = bytes12(bytes32(id));
+                address token = address(uint160(id));
+                commitments[0] = Lock({ lockTag: lockTag, token: token, amount: amount });
                 elements[0] = Element({
                     arbiter: 0x2222222222222222222222222222222222222222,
                     chainId: block.chainid,
-                    idsAndAmounts: idsAndAmounts
+                    commitments: commitments
                 });
                 witnessHashes[0] = _createCompactWitness(234);
             }
