@@ -72,27 +72,27 @@ contract IdLibTest is Test {
         assertEq(allocator.toCompactFlag(), expectedFlag, "Fuzz toCompactFlag(address) failed");
     }
 
-    function testUsingAllocatorId() public {
+    function testToAllocatorId() public {
         address allocator = makeAddr("Allocator");
         uint8 compactFlag = allocator.toCompactFlag(); // Should be 1
         uint96 expectedId = (uint96(compactFlag) << 88) | uint96(uint256(uint160(allocator)) & ((1 << 88) - 1));
-        assertEq(allocator.usingAllocatorId(), expectedId, "usingAllocatorId calculation failed");
+        assertEq(allocator.toAllocatorId(), expectedId, "toAllocatorId calculation failed");
 
         address allocatorMaxCompact = address(0x000000000000000000AbCdeF1234567890aBcDef);
         compactFlag = allocatorMaxCompact.toCompactFlag(); // Should be 15
         expectedId = (uint96(compactFlag) << 88) | uint96(uint256(uint160(allocatorMaxCompact)) & ((1 << 88) - 1));
-        assertEq(allocatorMaxCompact.usingAllocatorId(), expectedId, "usingAllocatorId max compact failed");
+        assertEq(allocatorMaxCompact.toAllocatorId(), expectedId, "toAllocatorId max compact failed");
 
         address allocatorZeroCompact = address(0x1234567890AbcdEF1234567890aBcdef12345678);
         compactFlag = allocatorZeroCompact.toCompactFlag(); // Should be 0
         expectedId = (uint96(compactFlag) << 88) | uint96(uint256(uint160(allocatorZeroCompact)) & ((1 << 88) - 1));
-        assertEq(allocatorZeroCompact.usingAllocatorId(), expectedId, "usingAllocatorId zero compact failed");
+        assertEq(allocatorZeroCompact.toAllocatorId(), expectedId, "toAllocatorId zero compact failed");
     }
 
-    function testFuzzUsingAllocatorId(address allocator) public pure {
+    function testFuzzToAllocatorId(address allocator) public pure {
         uint8 compactFlag = allocator.toCompactFlag();
         uint96 expectedId = (uint96(compactFlag) << 88) | uint96(uint256(uint160(allocator)) & ((1 << 88) - 1));
-        assertEq(allocator.usingAllocatorId(), expectedId, "Fuzz usingAllocatorId failed");
+        assertEq(allocator.toAllocatorId(), expectedId, "Fuzz toAllocatorId failed");
     }
 
     function testToLockTag_Components() public view {
@@ -154,7 +154,7 @@ contract IdLibTest is Test {
     }
 
     function testFuzzToAllocatorId_FromTag(address fuzzedAllocator) public pure {
-        uint96 fuzzedAllocatorId = fuzzedAllocator.usingAllocatorId();
+        uint96 fuzzedAllocatorId = fuzzedAllocator.toAllocatorId();
         bytes12 lockTag = fuzzedAllocatorId.toLockTag(Scope.Multichain, ResetPeriod.OneDay);
         assertEq(lockTag.toAllocatorId(), fuzzedAllocatorId, "Fuzz toAllocatorId from tag failed");
     }
@@ -276,18 +276,6 @@ contract IdLibTest is Test {
         assertEq(uint8(tag.toResetPeriod()), uint8(expectedPeriod), "Fuzz toResetPeriod(tag) failed");
     }
 
-    function testToCompactFlag_FromId() public pure {
-        uint256 baseId = 0;
-        for (uint8 i = 0; i < 16; i++) {
-            uint256 id = baseId | (uint256(i) << 248);
-            assertEq(id.toCompactFlag(), i, string.concat("toCompactFlag(ID) failed for flag ", vm.toString(i)));
-        }
-    }
-
-    function testFuzzToCompactFlag_FromId(uint256 id) public pure {
-        uint8 expectedFlag = uint8((id >> 248) & 15);
-        assertEq(id.toCompactFlag(), expectedFlag, "Fuzz toCompactFlag(ID) failed");
-    }
 
     function testToSeconds() public pure {
         assertEq(ResetPeriod.OneSecond.toSeconds(), 1, "OneSecond");
@@ -306,7 +294,7 @@ contract IdLibTest is Test {
         Scope scope = Scope.Multichain;
         ResetPeriod resetPeriod = ResetPeriod.OneDay;
 
-        uint96 lockAllocatorId = allocator.usingAllocatorId(); // Uses compact flag internally
+        uint96 lockAllocatorId = allocator.toAllocatorId(); // Uses compact flag internally
         bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, scope, resetPeriod);
         uint256 expectedId = uint256(bytes32(lockTag)) | uint256(uint160(token));
 
@@ -317,30 +305,36 @@ contract IdLibTest is Test {
         Scope actualScope = Scope(uint8(scope) % 2);
         ResetPeriod actualResetPeriod = ResetPeriod(uint8(resetPeriod) % 8);
 
-        uint96 lockAllocatorId = allocator.usingAllocatorId();
+        uint96 lockAllocatorId = allocator.toAllocatorId();
         bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, actualScope, actualResetPeriod);
 
         uint256 actualId = IdLib.toId(token, allocator, actualResetPeriod, actualScope);
         assertEq(actualId, uint256(bytes32(lockTag)) | uint256(uint160(token)));
+
+        uint8 compactFlag;
+        assembly ("memory-safe") {
+            // extract 5th, 6th, 7th & 8th uppermost bits
+            compactFlag := and(shr(248, actualId), 15)
+        }
 
         // Cross-check extractors
         assertEq(actualId.toAddress(), token, "Extracted token mismatch");
         assertEq(uint8(actualId.toResetPeriod()), uint8(actualResetPeriod), "Extracted reset period mismatch");
         assertEq(uint8(actualId.toScope()), uint8(actualScope), "Extracted scope mismatch");
         assertEq(actualId.toAllocatorId(), lockAllocatorId, "Extracted allocatorId mismatch");
-        assertEq(actualId.toCompactFlag(), allocator.toCompactFlag(), "Extracted compact flag mismatch");
+        assertEq(compactFlag, allocator.toCompactFlag(), "Extracted compact flag mismatch");
         assertEq(actualId.toLockTag(), lockTag, "Extracted lockTag mismatch");
     }
 
     function testRegister() public {
         // Default allocator already registered in setUp
-        uint96 defaultAllocatorId = allocatorAddress.usingAllocatorId();
+        uint96 defaultAllocatorId = allocatorAddress.toAllocatorId();
         assertEq(allocatorId, defaultAllocatorId, "Registered allocator ID mismatch");
         assertEq(allocatorId.toRegisteredAllocator(), allocatorAddress, "Stored allocator mismatch");
 
         // Try registering a new one
         address newAllocator = makeAddr("new allocator");
-        uint96 newAllocatorId = newAllocator.usingAllocatorId();
+        uint96 newAllocatorId = newAllocator.toAllocatorId();
 
         vm.expectEmit(true, true, true, true);
         emit ITheCompact.AllocatorRegistered(newAllocatorId, newAllocator);
@@ -381,7 +375,7 @@ contract IdLibTest is Test {
             // Create address with same lower 88 bits but different upper bits
             address variantAddr = address(uint160((i << 88) | baseLower88));
 
-            if (variantAddr.usingAllocatorId() == baseAddr.usingAllocatorId() && variantAddr != baseAddr) {
+            if (variantAddr.toAllocatorId() == baseAddr.toAllocatorId() && variantAddr != baseAddr) {
                 collisions++;
                 console.log("Collision found with variant", i);
                 console.log("Base address:", baseAddr);
@@ -401,7 +395,7 @@ contract IdLibTest is Test {
     function testToRegisteredAllocator_RevertNotRegistered(address unregisteredAllocator) public {
         vm.skip(true); // TODO: this should not be colliding often, right?
         vm.assume(unregisteredAllocator != allocatorAddress);
-        uint96 unregisteredId = unregisteredAllocator.usingAllocatorId();
+        uint96 unregisteredId = unregisteredAllocator.toAllocatorId();
         assertNotEq(
             unregisteredAllocator, allocatorAddress, "Unregistered allocator should not be the registered allocator"
         );
@@ -410,38 +404,23 @@ contract IdLibTest is Test {
         unregisteredId.toRegisteredAllocator();
     }
 
-    function testToAllocatorIdIfRegistered() public view {
-        assertEq(allocatorAddress.toAllocatorIdIfRegistered(), allocatorId, "Should return ID for registered allocator");
-    }
-
-    function testToAllocatorIdIfRegistered_RevertNotRegistered(address unregisteredAllocator) public {
-        vm.skip(true); // TODO: this should be reverting
-
-        // This collides way too often for my comfort
-        vm.assume(unregisteredAllocator != allocatorAddress && unregisteredAllocator.usingAllocatorId() != allocatorId);
-        vm.expectRevert(
-            abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, unregisteredAllocator.usingAllocatorId())
-        );
-        unregisteredAllocator.toAllocatorIdIfRegistered();
-    }
-
     function testMustHaveARegisteredAllocator() public view {
         // Should not revert for registered allocator
         allocatorId.mustHaveARegisteredAllocator();
     }
 
-    function testToRegisteredAllocatorId_FromId() public view {
+    function testToAllocatorIdIfRegistered_FromId() public view {
         uint256 id = allocatorId.asUint256() << 160 | tokenAddress.asUint256(); // Construct ID with registered allocator ID
-        assertEq(id.toRegisteredAllocatorId(), allocatorId, "Should extract registered allocator ID from resource ID");
+        assertEq(id.toAllocatorIdIfRegistered(), allocatorId, "Should extract registered allocator ID from resource ID");
     }
 
-    function testToRegisteredAllocatorId_FromId_RevertNotRegistered(uint96 unregisteredId, address token) public {
+    function testToAllocatorIdIfRegistered_FromId_RevertNotRegistered(uint96 unregisteredId, address token) public {
         vm.skip(true); // TODO: this should be reverting
         vm.assume(unregisteredId != allocatorId);
 
         uint256 id = unregisteredId.asUint256() << 160 | token.asUint256();
         vm.expectRevert(abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, unregisteredId));
-        id.toRegisteredAllocatorId();
+        id.toAllocatorIdIfRegistered();
     }
 
     function testHasRegisteredAllocatorId_FromTag() public view {
@@ -474,7 +453,7 @@ contract IdLibTest is Test {
     function testToAllocator_FromId() public view {
         bytes12 lockTag = IdLib.toLockTag(allocatorId, Scope.ChainSpecific, ResetPeriod.OneHourAndFiveMinutes);
         uint256 id = uint256(bytes32(lockTag)) | tokenAddress.asUint256();
-        assertEq(id.toAllocator(), allocatorAddress, "toAllocator from ID failed");
+        assertEq(id.toAllocatorId().toRegisteredAllocator(), allocatorAddress, "toAllocator from ID failed");
     }
 
     function testToLock_FromId() public view {

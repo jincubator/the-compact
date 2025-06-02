@@ -260,7 +260,7 @@ library TransferLib {
             uint256 claimantId = id.withReplacedLockTag(claimantLockTag);
 
             // Verify the allocator ID is registered.
-            claimantId.toRegisteredAllocatorId();
+            claimantId.toAllocatorIdIfRegistered();
 
             // Burn tokens from the original context.
             from.burn(id, amount);

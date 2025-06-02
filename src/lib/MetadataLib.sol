@@ -615,7 +615,7 @@ library MetadataLib {
      * @return lockTag The lock tag.
      */
     function toLockTag(Lock memory lock) internal pure returns (bytes12) {
-        uint96 allocatorId = lock.allocator.usingAllocatorId();
+        uint96 allocatorId = lock.allocator.toAllocatorId();
         return allocatorId.toLockTag(lock.scope, lock.resetPeriod);
     }
 
@@ -627,7 +627,7 @@ library MetadataLib {
     function toId(Lock memory lock) internal pure returns (uint256 id) {
         id = (
             (lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252)
-                | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256()
+                | (lock.allocator.toAllocatorId().asUint256() << 160) | lock.token.asUint256()
         );
     }
 }

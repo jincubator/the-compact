@@ -142,7 +142,7 @@ contract ComponentLibTest is Test {
         assertEq(idsAndAmounts.length, 1, "idsAndAmounts length mismatch");
         assertEq(idsAndAmounts[0][0], id, "ID mismatch");
         assertEq(idsAndAmounts[0][1], amount, "Amount mismatch");
-        assertEq(firstAllocatorId, ALLOCATOR.usingAllocatorId(), "Allocator ID mismatch");
+        assertEq(firstAllocatorId, ALLOCATOR.toAllocatorId(), "Allocator ID mismatch");
         assertEq(shortestResetPeriod, uint256(ResetPeriod.OneDay), "Shortest period mismatch");
     }
 
@@ -168,7 +168,7 @@ contract ComponentLibTest is Test {
         assertEq(idsAndAmounts[0][1], amount1);
         assertEq(idsAndAmounts[1][0], id2);
         assertEq(idsAndAmounts[1][1], amount2);
-        assertEq(firstAllocatorId, ALLOCATOR.usingAllocatorId(), "Allocator ID mismatch");
+        assertEq(firstAllocatorId, ALLOCATOR.toAllocatorId(), "Allocator ID mismatch");
         assertEq(shortestResetPeriod, uint256(ResetPeriod.OneHourAndFiveMinutes), "Shortest period mismatch"); // OneHour < OneDay
     }
 

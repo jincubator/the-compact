@@ -29,7 +29,7 @@ contract HashLibTest is Setup {
     uint256 nonce;
     uint256 expiration;
 
-    uint96 allocatorId = IdLib.usingAllocatorId(address(0xdeadbeef));
+    uint96 allocatorId = IdLib.toAllocatorId(address(0xdeadbeef));
     bytes12 lockTag = IdLib.toLockTag(allocatorId, Scope.Multichain, ResetPeriod.OneDay);
 
     function setUp() public override {

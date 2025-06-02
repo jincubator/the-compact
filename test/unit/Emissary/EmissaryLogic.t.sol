@@ -126,7 +126,7 @@ contract EmissaryLogicTest is Test {
 
     function test_lockTag() public view {
         address allocatorOne = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
-        uint96 allocatorOneId = allocatorOne.usingAllocatorId();
+        uint96 allocatorOneId = allocatorOne.toAllocatorId();
         bytes12 tag = toLockTag(allocatorOneId, Scope.Multichain, ResetPeriod.OneHourAndFiveMinutes);
         (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) = fromLockTag(tag);
         assertEq(allocatorOneId, _allocatorId);
