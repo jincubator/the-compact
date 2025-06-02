@@ -276,7 +276,6 @@ contract IdLibTest is Test {
         assertEq(uint8(tag.toResetPeriod()), uint8(expectedPeriod), "Fuzz toResetPeriod(tag) failed");
     }
 
-
     function testToSeconds() public pure {
         assertEq(ResetPeriod.OneSecond.toSeconds(), 1, "OneSecond");
         assertEq(ResetPeriod.FifteenSeconds.toSeconds(), 15, "FifteenSeconds");

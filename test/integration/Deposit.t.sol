@@ -687,7 +687,7 @@ contract DepositTest is Setup {
         Scope scope = Scope.Multichain;
         uint256 amount = 1e18;
 
-        uint96 allocatorId = uint96(uint160(allocator) >> (64 + 4 /* 1 byte for scope + 3 bytes for reset period */)); // unregistered allocator
+        uint96 allocatorId = uint96(uint160(allocator) >> (64 + 4) /* 1 byte for scope + 3 bytes for reset period */ ); // unregistered allocator
 
         bytes12 lockTag =
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
