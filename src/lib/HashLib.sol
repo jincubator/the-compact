@@ -702,11 +702,7 @@ library HashLib {
      * @param claims           An array of BatchClaimComponent structs.
      * @return commitmentsHash The EIP-712 hash of the Lock[] commitments array.
      */
-    function toCommitmentsHash(BatchClaimComponent[] calldata claims)
-        internal
-        pure
-        returns (uint256 commitmentsHash)
-    {
+    function toCommitmentsHash(BatchClaimComponent[] calldata claims) internal pure returns (uint256 commitmentsHash) {
         // Retrieve the total number of committed locks in the batch claim.
         uint256 totalLocks = claims.length;
 
@@ -741,7 +737,11 @@ library HashLib {
         }
     }
 
-    function allocateCommitmentsHashingMemory(uint256 totalLocks) internal pure returns (uint256 ptr, uint256 hashesPtr) {
+    function allocateCommitmentsHashingMemory(uint256 totalLocks)
+        internal
+        pure
+        returns (uint256 ptr, uint256 hashesPtr)
+    {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
             ptr := mload(0x40)

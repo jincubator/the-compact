@@ -254,8 +254,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerAllocator(allocator, proof);
     }
 
-    function __benchmark(bytes32 salt) external payable {
-        _benchmark(salt);
+    function __benchmark(bytes32 /* salt */ ) external payable {
+        _benchmark();
     }
 
     function getRequiredWithdrawalFallbackStipends()
