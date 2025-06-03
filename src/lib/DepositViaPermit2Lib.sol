@@ -189,11 +189,11 @@ library DepositViaPermit2Lib {
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
                     mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    mstore(add(categorySpecificStart, 0x68), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                    mstore(add(categorySpecificStart, 0x7c), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FIVE)
                     mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
 
                     // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0x88)
+                    categorySpecificEnd := add(categorySpecificStart, 0x9c)
                     categorySpecificStart := add(categorySpecificStart, 0x10)
                 }
 
