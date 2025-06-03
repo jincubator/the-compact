@@ -285,10 +285,7 @@ contract Permit2DepositAndRegisterTest is Setup {
         bytes32 typehash;
         {
             claim.witness = _createCompactWitness(234);
-
-            string memory typestring =
-                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
-            typehash = keccak256(bytes(typestring));
+            typehash = batchCompactWithWitnessTypehash;
         }
 
         // Create ids and idsAndAmounts
@@ -337,11 +334,9 @@ contract Permit2DepositAndRegisterTest is Setup {
         // Create activation typehash
         bytes32 activationTypehash;
         {
-            string memory typestring =
-                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
             activationTypehash = keccak256(
                 bytes(
-                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", typestring)
+                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", batchCompactWitnessTypestring)
                 )
             );
         }
@@ -926,10 +921,7 @@ contract Permit2DepositAndRegisterTest is Setup {
         bytes32 typehash;
         {
             claim.witness = bytes32(0);
-
-            string memory typestring =
-                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)";
-            typehash = keccak256(bytes(typestring));
+            typehash = batchCompactTypehash;
         }
 
         // Create ids and idsAndAmounts
@@ -968,7 +960,7 @@ contract Permit2DepositAndRegisterTest is Setup {
                 args.sponsor = claim.sponsor;
                 args.nonce = params.nonce;
                 args.expires = claim.expires;
-                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
                 args.witness = claim.witness;
             }
 
@@ -978,11 +970,9 @@ contract Permit2DepositAndRegisterTest is Setup {
         // Create activation typehash
         bytes32 activationTypehash;
         {
-            string memory typestring =
-                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)";
             activationTypehash = keccak256(
                 bytes(
-                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", typestring)
+                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", batchCompactTypestring)
                 )
             );
         }
@@ -1077,9 +1067,7 @@ contract Permit2DepositAndRegisterTest is Setup {
         {
             CreateBatchClaimHashWithWitnessArgs memory args;
             {
-                args.typehash = keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"
-                );
+                args.typehash = batchCompactTypehash;
                 args.arbiter = 0x2222222222222222222222222222222222222222;
                 args.sponsor = swapper;
                 args.nonce = params.nonce;

@@ -191,7 +191,7 @@ contract TestHelpers is Test {
         bytes32 permitBatchHash = keccak256(
             abi.encode(
                 keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)TokenPermissions(address token,uint256 amount)"
                 ),
                 args.tokenPermissionsHash,
                 args.spender,
@@ -218,7 +218,7 @@ contract TestHelpers is Test {
         bytes32 permitBatchHash = keccak256(
             abi.encode(
                 keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
                 ),
                 args.tokenPermissionsHash,
                 args.spender,
