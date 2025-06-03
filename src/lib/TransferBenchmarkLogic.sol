@@ -37,7 +37,7 @@ contract TransferBenchmarkLogic {
 
         assembly ("memory-safe") {
             calldatacopy(0, 0, calldatasize())
-            let success := call(gas(), benchmarker, callvalue(), 0, 0x40, 0, calldatasize())
+            let success := call(gas(), benchmarker, callvalue(), 0, calldatasize(), 0, 0x40)
             if iszero(success) {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())

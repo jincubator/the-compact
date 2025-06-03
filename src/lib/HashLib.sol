@@ -627,9 +627,6 @@ library HashLib {
             // Place the lock typehash into the start of memory.
             mstore(m, LOCK_TYPEHASH)
 
-            // Derive pointer to id and amount and copy into memory.
-            calldatacopy(0x20, add(claim, 0xe0), 0x40)
-
             // Deconstruct id into lockTag + token by inserting an empty word.
             mstore(add(m, 0x20), calldataload(add(claim, 0xe0))) // lockTag
             mstore(add(m, 0x2c), 0) // empty word between lockTag & token
