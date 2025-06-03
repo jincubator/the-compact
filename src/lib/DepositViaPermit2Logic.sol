@@ -307,7 +307,7 @@ contract DepositViaPermit2Logic is DepositLogic {
                     let totalWitnessMemoryOffset :=
                         and(
                             add(
-                                add(0x11d, add(witness.length, iszero(iszero(witness.length)))),
+                                add(0x147, add(witness.length, iszero(iszero(witness.length)))),
                                 mul(eq(compactCategory, 1), 0x0b)
                             ),
                             not(0x1f)
