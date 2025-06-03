@@ -4,5 +4,7 @@
   "batchDepositAndRegisterViaPermit2": "208341",
   "batchDepositAndRegisterWithWitnessViaPermit2": "208446",
   "claim": "89171",
-  "depositAndRegisterViaPermit2": "117280"
+  "claimWithWitness": "89382",
+  "depositAndRegisterViaPermit2": "117280",
+  "depositAndRegisterWithWitnessViaPermit2": "117370"
 }
