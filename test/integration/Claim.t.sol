@@ -413,9 +413,7 @@ contract ClaimTest is Setup {
         {
             CreateBatchClaimHashWithWitnessArgs memory args;
             {
-                args.typehash = keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-                );
+                args.typehash = batchCompactWithWitnessTypehash;
                 args.arbiter = 0x2222222222222222222222222222222222222222;
                 args.sponsor = claim.sponsor;
                 args.nonce = claim.nonce;
@@ -565,9 +563,7 @@ contract ClaimTest is Setup {
         {
             CreateBatchClaimHashWithWitnessArgs memory args;
             {
-                args.typehash = keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-                );
+                args.typehash = batchCompactWithWitnessTypehash;
                 args.arbiter = 0x2222222222222222222222222222222222222222;
                 args.sponsor = claim.sponsor;
                 args.nonce = claim.nonce;

@@ -71,8 +71,10 @@ contract TestHelpers is Test {
      * Helper function to create a claim hash with a CreateClaimHashWithWitnessArgs struct
      */
     function _createClaimHash(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        bytes12 lockTag = bytes12(bytes32(args.id));
+        address token = address(uint160(args.id));
         return keccak256(
-            abi.encode(args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount)
+            abi.encode(args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, lockTag, token, args.amount)
         );
     }
 
@@ -88,16 +90,20 @@ contract TestHelpers is Test {
         uint256 id,
         uint256 amount
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(typehash, arbiter, sponsor, nonce, expires, id, amount));
+        bytes12 lockTag = bytes12(bytes32(id));
+        address token = address(uint160(id));
+        return keccak256(abi.encode(typehash, arbiter, sponsor, nonce, expires, lockTag, token, amount));
     }
 
     /**
      * Helper function to create a claim hash with witness
      */
     function _createClaimHashWithWitness(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        bytes12 lockTag = bytes12(bytes32(args.id));
+        address token = address(uint160(args.id));
         return keccak256(
             abi.encode(
-                args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount, args.witness
+                args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, lockTag, token, args.amount, args.witness
             )
         );
     }

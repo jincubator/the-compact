@@ -371,18 +371,18 @@ library HashLib {
                 mstore(add(m, 0x20), BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
                 mstore(add(m, 0x40), BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
                 mstore(add(m, 0x60), BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                mstore(add(m, 0x87), BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX)
+                mstore(add(m, 0x88), BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX)
                 mstore(add(m, 0x80), BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE)
 
                 // Copy remaining typestring data from calldata to memory.
-                let witnessStart := add(m, 0xa7)
+                let witnessStart := add(m, 0xa8)
                 calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
                 // Prepare closing ")" parenthesis at the very end of the memory region.
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the typehash from the prepared data.
-                derivedTypehash := keccak256(m, add(0xa8, witnessTypestringLength))
+                derivedTypehash := keccak256(m, add(0xa9, witnessTypestringLength))
 
                 // Prepare initial components of message data: typehash & arbiter.
                 mstore(m, derivedTypehash)
@@ -594,19 +594,19 @@ library HashLib {
                 mstore(add(m, 0x40), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
                 mstore(add(m, 0x60), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
                 mstore(add(m, 0x80), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
-                mstore(add(m, 0xb9), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SEVEN)
+                mstore(add(m, 0xb8), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SEVEN)
                 mstore(add(m, 0xa0), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
 
                 // Copy remaining witness typestring from calldata to memory.
-                let witnessStart := add(m, 0xd9)
+                let witnessStart := add(m, 0xd8)
                 calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
                 // Prepare closing ")" parenthesis at the very end of the memory region.
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the element typehash and multichain compact typehash from the prepared data.
-                derivedElementTypehash := keccak256(add(m, 0x53), add(0x87, witnessTypestringLength))
-                derivedMultichainCompactTypehash := keccak256(m, add(0xda, witnessTypestringLength))
+                derivedElementTypehash := keccak256(add(m, 0x53), add(0x86, witnessTypestringLength))
+                derivedMultichainCompactTypehash := keccak256(m, add(0xd9, witnessTypestringLength))
             }
 
             elementTypehash, multichainCompactTypehash := createHash(claimPointer)

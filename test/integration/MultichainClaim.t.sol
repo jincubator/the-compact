@@ -77,16 +77,14 @@ contract MultichainClaimTest is Setup {
         // Create element hashes
         bytes32[] memory elementHashes = new bytes32[](3);
         {
-            bytes32 elementTypehash = keccak256(
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 elementTypehash = multichainElementsWithWitnessTypehash;
 
             elementHashes[0] = keccak256(
                 abi.encode(
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsOne)))),
+                    _hashOfHashes(idsAndAmountsOne),
                     claim.witness
                 )
             );
@@ -96,7 +94,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo)))),
+                    _hashOfHashes(idsAndAmountsTwo),
                     claim.witness
                 )
             );
@@ -106,7 +104,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     thirdChainId,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo)))),
+                    _hashOfHashes(idsAndAmountsTwo),
                     claim.witness
                 )
             );
@@ -115,9 +113,7 @@ contract MultichainClaimTest is Setup {
         // Create multichain claim hash
         bytes32 claimHash;
         {
-            bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 multichainTypehash = multichainCompactWithWitnessTypehash;
 
             claimHash = keccak256(
                 abi.encode(
@@ -320,9 +316,7 @@ contract MultichainClaimTest is Setup {
 
         // Create element hashes
         {
-            bytes32 elementTypehash = keccak256(
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 elementTypehash = multichainElementsWithWitnessTypehash;
 
             args.allocationHashOne = keccak256(
                 abi.encode(
@@ -354,9 +348,7 @@ contract MultichainClaimTest is Setup {
 
         // Create multichain claim hash
         {
-            bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 multichainTypehash = multichainCompactWithWitnessTypehash;
 
             args.claimHash = keccak256(
                 abi.encode(
@@ -565,16 +557,14 @@ contract MultichainClaimTest is Setup {
         // Create element hashes
         bytes32[] memory elementHashes = new bytes32[](3);
         {
-            bytes32 elementTypehash = keccak256(
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 elementTypehash = multichainElementsWithWitnessTypehash;
 
             elementHashes[0] = keccak256(
                 abi.encode(
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsOne)))),
+                    _hashOfHashes(idsAndAmountsOne),
                     claim.witness
                 )
             );
@@ -584,7 +574,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo)))),
+                    _hashOfHashes(idsAndAmountsTwo),
                     claim.witness
                 )
             );
@@ -594,7 +584,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     thirdChainId,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo)))),
+                    _hashOfHashes(idsAndAmountsTwo),
                     claim.witness
                 )
             );
@@ -603,9 +593,7 @@ contract MultichainClaimTest is Setup {
         // Create multichain claim hash
         bytes32 claimHash;
         {
-            bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 multichainTypehash = multichainCompactWithWitnessTypehash;
 
             claimHash = keccak256(
                 abi.encode(
@@ -832,9 +820,7 @@ contract MultichainClaimTest is Setup {
 
         // Create element hashes
         {
-            bytes32 elementTypehash = keccak256(
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 elementTypehash = multichainElementsWithWitnessTypehash;
 
             args.allocationHashOne = keccak256(
                 abi.encode(
@@ -866,9 +852,7 @@ contract MultichainClaimTest is Setup {
 
         // Create multichain claim hash
         {
-            bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 multichainTypehash = multichainCompactWithWitnessTypehash;
 
             args.claimHash = keccak256(
                 abi.encode(
@@ -1076,7 +1060,7 @@ contract MultichainClaimTest is Setup {
         // Create element hashes
         bytes32[] memory elementHashes = new bytes32[](3);
         {
-            bytes32 elementTypehash = keccak256("Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)");
+            bytes32 elementTypehash = multichainElementsTypehash;
 
             elementHashes[0] = keccak256(
                 abi.encode(
@@ -1109,9 +1093,7 @@ contract MultichainClaimTest is Setup {
         // Create multichain claim hash
         bytes32 claimHash;
         {
-            bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"
-            );
+            bytes32 multichainTypehash = multichainCompactTypehash;
 
             claimHash = keccak256(
                 abi.encode(
@@ -1308,7 +1290,7 @@ contract MultichainClaimTest is Setup {
 
         // Create element hashes
         {
-            bytes32 elementTypehash = keccak256("Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)");
+            bytes32 elementTypehash = multichainElementsTypehash;
 
             args.allocationHashOne = keccak256(
                 abi.encode(
@@ -1338,9 +1320,7 @@ contract MultichainClaimTest is Setup {
 
         // Create multichain claim hash
         {
-            bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"
-            );
+            bytes32 multichainTypehash = multichainCompactTypehash;
 
             args.claimHash = keccak256(
                 abi.encode(
