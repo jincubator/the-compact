@@ -103,7 +103,15 @@ contract TestHelpers is Test {
         address token = address(uint160(args.id));
         return keccak256(
             abi.encode(
-                args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, lockTag, token, args.amount, args.witness
+                args.typehash,
+                args.arbiter,
+                args.sponsor,
+                args.nonce,
+                args.expires,
+                lockTag,
+                token,
+                args.amount,
+                args.witness
             )
         );
     }
@@ -167,7 +175,7 @@ contract TestHelpers is Test {
         Lock[] memory commitments,
         bytes32 witnessHash
     ) internal pure returns (bytes32) {
-        bytes32 lockTypehash = keccak256(bytes("Lock(bytes12 lockTag, address token, uint256 amount)"));
+        bytes32 lockTypehash = keccak256(bytes("Lock(bytes12 lockTag,address token,uint256 amount)"));
         bytes32[] memory lockHashes = new bytes32[](commitments.length);
         for (uint256 i = 0; i < commitments.length; ++i) {
             Lock memory lock = commitments[i];

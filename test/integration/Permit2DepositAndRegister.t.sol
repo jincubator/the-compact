@@ -336,7 +336,10 @@ contract Permit2DepositAndRegisterTest is Setup {
         {
             activationTypehash = keccak256(
                 bytes(
-                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", batchCompactWitnessTypestring)
+                    string.concat(
+                        "BatchActivation(address activator,uint256[] ids,BatchCompact compact)",
+                        batchCompactWitnessTypestring
+                    )
                 )
             );
         }
@@ -970,7 +973,9 @@ contract Permit2DepositAndRegisterTest is Setup {
         {
             activationTypehash = keccak256(
                 bytes(
-                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", batchCompactTypestring)
+                    string.concat(
+                        "BatchActivation(address activator,uint256[] ids,BatchCompact compact)", batchCompactTypestring
+                    )
                 )
             );
         }

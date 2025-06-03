@@ -1,14 +1,12 @@
 {
-  "batchMultichainClaim": "97287",
-  "batchMultichainClaimWithWitness": "97603",
-  "cancelBatchMultichainClaimWithWitness": "47077",
-  "cancelExogenousBatchMultichainClaimWithWitness": "49345",
-  "cancelExogenousMultichainClaimWithWitness": "46215",
-  "cancelMultichainClaimWithWitness": "45465",
-  "exogenousBatchMultichainClaim": "124818",
-  "exogenousBatchMultichainClaimWithWitness": "125134",
-  "exogenousMultichainClaim": "96425",
-  "exogenousMultichainClaimWithWitness": "96741",
-  "multichainClaim": "95675",
-  "multichainClaimWithWitness": "95991"
+  "batchMultichainClaim": "97118",
+  "batchMultichainClaimWithWitness": "97461",
+  "cancelBatchMultichainClaimWithWitness": "46935",
+  "cancelExogenousBatchMultichainClaimWithWitness": "49234",
+  "cancelExogenousMultichainClaimWithWitness": "46315",
+  "cancelMultichainClaimWithWitness": "45565",
+  "exogenousBatchMultichainClaim": "124680",
+  "exogenousBatchMultichainClaimWithWitness": "125023",
+  "exogenousMultichainClaimWithWitness": "96841",
+  "multichainClaimWithWitness": "96091"
 }

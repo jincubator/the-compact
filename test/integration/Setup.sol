@@ -76,7 +76,8 @@ contract Setup is TestHelpers {
     bytes32 constant witnessTypehash = keccak256(bytes(fullWitnessTypestring));
     bytes32 constant compactTypehash = keccak256(bytes(compactTypestring));
     bytes32 constant compactWithWitnessTypehash = keccak256(bytes(compactWitnessTypestring));
-    string constant batchCompactTypestring = "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)";
+    string constant batchCompactTypestring =
+        "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)";
     string constant batchCompactWitnessTypestring =
         "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)";
     bytes32 constant batchCompactTypehash = keccak256(bytes(batchCompactTypestring));
@@ -318,11 +319,7 @@ contract Setup is TestHelpers {
         for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
             bytes12 lockTagOfId = bytes12(bytes32(idsAndAmounts[i][0]));
             address tokenOfId = address(uint160(idsAndAmounts[i][0]));
-            Lock memory lock = Lock({
-                lockTag: lockTagOfId,
-                token: tokenOfId,
-                amount: idsAndAmounts[i][1]
-            });
+            Lock memory lock = Lock({ lockTag: lockTagOfId, token: tokenOfId, amount: idsAndAmounts[i][1] });
             hashes[i] = keccak256(abi.encode(lockTypehash, lock));
         }
         return keccak256(abi.encodePacked(hashes));
