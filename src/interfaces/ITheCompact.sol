@@ -663,6 +663,7 @@ interface ITheCompact {
     error Expired(uint256 expiration);
     error InvalidSignature();
     error PrematureWithdrawal(uint256 id);
+    error ForcedWithdrawalFailed();
     error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
     error UnallocatedTransfer(address operator, address from, address to, uint256 id, uint256 amount);
     error InvalidBatchAllocation();
