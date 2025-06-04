@@ -236,12 +236,12 @@ library HashLib {
      */
     function toClaimMessageHash(uint256 claimPointer) internal view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
-            function createHash(claim) -> derivedMessageHash, derivedTypehash {
+            for { } 1 { } {
                 // Retrieve the free memory pointer; memory will be left dirtied.
                 let m := mload(0x40)
 
                 // Derive the pointer to the witness typestring.
-                let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+                let witnessTypestringPtr := add(claimPointer, calldataload(add(claimPointer, 0xc0)))
 
                 // Retrieve the length of the witness typestring.
                 let witnessTypestringLength := calldataload(witnessTypestringPtr)
@@ -256,21 +256,21 @@ library HashLib {
                     mstore(add(m, 0x40), 0)
 
                     // Next data segment copied from calldata: sponsor, nonce & expires.
-                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
+                    calldatacopy(add(m, 0x4c), add(claimPointer, 0x4c), 0x54)
 
                     // Prepare final components of message data: lockTag, token and amount.
                     // Deconstruct id into lockTag + token by inserting an empty word.
-                    mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // lockTag
+                    mstore(add(m, 0xa0), calldataload(add(claimPointer, 0xe0))) // lockTag
                     mstore(add(m, 0xac), 0) // last 20 bytes of lockTag and first 12 of token
-                    calldatacopy(add(m, 0xcc), add(claim, 0xec), 0x34) // token + amount
+                    calldatacopy(add(m, 0xcc), add(claimPointer, 0xec), 0x34) // token + amount
 
                     // Derive the message hash from the prepared data.
-                    derivedMessageHash := keccak256(m, 0x100)
+                    messageHash := keccak256(m, 0x100)
 
                     // Set Compact typehash
-                    derivedTypehash := COMPACT_TYPEHASH
+                    typehash := COMPACT_TYPEHASH
 
-                    leave
+                    break
                 }
 
                 // Prepare first component of typestring from five one-word fragments.
@@ -288,10 +288,10 @@ library HashLib {
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the typehash from the prepared data.
-                derivedTypehash := keccak256(m, add(0x8c, witnessTypestringLength))
+                typehash := keccak256(m, add(0x8c, witnessTypestringLength))
 
                 // Prepare initial components of message data: typehash & arbiter.
-                mstore(m, derivedTypehash)
+                mstore(m, typehash)
                 mstore(add(m, 0x20), caller()) // arbiter: msg.sender
 
                 // Clear sponsor memory location as an added precaution so that
@@ -299,22 +299,20 @@ library HashLib {
                 mstore(add(m, 0x40), 0)
 
                 // Next data segment copied from calldata: sponsor, nonce, expires.
-                calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
+                calldatacopy(add(m, 0x4c), add(claimPointer, 0x4c), 0x54)
 
                 // Prepare final components of message data: lockTag, token, amount & witness.
                 // Deconstruct id into lockTag + token by inserting an empty word.
-                mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // lockTag
+                mstore(add(m, 0xa0), calldataload(add(claimPointer, 0xe0))) // lockTag
                 mstore(add(m, 0xac), 0) // last 20 bytes of lockTag and first 12 of token
-                calldatacopy(add(m, 0xcc), add(claim, 0xec), 0x34) // token + amount
+                calldatacopy(add(m, 0xcc), add(claimPointer, 0xec), 0x34) // token + amount
 
-                mstore(add(m, 0x100), calldataload(add(claim, 0xa0))) // witness
+                mstore(add(m, 0x100), calldataload(add(claimPointer, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
-                derivedMessageHash := keccak256(m, 0x120)
+                messageHash := keccak256(m, 0x120)
+                break
             }
-
-            // Execute internal assembly function and store derived messageHash and typehashes.
-            messageHash, typehash := createHash(claimPointer)
         }
     }
 
@@ -332,12 +330,12 @@ library HashLib {
         returns (bytes32 messageHash, bytes32 typehash)
     {
         assembly ("memory-safe") {
-            function createHash(claim, lockCommitmentsHash) -> derivedMessageHash, derivedTypehash {
+            for { } 1 { } {
                 // Retrieve the free memory pointer; memory will be left dirtied.
                 let m := mload(0x40)
 
                 // Derive the pointer to the witness typestring.
-                let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+                let witnessTypestringPtr := add(claimPointer, calldataload(add(claimPointer, 0xc0)))
 
                 // Retrieve the length of the witness typestring.
                 let witnessTypestringLength := calldataload(witnessTypestringPtr)
@@ -352,18 +350,18 @@ library HashLib {
                     mstore(add(m, 0x40), 0)
 
                     // Next data segment copied from calldata: sponsor, nonce, expires.
-                    calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
+                    calldatacopy(add(m, 0x4c), add(claimPointer, 0x4c), 0x54)
 
                     // Prepare final component of message data: commitmentsHash.
-                    mstore(add(m, 0xa0), lockCommitmentsHash)
+                    mstore(add(m, 0xa0), commitmentsHash)
 
                     // Derive the message hash from the prepared data.
-                    derivedMessageHash := keccak256(m, 0xc0)
+                    messageHash := keccak256(m, 0xc0)
 
                     // Set BatchCompact typehash
-                    derivedTypehash := BATCH_COMPACT_TYPEHASH
+                    typehash := BATCH_COMPACT_TYPEHASH
 
-                    leave
+                    break
                 }
 
                 // Prepare first component of typestring from six one-word fragments.
@@ -382,10 +380,10 @@ library HashLib {
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the typehash from the prepared data.
-                derivedTypehash := keccak256(m, add(0xa9, witnessTypestringLength))
+                typehash := keccak256(m, add(0xa9, witnessTypestringLength))
 
                 // Prepare initial components of message data: typehash & arbiter.
-                mstore(m, derivedTypehash)
+                mstore(m, typehash)
                 mstore(add(m, 0x20), caller()) // arbiter: msg.sender
 
                 // Clear sponsor memory location as an added precaution so that
@@ -393,18 +391,16 @@ library HashLib {
                 mstore(add(m, 0x40), 0)
 
                 // Next data segment copied from calldata: sponsor, nonce, expires.
-                calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
+                calldatacopy(add(m, 0x4c), add(claimPointer, 0x4c), 0x54)
 
                 // Prepare final components of message data: commitmentsHash & witness.
-                mstore(add(m, 0xa0), lockCommitmentsHash)
-                mstore(add(m, 0xc0), calldataload(add(claim, 0xa0))) // witness
+                mstore(add(m, 0xa0), commitmentsHash)
+                mstore(add(m, 0xc0), calldataload(add(claimPointer, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
-                derivedMessageHash := keccak256(m, 0xe0)
+                messageHash := keccak256(m, 0xe0)
+                break
             }
-
-            // Execute internal assembly function and store derived messageHash and typehashes.
-            messageHash, typehash := createHash(claimPointer, commitmentsHash)
         }
     }
 
@@ -574,19 +570,19 @@ library HashLib {
         returns (bytes32 elementTypehash, bytes32 multichainCompactTypehash)
     {
         assembly ("memory-safe") {
-            function createHash(claim) -> derivedElementTypehash, derivedMultichainCompactTypehash {
+            for { } 1 { } {
                 // Retrieve the free memory pointer; memory will be left dirtied.
                 let m := mload(0x40)
 
                 // Derive the pointer to the witness typestring and retrieve the length.
-                let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+                let witnessTypestringPtr := add(claimPointer, calldataload(add(claimPointer, 0xc0)))
                 let witnessTypestringLength := calldataload(witnessTypestringPtr)
 
                 if iszero(witnessTypestringLength) {
-                    derivedElementTypehash := ELEMENT_TYPEHASH
-                    derivedMultichainCompactTypehash := MULTICHAIN_COMPACT_TYPEHASH
+                    elementTypehash := ELEMENT_TYPEHASH
+                    multichainCompactTypehash := MULTICHAIN_COMPACT_TYPEHASH
 
-                    leave
+                    break
                 }
                 // Prepare the first five fragments of the multichain compact typehash.
                 mstore(m, MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
@@ -605,11 +601,10 @@ library HashLib {
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the element typehash and multichain compact typehash from the prepared data.
-                derivedElementTypehash := keccak256(add(m, 0x53), add(0x86, witnessTypestringLength))
-                derivedMultichainCompactTypehash := keccak256(m, add(0xd9, witnessTypestringLength))
+                elementTypehash := keccak256(add(m, 0x53), add(0x86, witnessTypestringLength))
+                multichainCompactTypehash := keccak256(m, add(0xd9, witnessTypestringLength))
+                break
             }
-
-            elementTypehash, multichainCompactTypehash := createHash(claimPointer)
         }
     }
 

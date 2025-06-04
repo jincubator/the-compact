@@ -211,7 +211,7 @@ library DepositViaPermit2Lib {
                     )
 
                     let categorySpecificStartIncorporatingWitness :=
-                        add(categorySpecificStart, shl(4, iszero(iszero(witnessLength))))
+                        add(categorySpecificStart, shl(4, iszero(iszero(witness.length))))
                     mstore(
                         add(categorySpecificStartIncorporatingWitness, 0x85),
                         PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX
