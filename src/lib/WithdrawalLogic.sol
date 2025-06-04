@@ -20,6 +20,7 @@ contract WithdrawalLogic is ConstructorLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
     using EfficiencyLib for uint256;
+    using EfficiencyLib for address;
     using EventLib for uint256;
     using TransferLib for address;
 
@@ -109,7 +110,7 @@ contract WithdrawalLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         // Process the withdrawal.
-        msg.sender.withdraw(recipient, id, amount);
+        msg.sender.withdraw(recipient.usingCallerIfNull(), id, amount);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();

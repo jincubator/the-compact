@@ -4,7 +4,8 @@
   "getForcedWithdrawalStatus_disabled": "2715",
   "getForcedWithdrawalStatus_enabled": "715",
   "getForcedWithdrawalStatus_pending": "715",
-  "processForcedWithdrawal": "38494",
-  "processForcedWithdrawal_erc20Token": "30789",
-  "processForcedWithdrawal_fullBalance": "38494"
+  "processForcedWithdrawal": "38516",
+  "processForcedWithdrawal_erc20Token": "30811",
+  "processForcedWithdrawal_fullBalance": "38516",
+  "processForcedWithdrawal_zeroAddress": "11016"
 }
