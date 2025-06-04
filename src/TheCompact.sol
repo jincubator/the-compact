@@ -87,7 +87,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         address sponsor,
         uint256, // nonce
         uint256, // expires
-        uint256, // id
+        bytes12, // lockTag
+        address, // token
         uint256, // amount
         bytes32, // witness
         bytes calldata sponsorSignature
@@ -101,7 +102,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         address sponsor,
         uint256, // nonce
         uint256, // expires
-        bytes32, // idsAndAmountsHash
+        bytes32, // commitmentsHash
         bytes32, // witness
         bytes calldata sponsorSignature
     ) external returns (bytes32 claimHash) {
@@ -254,8 +255,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerAllocator(allocator, proof);
     }
 
-    function __benchmark(bytes32 salt) external payable {
-        _benchmark(salt);
+    function __benchmark(bytes32 /* salt */ ) external payable {
+        _benchmark();
     }
 
     function getRequiredWithdrawalFallbackStipends()
@@ -274,13 +275,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getForcedWithdrawalStatus(account, id);
     }
 
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
-        external
-        view
-        returns (bool isActive, uint256 registrationTimestamp)
-    {
-        registrationTimestamp = _getRegistrationStatus(sponsor, claimHash, typehash);
-        isActive = registrationTimestamp != 0;
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive) {
+        isActive = _isRegistered(sponsor, claimHash, typehash);
     }
 
     function getEmissaryStatus(address sponsor, bytes12 lockTag)

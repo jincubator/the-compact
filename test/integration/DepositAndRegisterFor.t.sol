@@ -80,12 +80,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) =
-                    theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-                assert(isActive);
-                assertEq(registeredAt, block.timestamp);
+                bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+                assert(isRegistered);
             }
         }
 
@@ -139,6 +135,12 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_depositNativeAndRegisterForNoWitnessAndClaim() public {
@@ -195,11 +197,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, COMPACT_TYPEHASH);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
@@ -253,6 +252,12 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_depositERC20AndRegisterForNoWitnessAndClaim() public {
@@ -321,11 +326,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, COMPACT_TYPEHASH);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
@@ -379,6 +381,12 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_depositERC20AndRegisterForAndClaim() public {
@@ -451,12 +459,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) =
-                    theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-                assert(isActive);
-                assertEq(registeredAt, block.timestamp);
+                bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+                assert(isRegistered);
             }
         }
 
@@ -510,6 +514,12 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_batchDepositERC20AndRegisterForAndClaim_lengthOne() public {
@@ -588,12 +598,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) =
-                    theCompact.getRegistrationStatus(swapper, claimHash, batchCompactWithWitnessTypehash);
-                assert(isActive);
-                assertEq(registeredAt, block.timestamp);
+                bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchCompactWithWitnessTypehash);
+                assert(isRegistered);
             }
         }
 
@@ -650,6 +656,12 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchCompactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_batchDepositERC20AndRegisterForAndClaim() public {
@@ -740,12 +752,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) =
-                    theCompact.getRegistrationStatus(swapper, claimHash, batchCompactWithWitnessTypehash);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, batchCompactWithWitnessTypehash);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 
@@ -809,6 +817,12 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(anotherToken.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, id2), 0);
         assertEq(theCompact.balanceOf(params.recipient, id2), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchCompactWithWitnessTypehash);
+            assert(!isRegistered);
+        }
     }
 
     function test_batchDepositAndRegisterForNoWitnessAndClaim() public {
@@ -896,11 +910,8 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(registeredClaimHash, claimHash);
 
             {
-                bool isActive;
-                uint256 registeredAt;
-                (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, BATCH_COMPACT_TYPEHASH);
+                bool isActive = theCompact.isRegistered(swapper, claimHash, BATCH_COMPACT_TYPEHASH);
                 assert(isActive);
-                assertEq(registeredAt, block.timestamp);
             }
         }
 

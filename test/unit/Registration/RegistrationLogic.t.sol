@@ -34,8 +34,8 @@ contract RegistrationLogicTest is Setup {
 
         logic.register(sponsor, claimHash, typehash);
 
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered_ = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered_, "Registration should be active");
     }
 
     function test_registerBatch() public {
@@ -57,8 +57,8 @@ contract RegistrationLogicTest is Setup {
             bytes32 claimHash = claimHashesAndTypehashes[i][0];
             bytes32 typehash = claimHashesAndTypehashes[i][1];
 
-            uint256 registrationTs = logic.getRegistrationStatus(address(this), claimHash, typehash);
-            assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+            bool isRegistered_ = logic.isRegistered(address(this), claimHash, typehash);
+            assertTrue(isRegistered_, "Registration should be active");
         }
     }
 
@@ -74,8 +74,8 @@ contract RegistrationLogicTest is Setup {
             logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration should be active");
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash =
@@ -94,8 +94,8 @@ contract RegistrationLogicTest is Setup {
             logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0));
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration not detected");
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash = HashLib.toFlatMessageHashWithWitness(
@@ -118,13 +118,21 @@ contract RegistrationLogicTest is Setup {
             logic.registerUsingBatchClaimWithWitness(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration should be active");
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash =
             _toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
+    }
+
+    function test_isRegistered_nonexistent() public view {
+        bytes32 claimHash = keccak256("look ma, no claim");
+        bytes32 typehash = COMPACT_TYPEHASH;
+
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertFalse(isRegistered, "Registration for nonexistent claim should be inactive");
     }
 
     function test_registerUsingBatchClaimNoWitness() public {
@@ -141,22 +149,14 @@ contract RegistrationLogicTest is Setup {
         );
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration not detected");
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash = _toFlatBatchClaimWithWitnessMessageHash(
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0)
         );
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
-    }
-
-    function test_getRegistrationStatus_nonexistent() public view {
-        bytes32 claimHash = keccak256("look ma, no claim");
-        bytes32 typehash = COMPACT_TYPEHASH;
-
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, 0, "Registration timestamp for nonexistent claim should be 0");
     }
 
     function test_register_zeroAddress() public {
@@ -167,8 +167,8 @@ contract RegistrationLogicTest is Setup {
         logic.register(address(0), claimHash, typehash);
 
         // Verify registration for zero address
-        uint256 registrationTs = logic.getRegistrationStatus(address(0), claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration for zero address should succeed");
+        bool isRegistered = logic.isRegistered(address(0), claimHash, typehash);
+        assertTrue(isRegistered, "Registration for zero address should be active");
     }
 
     function test_register_zeroHash() public {
@@ -179,8 +179,8 @@ contract RegistrationLogicTest is Setup {
         logic.register(sponsor, claimHash, typehash);
 
         // Verify registration with zero hash
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration with zero hash should succeed");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration with zero hash should be active");
     }
 
     function test_register_reregistration() public {
@@ -189,20 +189,18 @@ contract RegistrationLogicTest is Setup {
 
         // First registration
         logic.register(sponsor, claimHash, typehash);
-        uint256 firstRegistrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool firstIsRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(firstIsRegistered, "First registration should be active");
 
-        // Jump ahead in time
+        // Jump ahead in time (should have no effect on registration status)
         vm.warp(block.timestamp + 1 days);
 
         // Re-register the same claim
         logic.register(sponsor, claimHash, typehash);
-        uint256 secondRegistrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
+        bool secondIsRegistered = logic.isRegistered(sponsor, claimHash, typehash);
 
-        // Verify timestamp updated
-        assertNotEq(
-            firstRegistrationTs, secondRegistrationTs, "Registration timestamp should update on re-registration"
-        );
-        assertEq(secondRegistrationTs, block.timestamp, "New registration timestamp should match current block time");
+        // Verify still registered
+        assertTrue(secondIsRegistered, "Re-registration should still be active");
     }
 
     function test_registerBatch_emptyArray() public {
@@ -238,8 +236,8 @@ contract RegistrationLogicTest is Setup {
             bytes32 claimHash = duplicateEntries[i][0];
             bytes32 entryTypehash = duplicateEntries[i][1];
 
-            uint256 registrationTs = logic.getRegistrationStatus(address(this), claimHash, entryTypehash);
-            assertEq(registrationTs, block.timestamp, "Registration timestamp should match block timestamp");
+            bool isRegistered = logic.isRegistered(address(this), claimHash, entryTypehash);
+            assertTrue(isRegistered, "Registration should be active");
         }
     }
 
@@ -255,8 +253,8 @@ contract RegistrationLogicTest is Setup {
             address(0), tokenId, amount, address(0), nonce, expires, typehash, witness
         );
 
-        uint256 registrationTs = logic.getRegistrationStatus(address(0), claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration with zero values should succeed");
+        bool isRegistered = logic.isRegistered(address(0), claimHash, typehash);
+        assertTrue(isRegistered, "Registration with zero values should be active");
     }
 
     function test_registerUsingBatchClaimWithWitness_emptyArray() public {
@@ -271,8 +269,8 @@ contract RegistrationLogicTest is Setup {
             logic.registerUsingBatchClaimWithWitness(sponsor, emptyArray, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration with empty array should succeed");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration with empty array should be active");
     }
 
     function test_registerUsingBatchClaimWithWitness_maxValues() public {
@@ -289,8 +287,8 @@ contract RegistrationLogicTest is Setup {
             logic.registerUsingBatchClaimWithWitness(sponsor, maxValues, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
-        uint256 registrationTs = logic.getRegistrationStatus(sponsor, claimHash, typehash);
-        assertEq(registrationTs, block.timestamp, "Registration with maximum values should succeed");
+        bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
+        assertTrue(isRegistered, "Registration with maximum values should be active");
     }
 
     /// @dev this is a copy of the function in HashLib, modified to accept memory args

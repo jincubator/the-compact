@@ -10,6 +10,7 @@ import { Claim } from "../../src/types/Claims.sol";
 import { BatchClaim } from "../../src/types/BatchClaims.sol";
 import { MultichainClaim, ExogenousMultichainClaim } from "../../src/types/MultichainClaims.sol";
 import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/types/BatchMultichainClaims.sol";
+import { ConsumerLib } from "../../src/lib/ConsumerLib.sol";
 
 import { AlwaysDenyingAllocator } from "../../src/test/AlwaysDenyingAllocator.sol";
 import { AlwaysRevertingAllocator } from "../../src/test/AlwaysRevertingAllocator.sol";
@@ -119,6 +120,134 @@ contract ClaimTest is Setup {
         assertEq(recipientOne.balance, amountOne);
         assertEq(recipientTwo.balance, amountTwo);
         assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
+    }
+
+    function test_cancelClaim() public {
+        // Arbiter cancels a claim by providing no recipients
+
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Leave recipients empty
+        {
+            Component[] memory recipients;
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Verify balances pre cancellation
+        assertEq(address(theCompact).balance, claim.allocatedAmount);
+        assertEq(theCompact.balanceOf(swapper, claim.id), claim.allocatedAmount);
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("cancelClaim");
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, claim.allocatedAmount);
+        assertEq(theCompact.balanceOf(swapper, claim.id), claim.allocatedAmount);
+
+        // Trying to claim the cancelled claim
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+                recipients = new Component[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+            // Set actual recipients now for claiming after cancellation
+            claim.claimants = recipients;
+        }
+
+        // Execute claim
+        {
+            vm.expectRevert(
+                abi.encodeWithSelector(ConsumerLib.InvalidNonce.selector, allocator, claim.nonce), address(theCompact)
+            );
+            vm.prank(arbiter);
+            theCompact.claim(claim);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, claim.allocatedAmount);
+        assertEq(theCompact.balanceOf(swapper, claim.id), claim.allocatedAmount);
+
         assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
         assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
     }
@@ -284,9 +413,7 @@ contract ClaimTest is Setup {
         {
             CreateBatchClaimHashWithWitnessArgs memory args;
             {
-                args.typehash = keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-                );
+                args.typehash = batchCompactWithWitnessTypehash;
                 args.arbiter = 0x2222222222222222222222222222222222222222;
                 args.sponsor = claim.sponsor;
                 args.nonce = claim.nonce;
@@ -383,6 +510,219 @@ contract ClaimTest is Setup {
             assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, id), 6e17);
             assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, anotherId), 1e18);
             assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, aThirdId), 1e18);
+        }
+    }
+
+    function test_cancelBatchClaimWithWitness() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Initialize batch claim
+        BatchClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = block.timestamp + 1000;
+        claim.witnessTypestring = witnessTypestring;
+
+        // Register allocator and make deposits
+        uint256 id;
+        uint256 anotherId;
+        uint256 aThirdId;
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            id = _makeDeposit(swapper, 1e18, lockTag);
+            anotherId = _makeDeposit(swapper, address(token), 1e18, lockTag);
+            aThirdId = _makeDeposit(swapper, address(anotherToken), 1e18, lockTag);
+
+            assertEq(theCompact.balanceOf(swapper, id), 1e18);
+            assertEq(theCompact.balanceOf(swapper, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(swapper, aThirdId), 1e18);
+        }
+
+        // Create idsAndAmounts and witness
+        uint256[2][] memory idsAndAmounts;
+        {
+            idsAndAmounts = new uint256[2][](3);
+            idsAndAmounts[0] = [id, 1e18];
+            idsAndAmounts[1] = [anotherId, 1e18];
+            idsAndAmounts[2] = [aThirdId, 1e18];
+
+            uint256 witnessArgument = 234;
+            claim.witness = _createCompactWitness(witnessArgument);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateBatchClaimHashWithWitnessArgs memory args;
+            {
+                args.typehash = batchCompactWithWitnessTypehash;
+                args.arbiter = 0x2222222222222222222222222222222222222222;
+                args.sponsor = claim.sponsor;
+                args.nonce = claim.nonce;
+                args.expires = claim.expires;
+                args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+                args.witness = claim.witness;
+            }
+
+            claimHash = _createBatchClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Create batch claim components
+        {
+            BatchClaimComponent[] memory claims = new BatchClaimComponent[](3);
+
+            // First claim component
+            {
+                // Empty portions to indicate a cancelled claim
+                Component[] memory portions = new Component[](0);
+
+                claims[0] = BatchClaimComponent({ id: id, allocatedAmount: 1e18, portions: portions });
+            }
+
+            // Second claim component
+            {
+                // Empty portions to indicate a cancelled claim
+                Component[] memory anotherPortion = new Component[](0);
+
+                claims[1] = BatchClaimComponent({ id: anotherId, allocatedAmount: 1e18, portions: anotherPortion });
+            }
+
+            // Third claim component
+            {
+                // Empty portions to indicate a cancelled claim
+                Component[] memory aThirdPortion = new Component[](0);
+
+                claims[2] = BatchClaimComponent({ id: aThirdId, allocatedAmount: 1e18, portions: aThirdPortion });
+            }
+
+            claim.claims = claims;
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 1e18);
+            assertEq(token.balanceOf(address(theCompact)), 1e18);
+            assertEq(anotherToken.balanceOf(address(theCompact)), 1e18);
+
+            assertEq(theCompact.balanceOf(swapper, id), 1e18);
+            assertEq(theCompact.balanceOf(swapper, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(swapper, aThirdId), 1e18);
+        }
+
+        // Cancel the claim by providing empty portions
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(0x2222222222222222222222222222222222222222);
+            returnedClaimHash = theCompact.batchClaim(claim);
+            vm.snapshotGasLastCall("cancelBatchClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 1e18);
+            assertEq(token.balanceOf(address(theCompact)), 1e18);
+            assertEq(anotherToken.balanceOf(address(theCompact)), 1e18);
+
+            assertEq(theCompact.balanceOf(swapper, id), 1e18);
+            assertEq(theCompact.balanceOf(swapper, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(swapper, aThirdId), 1e18);
+        }
+
+        // Trying to claim the cancelled claim
+
+        // Create batch claim components
+        {
+            BatchClaimComponent[] memory claims = new BatchClaimComponent[](3);
+
+            // First claim component
+            {
+                uint256 claimantOne = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(id)), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+                uint256 claimantTwo = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
+                );
+
+                Component[] memory portions = new Component[](2);
+                portions[0] = Component({ claimant: claimantOne, amount: 4e17 });
+                portions[1] = Component({ claimant: claimantTwo, amount: 6e17 });
+
+                claims[0] = BatchClaimComponent({ id: id, allocatedAmount: 1e18, portions: portions });
+            }
+
+            // Second claim component
+            {
+                uint256 claimantThree = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(anotherId)), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+
+                Component[] memory anotherPortion = new Component[](1);
+                anotherPortion[0] = Component({ claimant: claimantThree, amount: 1e18 });
+
+                claims[1] = BatchClaimComponent({ id: anotherId, allocatedAmount: 1e18, portions: anotherPortion });
+            }
+
+            // Third claim component
+            {
+                uint256 claimantFour = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(aThirdId)), 0x3333333333333333333333333333333333333333), (uint256)
+                );
+
+                Component[] memory aThirdPortion = new Component[](1);
+                aThirdPortion[0] = Component({ claimant: claimantFour, amount: 1e18 });
+
+                claims[2] = BatchClaimComponent({ id: aThirdId, allocatedAmount: 1e18, portions: aThirdPortion });
+            }
+
+            claim.claims = claims;
+        }
+
+        // Execute claim
+        {
+            vm.expectRevert(
+                abi.encodeWithSelector(ConsumerLib.InvalidNonce.selector, allocator, claim.nonce), address(theCompact)
+            );
+            vm.prank(0x2222222222222222222222222222222222222222);
+            theCompact.batchClaim(claim);
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 1e18);
+            assertEq(token.balanceOf(address(theCompact)), 1e18);
+            assertEq(anotherToken.balanceOf(address(theCompact)), 1e18);
+
+            assertEq(theCompact.balanceOf(swapper, id), 1e18);
+            assertEq(theCompact.balanceOf(swapper, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(swapper, aThirdId), 1e18);
         }
     }
 

@@ -11,9 +11,6 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
 
 import { BatchClaimComponent } from "../types/Components.sol";
 
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Scope } from "../types/Scope.sol";
-
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { ClaimHashFunctionCastLib } from "./ClaimHashFunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
@@ -68,7 +65,7 @@ library ClaimHashLib {
     }
 
     function toMessageHashes(BatchClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toBatchClaimMessageHash.usingBatchClaim()(claim, claim.claims.toIdsAndAmountsHash());
+        return HashLib.toBatchClaimMessageHash.usingBatchClaim()(claim, claim.claims.toCommitmentsHash());
     }
 
     function toMessageHashes(MultichainClaim calldata claim)
@@ -129,7 +126,7 @@ library ClaimHashLib {
     {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingMultichainClaimWithWitness()(
             claim,
-            HashLib.toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim),
+            HashLib.toCommitmentsHashFromSingleLock.usingMultichainClaimWithWitness()(claim),
             HashLib.toMultichainClaimMessageHash
         );
     }
@@ -141,7 +138,7 @@ library ClaimHashLib {
     {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousMultichainClaimWithWitness()(
             claim,
-            HashLib.toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim),
+            HashLib.toCommitmentsHashFromSingleLock.usingExogenousMultichainClaimWithWitness()(claim),
             HashLib.toExogenousMultichainClaimMessageHash
         );
     }
@@ -152,7 +149,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericBatchMultichainClaimWithWitnessMessageHash.usingBatchMultichainClaim()(
-            claim, claim.claims.toIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash
+            claim, claim.claims.toCommitmentsHash(), HashLib.toMultichainClaimMessageHash
         );
     }
 
@@ -162,7 +159,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericBatchMultichainClaimWithWitnessMessageHash.usingExogenousBatchMultichainClaim()(
-            claim, claim.claims.toIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash
+            claim, claim.claims.toCommitmentsHash(), HashLib.toExogenousMultichainClaimMessageHash
         );
     }
 }

@@ -31,8 +31,7 @@ contract RegistrationLogic is ConstructorLogic {
 
     /**
      * @notice Internal function for registering a claim hash. The claim hash and its
-     * associated typehash will remain valid until the shortest reset period of the
-     * compact that the claim hash is derived from has elapsed.
+     * associated typehash will remain valid until the allocator consumes the nonce.
      * @param sponsor   The account registering the claim hash.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
@@ -43,8 +42,7 @@ contract RegistrationLogic is ConstructorLogic {
 
     /**
      * @notice Internal function for registering multiple claim hashes in a single call. Each
-     * claim hash and its associated typehash will remain valid until the shortest reset period
-     * of the respective compact that the claim hash is derived from has elapsed.
+     * claim hash and its associated typehash will remain valid until the allocator consumes the nonce.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */
@@ -63,7 +61,7 @@ contract RegistrationLogic is ConstructorLogic {
         internal
         returns (bytes32 claimHash)
     {
-        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x100, _domainSeparator(), sponsorSignature);
+        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x120, _domainSeparator(), sponsorSignature);
     }
 
     /**
@@ -143,14 +141,14 @@ contract RegistrationLogic is ConstructorLogic {
      * @param sponsor   The account that registered the claim hash.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
-     * @return registrationTimestamp The timestamp at which the registration was made.
+     * @return registered Whether the compact has been registered.
      */
-    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
+    function _isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         view
-        returns (uint256 registrationTimestamp)
+        returns (bool registered)
     {
-        registrationTimestamp = sponsor.toRegistrationTimestamp(claimHash, typehash);
+        registered = sponsor.isRegistered(claimHash, typehash);
     }
 
     //// Registration of specific claims ////

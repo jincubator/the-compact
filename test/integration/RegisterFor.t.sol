@@ -64,17 +64,25 @@ contract RegisterForTest is Setup {
 
         // Call registerFor
         bytes32 returnedClaimHash = theCompact.registerFor(
-            compactWithWitnessTypehash, arbiter, swapper, nonce, expires, id, amount, witness, sponsorSignature
+            compactWithWitnessTypehash,
+            arbiter,
+            swapper,
+            nonce,
+            expires,
+            lockTag,
+            address(0),
+            amount,
+            witness,
+            sponsorSignature
         );
+        vm.snapshotGasLastCall("registerFor");
 
         // Verify the claim hash
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        (bool isActive, uint256 registrationTimestamp) =
-            theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-        assertTrue(isActive);
-        assertEq(registrationTimestamp, block.timestamp);
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+        assertTrue(isRegistered);
     }
 
     function test_registerBatchFor() public {
@@ -112,15 +120,14 @@ contract RegisterForTest is Setup {
         bytes32 returnedClaimHash = theCompact.registerBatchFor(
             batchTypehash, arbiter, swapper, nonce, expires, idsAndAmountsHash, witness, sponsorSignature
         );
+        vm.snapshotGasLastCall("registerBatchFor");
 
         // Verify the claim hash
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        (bool isActive, uint256 registrationTimestamp) =
-            theCompact.getRegistrationStatus(swapper, claimHash, batchTypehash);
-        assertTrue(isActive);
-        assertEq(registrationTimestamp, block.timestamp);
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchTypehash);
+        assertTrue(isRegistered);
     }
 
     function test_registerMultichainFor() public {
@@ -173,15 +180,14 @@ contract RegisterForTest is Setup {
         bytes32 returnedClaimHash = theCompact.registerMultichainFor(
             multichainTypehash, swapper, nonce, expires, elementsHash, notarizedChainId, sponsorSignature
         );
+        vm.snapshotGasLastCall("registerMultichainFor");
 
         // Verify the claim hash
         assertEq(returnedClaimHash, claimHash);
 
         // Verify registration status
-        (bool isActive, uint256 registrationTimestamp) =
-            theCompact.getRegistrationStatus(swapper, claimHash, multichainTypehash);
-        assertTrue(isActive);
-        assertEq(registrationTimestamp, block.timestamp);
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, multichainTypehash);
+        assertTrue(isRegistered);
     }
 
     function test_registerFor_invalidSignature() public {
@@ -207,7 +213,16 @@ contract RegisterForTest is Setup {
         // Expect revert when calling registerFor with invalid signature
         vm.expectRevert(ITheCompact.InvalidSignature.selector);
         theCompact.registerFor(
-            compactWithWitnessTypehash, arbiter, swapper, nonce, expires, id, amount, witness, invalidSignature
+            compactWithWitnessTypehash,
+            arbiter,
+            swapper,
+            nonce,
+            expires,
+            lockTag,
+            address(0),
+            amount,
+            witness,
+            invalidSignature
         );
     }
 
