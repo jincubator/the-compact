@@ -63,14 +63,12 @@ contract AllocatedBatchTransferTest is Setup {
             {
                 bytes32 batchCompactHash = keccak256(
                     abi.encode(
-                        keccak256(
-                            "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"
-                        ),
+                        batchCompactTypehash,
                         swapper,
                         swapper,
                         params.nonce,
                         params.deadline,
-                        keccak256(abi.encodePacked(idsAndAmounts))
+                        _hashOfHashes(idsAndAmounts)
                     )
                 );
 
@@ -184,14 +182,12 @@ contract AllocatedBatchTransferTest is Setup {
             {
                 bytes32 batchCompactHash = keccak256(
                     abi.encode(
-                        keccak256(
-                            "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"
-                        ),
+                        batchCompactTypehash,
                         swapper,
                         swapper,
                         params.nonce,
                         params.deadline,
-                        keccak256(abi.encodePacked(idsAndAmounts))
+                        _hashOfHashes(idsAndAmounts)
                     )
                 );
 

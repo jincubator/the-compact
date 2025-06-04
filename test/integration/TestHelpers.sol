@@ -28,6 +28,8 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/t
 
 import { Component, TransferComponent, ComponentsById, BatchClaimComponent } from "../../src/types/Components.sol";
 
+import { Lock } from "../../src/types/EIP712Types.sol";
+
 import {
     TestParams,
     LockDetails,
@@ -69,8 +71,10 @@ contract TestHelpers is Test {
      * Helper function to create a claim hash with a CreateClaimHashWithWitnessArgs struct
      */
     function _createClaimHash(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        bytes12 lockTag = bytes12(bytes32(args.id));
+        address token = address(uint160(args.id));
         return keccak256(
-            abi.encode(args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount)
+            abi.encode(args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, lockTag, token, args.amount)
         );
     }
 
@@ -86,16 +90,28 @@ contract TestHelpers is Test {
         uint256 id,
         uint256 amount
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(typehash, arbiter, sponsor, nonce, expires, id, amount));
+        bytes12 lockTag = bytes12(bytes32(id));
+        address token = address(uint160(id));
+        return keccak256(abi.encode(typehash, arbiter, sponsor, nonce, expires, lockTag, token, amount));
     }
 
     /**
      * Helper function to create a claim hash with witness
      */
     function _createClaimHashWithWitness(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        bytes12 lockTag = bytes12(bytes32(args.id));
+        address token = address(uint160(args.id));
         return keccak256(
             abi.encode(
-                args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount, args.witness
+                args.typehash,
+                args.arbiter,
+                args.sponsor,
+                args.nonce,
+                args.expires,
+                lockTag,
+                token,
+                args.amount,
+                args.witness
             )
         );
     }
@@ -146,7 +162,7 @@ contract TestHelpers is Test {
         bytes32[] memory elementHashes = new bytes32[](elements.length);
         for (uint256 i = 0; i < elements.length; ++i) {
             elementHashes[i] = _createMultichainElementHash(
-                typeHash, elements[i].arbiter, elements[i].chainId, elements[i].idsAndAmounts, witnessHashes[i]
+                typeHash, elements[i].arbiter, elements[i].chainId, elements[i].commitments, witnessHashes[i]
             );
         }
         return keccak256(abi.encode(elementHashes));
@@ -156,10 +172,17 @@ contract TestHelpers is Test {
         bytes32 typeHash,
         address arbiter,
         uint256 chainId,
-        uint256[2][] memory idsAndAmounts,
+        Lock[] memory commitments,
         bytes32 witnessHash
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(typeHash, arbiter, chainId, idsAndAmounts, witnessHash));
+        bytes32 lockTypehash = keccak256(bytes("Lock(bytes12 lockTag,address token,uint256 amount)"));
+        bytes32[] memory lockHashes = new bytes32[](commitments.length);
+        for (uint256 i = 0; i < commitments.length; ++i) {
+            Lock memory lock = commitments[i];
+            lockHashes[i] = keccak256(abi.encode(lockTypehash, lock.lockTag, lock.token, lock.amount));
+        }
+
+        return keccak256(abi.encode(typeHash, arbiter, chainId, keccak256(abi.encode(lockHashes)), witnessHash));
     }
 
     function _createDigest(bytes32 domainSeparator, bytes32 hashValue) internal pure returns (bytes32) {
@@ -176,7 +199,7 @@ contract TestHelpers is Test {
         bytes32 permitBatchHash = keccak256(
             abi.encode(
                 keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)TokenPermissions(address token,uint256 amount)"
                 ),
                 args.tokenPermissionsHash,
                 args.spender,
@@ -203,7 +226,7 @@ contract TestHelpers is Test {
         bytes32 permitBatchHash = keccak256(
             abi.encode(
                 keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
                 ),
                 args.tokenPermissionsHash,
                 args.spender,

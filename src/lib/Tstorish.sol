@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { EfficiencyLib } from "./EfficiencyLib.sol";
+
 contract Tstorish {
+    using EfficiencyLib for bool;
+    using EfficiencyLib for address;
+
     // Declare a storage variable indicating when TSTORE support will be
     // activated assuming it was not already active at initial deployment.
     uint256 private _tstoreSupportActiveAt;
@@ -20,9 +25,9 @@ contract Tstorish {
      * f3          | RETURN           |                    | [0..0x20): 0x3d5c |
      * ------------------------------------------------------------------------+
      */
-    uint256 constant _TLOAD_TEST_PAYLOAD = 0x6002_601e_613d5c_3d_52_f3;
-    uint256 constant _TLOAD_TEST_PAYLOAD_LENGTH = 0x0a;
-    uint256 constant _TLOAD_TEST_PAYLOAD_OFFSET = 0x16;
+    uint80 constant _TLOAD_TEST_PAYLOAD = 0x6002_601e_613d5c_3d_52_f3;
+    uint8 constant _TLOAD_TEST_PAYLOAD_LENGTH = 0x0a;
+    uint8 constant _TLOAD_TEST_PAYLOAD_OFFSET = 0x16;
 
     // Declare an immutable variable to store the tstore test contract address.
     address private immutable _tloadTestContract;
@@ -58,7 +63,7 @@ contract Tstorish {
         address tloadTestContract = _prepareTloadTest();
 
         // Ensure the deployment was successful.
-        if (tloadTestContract == address(0)) {
+        if (tloadTestContract.isNullAddress()) {
             revert TloadTestContractDeploymentFailed();
         }
 
@@ -94,17 +99,25 @@ contract Tstorish {
      */
     function __activateTstore() external {
         // Determine if TSTORE can potentially be activated.
-        if (_tstoreInitialSupport || _tstoreSupportActiveAt != 0) {
-            revert TStoreAlreadyActivated();
+        if (_tstoreInitialSupport.or(_tstoreSupportActiveAt != 0)) {
+            assembly ("memory-safe") {
+                mstore(0, 0xf45b98b0) // `TStoreAlreadyActivated()`.
+                revert(0x1c, 0x04)
+            }
         }
 
         // Determine if TSTORE can be activated and revert if not.
         if (!_testTload(_tloadTestContract)) {
-            revert TStoreNotSupported();
+            assembly ("memory-safe") {
+                mstore(0, 0x70a4078f) // `TStoreNotSupported()`.
+                revert(0x1c, 0x04)
+            }
         }
 
         // Mark TSTORE as activated as of the next block.
-        _tstoreSupportActiveAt = block.number + 1;
+        unchecked {
+            _tstoreSupportActiveAt = block.number + 1;
+        }
     }
 
     /**
@@ -115,7 +128,7 @@ contract Tstorish {
      * @param value       The value to write to the given storage slot.
      */
     function _setTstore(uint256 storageSlot, uint256 value) private {
-        assembly {
+        assembly ("memory-safe") {
             tstore(storageSlot, value)
         }
     }
@@ -149,7 +162,7 @@ contract Tstorish {
      * @return value The TSTORISH value at the given storage slot.
      */
     function _getTstore(uint256 storageSlot) private view returns (uint256 value) {
-        assembly {
+        assembly ("memory-safe") {
             value := tload(storageSlot)
         }
     }
@@ -165,11 +178,11 @@ contract Tstorish {
      */
     function _getTstorishWithSloadFallback(uint256 storageSlot) private view returns (uint256 value) {
         if (_useSstoreFallback()) {
-            assembly {
+            assembly ("memory-safe") {
                 value := sload(storageSlot)
             }
         } else {
-            assembly {
+            assembly ("memory-safe") {
                 value := tload(storageSlot)
             }
         }
@@ -182,7 +195,7 @@ contract Tstorish {
      * @param storageSlot The slot to clear the TSTORISH value for.
      */
     function _clearTstore(uint256 storageSlot) private {
-        assembly {
+        assembly ("memory-safe") {
             tstore(storageSlot, 0)
         }
     }
@@ -196,11 +209,11 @@ contract Tstorish {
      */
     function _clearTstorishWithSstoreFallback(uint256 storageSlot) private {
         if (_useSstoreFallback()) {
-            assembly {
+            assembly ("memory-safe") {
                 sstore(storageSlot, 0)
             }
         } else {
-            assembly {
+            assembly ("memory-safe") {
                 tstore(storageSlot, 0)
             }
         }
@@ -212,7 +225,7 @@ contract Tstorish {
      */
     function _prepareTloadTest() private returns (address contractAddress) {
         // Utilize assembly to deploy a contract testing TLOAD support.
-        assembly {
+        assembly ("memory-safe") {
             // Write the contract deployment code payload to scratch space.
             mstore(0, _TLOAD_TEST_PAYLOAD)
 
@@ -230,7 +243,10 @@ contract Tstorish {
         // Call the test contract, which will perform a TLOAD test. If the call
         // does not revert, then TLOAD/TSTORE is supported. Do not forward all
         // available gas, as all forwarded gas will be consumed on revert.
-        (ok,) = tloadTestContract.staticcall{ gas: gasleft() / 10 }("");
+        // Note that this assumes that the contract was successfully deployed.
+        assembly ("memory-safe") {
+            ok := staticcall(div(gas(), 10), tloadTestContract, 0, 0, 0, 0)
+        }
     }
 
     /**
