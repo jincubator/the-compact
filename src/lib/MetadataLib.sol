@@ -21,6 +21,7 @@ library MetadataLib {
     using EfficiencyLib for uint96;
     using IdLib for address;
     using IdLib for uint96;
+    using LibString for string;
     using LibString for address;
     using LibString for uint256;
     using LibString for uint96;
@@ -123,7 +124,7 @@ library MetadataLib {
         returns (string memory uri)
     {
         Lock memory lock = Lock({ token: token, allocator: allocator, resetPeriod: resetPeriod, scope: scope });
-        string memory name = string.concat("{\"name\": \"Compact ", lock.token.readSymbolWithDefaultValue(), "\",");
+        string memory name = string.concat("{\"name\": \"Compact ", lock.token.readSymbolWithDefaultValue().escapeJSON(), "\",");
         string memory image;
         {
             // Generate dynamic SVG and Base64 encode it
@@ -224,8 +225,8 @@ library MetadataLib {
         )
     {
         tokenAddress = lock.token.toHexStringChecksummed();
-        tokenName = lock.token.readNameWithDefaultValue();
-        tokenSymbol = lock.token.readSymbolWithDefaultValue();
+        tokenName = lock.token.readNameWithDefaultValue().escapeJSON();
+        tokenSymbol = lock.token.readSymbolWithDefaultValue().escapeJSON();
         tokenDecimals = uint256(lock.token.readDecimalsAsUint8WithDefaultValue()).toString();
     }
 
