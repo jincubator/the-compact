@@ -15,6 +15,11 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "src/types/B
 import { Component, ComponentsById, BatchClaimComponent } from "src/types/Components.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { Scope } from "src/types/Scope.sol";
+import { Lock } from "src/types/EIP712Types.sol";
+
+import { Setup } from "../integration/Setup.sol";
+
+import { console } from "forge-std/console.sol";
 
 import {
     COMPACT_TYPEHASH,
@@ -22,11 +27,14 @@ import {
     COMPACT_TYPESTRING_FRAGMENT_TWO,
     COMPACT_TYPESTRING_FRAGMENT_THREE,
     COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    COMPACT_TYPESTRING_FRAGMENT_FIVE,
     BATCH_COMPACT_TYPEHASH,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE,
+    BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
@@ -102,7 +110,7 @@ contract ClaimHashLibTester {
     }
 }
 
-contract ClaimHashLibTest is Test {
+contract ClaimHashLibTest is Setup {
     using EfficiencyLib for address;
 
     ClaimHashLibTester internal tester;
@@ -112,7 +120,8 @@ contract ClaimHashLibTest is Test {
     address constant ARBITER = address(0xCcCCcCCcCCCcccCccccCcCCcCCCCCcCcCcCCCcC1);
     bytes32 constant WITNESS = bytes32(uint256(123456789));
 
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         tester = new ClaimHashLibTester();
     }
 
@@ -136,7 +145,8 @@ contract ClaimHashLibTest is Test {
                 address(this),
                 transfer.nonce,
                 transfer.expires,
-                transfer.id,
+                bytes12(bytes32(transfer.id)),
+                address(uint160(transfer.id)),
                 uint256(100)
             )
         );
@@ -145,15 +155,20 @@ contract ClaimHashLibTest is Test {
     }
 
     function testToClaimHash_AllocatedBatchTransfer() public view {
+        uint256 id1 = (uint256(1) << 160);
+        uint256 id2 = (uint256(2) << 160);
+        uint256 claimant1 = (id1 | uint256(uint160(CLAIMANT)));
+        uint256 claimant2 = (id2 | uint256(uint160(CLAIMANT)));
+
         Component[] memory portions1 = new Component[](1);
-        portions1[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
+        portions1[0] = Component({ claimant: claimant1, amount: 100 });
 
         Component[] memory portions2 = new Component[](1);
-        portions2[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 200 });
+        portions2[0] = Component({ claimant: claimant2, amount: 200 });
 
         ComponentsById[] memory transfers = new ComponentsById[](2);
-        transfers[0] = ComponentsById({ id: 1, portions: portions1 });
-        transfers[1] = ComponentsById({ id: 2, portions: portions2 });
+        transfers[0] = ComponentsById({ id: id1, portions: portions1 });
+        transfers[1] = ComponentsById({ id: id2, portions: portions2 });
 
         AllocatedBatchTransfer memory batchTransfer = AllocatedBatchTransfer({
             allocatorData: bytes(""),
@@ -162,7 +177,13 @@ contract ClaimHashLibTest is Test {
             transfers: transfers
         });
 
-        bytes32 idsAndAmountsHash = keccak256(abi.encode(uint256(1), uint256(100), uint256(2), uint256(200)));
+        Lock memory lock1 = Lock({ lockTag: bytes12(uint96(1)), token: address(0), amount: 100 });
+        Lock memory lock2 = Lock({ lockTag: bytes12(uint96(2)), token: address(0), amount: 200 });
+
+        bytes32[] memory commitments = new bytes32[](2);
+        commitments[0] = keccak256(abi.encode(lockTypehash, lock1));
+        commitments[1] = keccak256(abi.encode(lockTypehash, lock2));
+        bytes32 commitmentsHash = keccak256(abi.encodePacked(commitments));
 
         bytes32 expectedHash = keccak256(
             abi.encode(
@@ -171,7 +192,7 @@ contract ClaimHashLibTest is Test {
                 address(this),
                 batchTransfer.nonce,
                 batchTransfer.expires,
-                idsAndAmountsHash
+                commitmentsHash
             )
         );
 
@@ -205,6 +226,7 @@ contract ClaimHashLibTest is Test {
                 COMPACT_TYPESTRING_FRAGMENT_TWO,
                 COMPACT_TYPESTRING_FRAGMENT_THREE,
                 COMPACT_TYPESTRING_FRAGMENT_FOUR,
+                COMPACT_TYPESTRING_FRAGMENT_FIVE,
                 "Witness)"
             )
         );
@@ -216,7 +238,8 @@ contract ClaimHashLibTest is Test {
                 claim.sponsor,
                 claim.nonce,
                 claim.expires,
-                claim.id,
+                bytes12(bytes32(claim.id)), // lockTag
+                address(uint160(claim.id)), // token
                 claim.allocatedAmount,
                 claim.witness
             )
@@ -256,12 +279,17 @@ contract ClaimHashLibTest is Test {
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+                BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE,
+                BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX,
                 "Witness)"
             )
         );
 
-        bytes32 idsAndAmountsHash = keccak256(
-            abi.encode(keccak256(abi.encode(uint256(1), uint256(100))), keccak256(abi.encode(uint256(2), uint256(200))))
+        bytes32 commitmentsHash = keccak256(
+            abi.encode(
+                keccak256(abi.encode(lockTypehash, 0, uint256(1), uint256(100))),
+                keccak256(abi.encode(lockTypehash, 0, uint256(2), uint256(200)))
+            )
         );
 
         bytes32 expectedClaimHash = keccak256(
@@ -271,7 +299,7 @@ contract ClaimHashLibTest is Test {
                 batchClaim.sponsor,
                 batchClaim.nonce,
                 batchClaim.expires,
-                idsAndAmountsHash,
+                commitmentsHash,
                 batchClaim.witness
             )
         );
@@ -305,11 +333,19 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
-        uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
+        bytes32 commitmentsHashBytes = keccak256(
+            abi.encode(
+                keccak256(
+                    abi.encode(
+                        lockTypehash, bytes12(bytes32(claim.id)), address(uint160(claim.id)), claim.allocatedAmount
+                    )
+                )
+            )
+        );
+        uint256 commitmentsHash = uint256(commitmentsHashBytes);
 
         bytes32 thisChainElementHash =
-            _computeElementHash(expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, claim.witness);
+            _computeElementHash(expectedElementTypehash, address(this), block.chainid, commitmentsHash, claim.witness);
 
         bytes32 elementsHash = _computeNonExoElementsHash(thisChainElementHash, additionalChains);
 
@@ -392,11 +428,19 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
-        uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
+        bytes32 commitmentsHashBytes = keccak256(
+            abi.encode(
+                keccak256(
+                    abi.encode(
+                        lockTypehash, bytes12(bytes32(claim.id)), address(uint160(claim.id)), claim.allocatedAmount
+                    )
+                )
+            )
+        );
+        uint256 commitmentsHash = uint256(commitmentsHashBytes);
 
         bytes32 elementHash =
-            _computeElementHash(expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, claim.witness);
+            _computeElementHash(expectedElementTypehash, address(this), block.chainid, commitmentsHash, claim.witness);
 
         bytes32 elementsHash = _computeExoElementsHash(elementHash, additionalChains, claim.chainIndex);
 
@@ -575,11 +619,19 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (multi-chain)");
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
-        uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
+        bytes32 commitmentsHashBytes = keccak256(
+            abi.encode(
+                keccak256(
+                    abi.encode(
+                        lockTypehash, bytes12(bytes32(claim.id)), address(uint160(claim.id)), claim.allocatedAmount
+                    )
+                )
+            )
+        );
+        uint256 commitmentsHash = uint256(commitmentsHashBytes);
 
         bytes32 thisChainElementHash =
-            _computeElementHash(expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, claim.witness);
+            _computeElementHash(expectedElementTypehash, address(this), block.chainid, commitmentsHash, claim.witness);
 
         bytes32 elementsHash = _computeNonExoElementsHash(thisChainElementHash, additionalChains);
 
@@ -666,11 +718,19 @@ contract ClaimHashLibTest is Test {
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (exo multi-chain index 1)");
 
-        bytes32 idsAndAmountsHashBytes = keccak256(abi.encode(keccak256(abi.encode(claim.id, claim.allocatedAmount))));
-        uint256 idsAndAmountsHash = uint256(idsAndAmountsHashBytes);
+        bytes32 commitmentsHashBytes = keccak256(
+            abi.encode(
+                keccak256(
+                    abi.encode(
+                        lockTypehash, bytes12(bytes32(claim.id)), address(uint160(claim.id)), claim.allocatedAmount
+                    )
+                )
+            )
+        );
+        uint256 commitmentsHash = uint256(commitmentsHashBytes);
 
         bytes32 elementHash =
-            _computeElementHash(expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, claim.witness);
+            _computeElementHash(expectedElementTypehash, address(this), block.chainid, commitmentsHash, claim.witness);
 
         bytes32 elementsHash = _computeExoElementsHash(elementHash, additionalChains, claim.chainIndex);
 
@@ -831,32 +891,32 @@ contract ClaimHashLibTest is Test {
         );
     }
 
-    function _computeMultichainTypehashes(string memory witnessTypestring)
+    function _computeMultichainTypehashes(string memory witnessTypestring_)
         internal
         pure
-        returns (bytes32 elementTypehash, bytes32 multichainCompactTypehash)
+        returns (bytes32 elementTypehash_, bytes32 multichainCompactTypehash_)
     {
         string memory fullMultichainString = string(
             abi.encodePacked(
                 "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)",
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)",
+                "Element(address arbiter,uint256 chainId,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)",
                 "Mandate(",
-                witnessTypestring,
+                witnessTypestring_,
                 ")"
             )
         );
 
         string memory fullElementString = string(
             abi.encodePacked(
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)",
+                "Element(address arbiter,uint256 chainId,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)",
                 "Mandate(",
-                witnessTypestring,
+                witnessTypestring_,
                 ")"
             )
         );
 
-        multichainCompactTypehash = keccak256(bytes(fullMultichainString));
-        elementTypehash = keccak256(bytes(fullElementString));
+        multichainCompactTypehash_ = keccak256(bytes(fullMultichainString));
+        elementTypehash_ = keccak256(bytes(fullElementString));
     }
 
     function _computeElementHash(
