@@ -64,8 +64,18 @@ contract RegisterForTest is Setup {
 
         // Call registerFor
         bytes32 returnedClaimHash = theCompact.registerFor(
-            compactWithWitnessTypehash, arbiter, swapper, nonce, expires, id, amount, witness, sponsorSignature
+            compactWithWitnessTypehash,
+            arbiter,
+            swapper,
+            nonce,
+            expires,
+            lockTag,
+            address(0),
+            amount,
+            witness,
+            sponsorSignature
         );
+        vm.snapshotGasLastCall("registerFor");
 
         // Verify the claim hash
         assertEq(returnedClaimHash, claimHash);
@@ -110,6 +120,7 @@ contract RegisterForTest is Setup {
         bytes32 returnedClaimHash = theCompact.registerBatchFor(
             batchTypehash, arbiter, swapper, nonce, expires, idsAndAmountsHash, witness, sponsorSignature
         );
+        vm.snapshotGasLastCall("registerBatchFor");
 
         // Verify the claim hash
         assertEq(returnedClaimHash, claimHash);
@@ -169,6 +180,7 @@ contract RegisterForTest is Setup {
         bytes32 returnedClaimHash = theCompact.registerMultichainFor(
             multichainTypehash, swapper, nonce, expires, elementsHash, notarizedChainId, sponsorSignature
         );
+        vm.snapshotGasLastCall("registerMultichainFor");
 
         // Verify the claim hash
         assertEq(returnedClaimHash, claimHash);
@@ -201,7 +213,16 @@ contract RegisterForTest is Setup {
         // Expect revert when calling registerFor with invalid signature
         vm.expectRevert(ITheCompact.InvalidSignature.selector);
         theCompact.registerFor(
-            compactWithWitnessTypehash, arbiter, swapper, nonce, expires, id, amount, witness, invalidSignature
+            compactWithWitnessTypehash,
+            arbiter,
+            swapper,
+            nonce,
+            expires,
+            lockTag,
+            address(0),
+            amount,
+            witness,
+            invalidSignature
         );
     }
 

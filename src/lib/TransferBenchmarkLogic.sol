@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { TransferBenchmarkLib } from "./TransferBenchmarkLib.sol";
+import {
+    TransferBenchmarkLib,
+    _NATIVE_TOKEN_BENCHMARK_SCOPE,
+    _ERC20_TOKEN_BENCHMARK_SCOPE
+} from "./TransferBenchmarkLib.sol";
 
-import { BenchmarkERC20 } from "./BenchmarkERC20.sol";
+import { TransferBenchmarker } from "./TransferBenchmarker.sol";
 
 /**
  * @title TransferBenchmarkLogic
@@ -12,27 +16,36 @@ import { BenchmarkERC20 } from "./BenchmarkERC20.sol";
  * Deploys a benchmark ERC20 token during contract creation for use in benchmarking.
  */
 contract TransferBenchmarkLogic {
-    using TransferBenchmarkLib for address;
-    using TransferBenchmarkLib for bytes32;
+    using TransferBenchmarkLib for uint256;
 
-    // Declare an immutable argument for the account of the benchmark ERC20 token.
-    address private immutable _BENCHMARK_ERC20;
+    // Declare an immutable argument for the account of the benchmarker contract.
+    address private immutable _BENCHMARKER;
 
     constructor() {
-        // Deploy reference ERC20 for benchmarking generic ERC20 token withdrawals. Note
+        // Deploy contract for benchmarking native and generic ERC20 token withdrawals. Note
         // that benchmark cannot be evaluated as part of contract creation as it requires
-        // that the token account is not already warm as part of deriving the benchmark.
-        _BENCHMARK_ERC20 = address(new BenchmarkERC20());
+        // that the ERC20 account is not already warm as part of deriving the benchmark.
+        _BENCHMARKER = address(new TransferBenchmarker());
     }
 
     /**
      * @notice Internal function to benchmark the gas costs of token transfers.
      * Measures both native token and ERC20 token transfer costs and stores them.
-     * @param salt A bytes32 value used to derive a cold account for benchmarking.
      */
-    function _benchmark(bytes32 salt) internal {
-        salt.setNativeTokenBenchmark();
-        _BENCHMARK_ERC20.setERC20TokenBenchmark();
+    function _benchmark() internal {
+        address benchmarker = _BENCHMARKER;
+
+        assembly ("memory-safe") {
+            calldatacopy(0, 0, calldatasize())
+            let success := call(gas(), benchmarker, callvalue(), 0, calldatasize(), 0, 0x40)
+            if iszero(success) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+
+            sstore(_NATIVE_TOKEN_BENCHMARK_SCOPE, mload(0))
+            sstore(_ERC20_TOKEN_BENCHMARK_SCOPE, mload(0x20))
+        }
     }
 
     /**
@@ -46,6 +59,9 @@ contract TransferBenchmarkLogic {
         view
         returns (uint256 nativeTokenStipend, uint256 erc20TokenStipend)
     {
-        return TransferBenchmarkLib.getTokenWithdrawalBenchmarks();
+        assembly ("memory-safe") {
+            nativeTokenStipend := sload(_NATIVE_TOKEN_BENCHMARK_SCOPE)
+            erc20TokenStipend := sload(_ERC20_TOKEN_BENCHMARK_SCOPE)
+        }
     }
 }

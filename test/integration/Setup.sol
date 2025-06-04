@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import { TheCompact } from "../../src/TheCompact.sol";
 import { MockERC20 } from "../../lib/solady/test/utils/mocks/MockERC20.sol";
-import { Compact, BatchCompact, Element } from "../../src/types/EIP712Types.sol";
+import { Compact, BatchCompact, Element, Lock } from "../../src/types/EIP712Types.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { CompactCategory } from "../../src/types/CompactCategory.sol";
@@ -68,23 +68,36 @@ contract Setup is TestHelpers {
     address alwaysOKAllocator;
 
     string constant compactTypestring =
-        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)";
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,bytes12 lockTag,address token,uint256 amount)";
     string constant compactWitnessTypestring =
-        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)";
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,bytes12 lockTag,address token,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)";
     string constant witnessTypestring = "uint256 witnessArgument";
     string constant fullWitnessTypestring = "Mandate(uint256 witnessArgument)";
     bytes32 constant witnessTypehash = keccak256(bytes(fullWitnessTypestring));
     bytes32 constant compactTypehash = keccak256(bytes(compactTypestring));
     bytes32 constant compactWithWitnessTypehash = keccak256(bytes(compactWitnessTypestring));
+    string constant batchCompactTypestring =
+        "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)";
     string constant batchCompactWitnessTypestring =
-        "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
+        "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)";
+    bytes32 constant batchCompactTypehash = keccak256(bytes(batchCompactTypestring));
     bytes32 constant batchCompactWithWitnessTypehash = keccak256(bytes(batchCompactWitnessTypestring));
+    string constant multichainCompactTypestring =
+        "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)";
     string constant multichainCompactWitnessTypestring =
-        "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
+        "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)";
+    string constant multichainCompactWitnessTypestring1 =
+        "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,Lock[] commitments, Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)";
+    bytes32 constant multichainCompactTypehash = keccak256(bytes(multichainCompactTypestring));
     bytes32 constant multichainCompactWithWitnessTypehash = keccak256(bytes(multichainCompactWitnessTypestring));
+    string constant multichainElementsTypestring =
+        "Element(address arbiter,uint256 chainId,Lock[] commitments)Lock(bytes12 lockTag,address token,uint256 amount)";
     string constant multichainElementsWitnessTypestring =
-        "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
+        "Element(address arbiter,uint256 chainId,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)";
+    bytes32 constant multichainElementsTypehash = keccak256(bytes(multichainElementsTypestring));
     bytes32 constant multichainElementsWithWitnessTypehash = keccak256(bytes(multichainElementsWitnessTypestring));
+    string constant lockTypestring = "Lock(bytes12 lockTag,address token,uint256 amount)";
+    bytes32 constant lockTypehash = keccak256(bytes(lockTypestring));
 
     function setUp() public virtual {
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
@@ -189,7 +202,7 @@ contract Setup is TestHelpers {
                 signatureTransferDetails,
                 swapper,
                 activationHash,
-                "BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                "BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,Lock[] commitments,Mandate mandate)Lock(bytes12 lockTag,address token,uint256 amount)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                 args.signature
             )
         );
@@ -297,9 +310,17 @@ contract Setup is TestHelpers {
     }
 
     function _hashOfHashes(uint256[2][] memory idsAndAmounts) internal pure returns (bytes32) {
+        // bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
+        // for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+        //     hashes[i] = keccak256(abi.encodePacked(lockTypehash, idsAndAmounts[i][0], idsAndAmounts[i][1]));
+        // }
+        // return keccak256(abi.encodePacked(hashes));
         bytes32[] memory hashes = new bytes32[](idsAndAmounts.length);
         for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-            hashes[i] = keccak256(abi.encodePacked(idsAndAmounts[i]));
+            bytes12 lockTagOfId = bytes12(bytes32(idsAndAmounts[i][0]));
+            address tokenOfId = address(uint160(idsAndAmounts[i][0]));
+            Lock memory lock = Lock({ lockTag: lockTagOfId, token: tokenOfId, amount: idsAndAmounts[i][1] });
+            hashes[i] = keccak256(abi.encode(lockTypehash, lock));
         }
         return keccak256(abi.encodePacked(hashes));
     }
