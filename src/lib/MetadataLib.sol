@@ -40,25 +40,45 @@ library MetadataLib {
     /**
      * @notice Internal pure function for converting a ResetPeriod enum to a human-readable string.
      * @param resetPeriod The ResetPeriod enum value to convert.
-     * @return A string representation of the reset period.
+     * @return resetPeriodString A string representation of the reset period.
      */
-    function toString(ResetPeriod resetPeriod) internal pure returns (string memory) {
-        if (resetPeriod == ResetPeriod.OneSecond) {
-            return "1s";
-        } else if (resetPeriod == ResetPeriod.FifteenSeconds) {
-            return "15s";
-        } else if (resetPeriod == ResetPeriod.OneMinute) {
-            return "1m";
-        } else if (resetPeriod == ResetPeriod.TenMinutes) {
-            return "10m";
-        } else if (resetPeriod == ResetPeriod.OneHourAndFiveMinutes) {
-            return "1h 5m";
-        } else if (resetPeriod == ResetPeriod.OneDay) {
-            return "24h";
-        } else if (resetPeriod == ResetPeriod.SevenDaysAndOneHour) {
-            return "7d 1h";
-        } else {
-            return "30d";
+    function toString(ResetPeriod resetPeriod) internal pure returns (string memory resetPeriodString) {
+        // Equivalent to:
+        // if (resetPeriod == ResetPeriod.OneSecond) {
+        //     return "1s";
+        // } else if (resetPeriod == ResetPeriod.FifteenSeconds) {
+        //     return "15s";
+        // } else if (resetPeriod == ResetPeriod.OneMinute) {
+        //     return "1m";
+        // } else if (resetPeriod == ResetPeriod.TenMinutes) {
+        //     return "10m";
+        // } else if (resetPeriod == ResetPeriod.OneHourAndFiveMinutes) {
+        //     return "1h 5m";
+        // } else if (resetPeriod == ResetPeriod.OneDay) {
+        //     return "24h";
+        // } else if (resetPeriod == ResetPeriod.SevenDaysAndOneHour) {
+        //     return "7d 1h";
+        // } else {
+        //     return "30d";
+        // }
+
+        bytes4 chunk;
+        uint256 length;
+        assembly ("memory-safe") {
+            chunk :=
+                shl(0xe0, shr(shl(5, resetPeriod), 0x3330640037643168323468003168356d31306d00316d00003135730031730000))
+            let lastByteIsZero := iszero(shl(0x18, chunk))
+            length := sub(5, add(shl(1, lastByteIsZero), iszero(shl(0x10, chunk))))
+            if iszero(lastByteIsZero) {
+                chunk :=
+                    xor(shl(0xe8, xor(and(0xffff00, shr(0xe8, chunk)), 0x20)), shl(0xd8, and(0xffff, shr(0xe0, chunk))))
+            }
+        }
+
+        resetPeriodString = new string(length);
+
+        assembly ("memory-safe") {
+            mstore(add(resetPeriodString, 0x20), chunk)
         }
     }
 
@@ -68,11 +88,24 @@ library MetadataLib {
      * @return A string representation of the scope.
      */
     function toString(Scope scope) internal pure returns (string memory) {
-        if (scope == Scope.Multichain) {
-            return "Multichain";
-        } else {
-            return "Chain-specific";
+        // Equivalent to:
+        // if (scope == Scope.Multichain) {
+        //     return "Multichain";
+        // } else {
+        //     return "Chain-specific";
+        // }
+
+        string memory scopeString = new string(14);
+        assembly ("memory-safe") {
+            mstore(
+                add(scopeString, 0x1f),
+                shl(
+                    add(0x88, shl(5, iszero(scope))),
+                    shr(mul(0x78, iszero(scope)), 0x0a4d756c7469636861696e0e436861696e2d7370656369666963)
+                )
+            )
         }
+        return scopeString;
     }
 
     /**
@@ -90,8 +123,6 @@ library MetadataLib {
         returns (string memory uri)
     {
         Lock memory lock = Lock({ token: token, allocator: allocator, resetPeriod: resetPeriod, scope: scope });
-        string memory attributes = _getAttributes(lock, id);
-        string memory description = _getDescription(lock);
         string memory name = string.concat("{\"name\": \"Compact ", lock.token.readSymbolWithDefaultValue(), "\",");
         string memory image;
         {
@@ -101,7 +132,7 @@ library MetadataLib {
             image = string.concat("\"image\": \"data:image/svg+xml;base64,", encodedSvg, "\",");
         }
 
-        uri = string.concat(name, description, image, attributes);
+        uri = string.concat(name, _getDescription(lock), image, _getAttributes(lock, id));
     }
 
     /**
@@ -111,22 +142,18 @@ library MetadataLib {
      * @return attributes The attributes section of the token metadata.
      */
     function _getAttributes(Lock memory lock, uint256 id) internal view returns (string memory attributes) {
-        string memory allocator = lock.allocator.toHexStringChecksummed();
-        string memory resetPeriod = lock.resetPeriod.toString();
-        string memory scope = lock.scope.toString();
-        string memory allocatorName = _tryReadAllocatorName(lock.allocator);
-        string memory lockTagHex = uint96(lock.toLockTag()).toHexString();
-
-        (string memory tokenAddress, string memory tokenName, string memory tokenSymbol, string memory tokenDecimals) =
-            _getTokenDetails(lock);
-
-        // Initialize the attributes string
-        attributes = string.concat("\"attributes\": [", _makeAttribute("ID", id.toHexString(), false, true));
-
-        // Token details
+        // Initialize the attributes string and add Token details
         {
+            (
+                string memory tokenAddress,
+                string memory tokenName,
+                string memory tokenSymbol,
+                string memory tokenDecimals
+            ) = _getTokenDetails(lock);
+
             attributes = string.concat(
-                attributes,
+                '"attributes": [',
+                _makeAttribute("ID", id.toHexString(), false, true),
                 _makeAttribute("Token Address", tokenAddress, false, true),
                 _makeAttribute("Token Name", tokenName, false, true),
                 _makeAttribute("Token Symbol", tokenSymbol, false, true),
@@ -134,21 +161,19 @@ library MetadataLib {
             );
         }
 
-        // Allocator & Lock details
+        // Allocator & Lock details, then close the JSON array and object
         {
             attributes = string.concat(
                 attributes,
-                _makeAttribute("Allocator Address", allocator, false, true),
-                _makeAttribute("Allocator Name", allocatorName, false, true),
-                _makeAttribute("Scope", scope, false, true),
-                _makeAttribute("Reset Period", resetPeriod, false, true),
-                _makeAttribute("Lock Tag", lockTagHex, false, true),
-                _makeAttribute("Origin Chain", block.chainid.toString(), true, true)
+                _makeAttribute("Allocator Address", lock.allocator.toHexStringChecksummed(), false, true),
+                _makeAttribute("Allocator Name", _tryReadAllocatorName(lock.allocator), false, true),
+                _makeAttribute("Scope", lock.scope.toString(), false, true),
+                _makeAttribute("Reset Period", lock.resetPeriod.toString(), false, true),
+                _makeAttribute("Lock Tag", uint96(lock.toLockTag()).toHexString(), false, true),
+                _makeAttribute("Origin Chain", block.chainid.toString(), true, true),
+                "]}"
             );
         }
-
-        // Close the JSON array and object
-        attributes = string.concat(attributes, "]}");
     }
 
     /**

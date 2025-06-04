@@ -217,7 +217,8 @@ interface ITheCompact {
      * @param sponsor          The address of the sponsor for whom the claim is being registered.
      * @param nonce            A parameter to enforce replay protection, scoped to allocator.
      * @param expires          The time at which the claim expires.
-     * @param id               The ERC6909 token identifier of the associated resource lock.
+     * @param lockTag          The lock tag containing allocator ID, reset period, and scope.
+     * @param token            The address of the token associated with the claim.
      * @param amount           The amount of tokens associated with the claim.
      * @param witness          Hash of the witness data.
      * @param sponsorSignature The signature from the sponsor authorizing the registration.
@@ -229,7 +230,8 @@ interface ITheCompact {
         address sponsor,
         uint256 nonce,
         uint256 expires,
-        uint256 id,
+        bytes12 lockTag,
+        address token,
         uint256 amount,
         bytes32 witness,
         bytes calldata sponsorSignature

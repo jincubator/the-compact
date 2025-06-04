@@ -10,11 +10,15 @@ import {
     COMPACT_TYPESTRING_FRAGMENT_TWO,
     COMPACT_TYPESTRING_FRAGMENT_THREE,
     COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    COMPACT_TYPESTRING_FRAGMENT_FIVE,
     BATCH_COMPACT_TYPEHASH,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
     BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE,
+    BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX,
+    LOCK_TYPEHASH,
     MULTICHAIN_COMPACT_TYPEHASH,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
@@ -22,6 +26,7 @@ import {
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
+    MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SEVEN,
     ELEMENT_TYPEHASH,
     PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH
 } from "../types/EIP712Types.sol";
@@ -90,14 +95,17 @@ library HashLib {
             mstore(add(m, 0x20), caller()) // arbiter: msg.sender
             mstore(add(m, 0x40), caller()) // sponsor: msg.sender
 
-            // Subsequent data copied from calldata: nonce, expires & id.
-            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x60)
+            // Subsequent data copied from calldata: nonce, expires, lockTag & token.
+            // Deconstruct id into lockTag + token by inserting an empty word.
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x4c)
+            mstore(add(m, 0xc0), calldataload(add(transfer, 0x60))) // token
+            mstore(add(m, 0xac), 0) // empty word between lockTag & token
 
             // Prepare final component of message data: aggregate amount.
-            mstore(add(m, 0xc0), amount)
+            mstore(add(m, 0xe0), amount)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
+            messageHash := keccak256(m, 0x100)
         }
     }
 
@@ -111,18 +119,21 @@ library HashLib {
         // Navigate to the transfer components array in calldata.
         ComponentsById[] calldata transfers = transfer.transfers;
 
-        // Retrieve the length of the array.
-        uint256 totalIds = transfers.length;
+        // Retrieve the length of the commitments array.
+        uint256 totalLocks = transfers.length;
 
-        // Allocate memory region for ids and amounts.
-        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
+        // Allocate working memory for hashing operations.
+        (uint256 ptr, uint256 hashesPtr) = totalLocks.allocateCommitmentsHashingMemory();
 
         // Declare a buffer for arithmetic errors.
         uint256 errorBuffer;
 
         unchecked {
+            // Cache lock-specific data start memory pointer location.
+            uint256 lockDataStart = ptr + 0x20;
+
             // Iterate over each transfer component.
-            for (uint256 i = 0; i < totalIds; ++i) {
+            for (uint256 i = 0; i < totalLocks; ++i) {
                 // Navigate to the current transfer component.
                 ComponentsById calldata transferComponent = transfers[i];
 
@@ -152,18 +163,21 @@ library HashLib {
                 }
 
                 assembly ("memory-safe") {
-                    // Derive offset to id and amount based on total components.
-                    let extraOffset := add(add(idsAndAmounts, 0x20), shl(6, i))
+                    // Copy data on aggregate committed locks from derived values.
+                    // Deconstruct id into lockTag + token by inserting an empty word.
+                    mstore(lockDataStart, id) // lockTag
+                    mstore(add(lockDataStart, 0x20), id) // token
+                    mstore(add(lockDataStart, 0x0c), 0) // empty word between lockTag & token
+                    mstore(add(lockDataStart, 0x40), amount)
 
-                    // Store the id and aggregate amount at the derived offset.
-                    mstore(extraOffset, id)
-                    mstore(add(extraOffset, 0x20), amount)
+                    // Hash the prepared elements and store at current position.
+                    mstore(add(hashesPtr, shl(5, i)), keccak256(ptr, 0x80))
                 }
             }
         }
 
-        // Declare a variable for the ids and amounts hash.
-        uint256 idsAndAmountsHash;
+        // Declare a variable for the commitments hash.
+        uint256 commitmentsHash;
         assembly ("memory-safe") {
             // Revert if an arithmetic overflow was detected.
             if errorBuffer {
@@ -173,24 +187,24 @@ library HashLib {
                 revert(0x1c, 0x24)
             }
 
-            // Derive the ids and amounts hash from the stored data.
-            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
+            // Derive the commitments hash using the prepared lock hashes data.
+            commitmentsHash := keccak256(hashesPtr, shl(5, totalLocks))
         }
 
-        // Derive message hash from transfer data and idsAndAmounts hash.
-        return toBatchTransferMessageHashUsingIdsAndAmountsHash(transfer, idsAndAmountsHash);
+        // Derive message hash from transfer data and commitments hash.
+        return toBatchTransferMessageHashUsingCommitmentsHash(transfer, commitmentsHash);
     }
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a batch transfer or withdrawal once an idsAndAmounts hash is available.
-     * @param transfer          An AllocatedBatchTransfer struct containing the transfer details.
-     * @param idsAndAmountsHash A hash of the ids and amounts.
-     * @return messageHash      The EIP-712 compliant message hash.
+     * a batch transfer or withdrawal once a commitments hash is available.
+     * @param transfer        An AllocatedBatchTransfer struct containing the transfer details.
+     * @param commitmentsHash A hash of the commitments array.
+     * @return messageHash    The EIP-712 compliant message hash.
      */
-    function toBatchTransferMessageHashUsingIdsAndAmountsHash(
+    function toBatchTransferMessageHashUsingCommitmentsHash(
         AllocatedBatchTransfer calldata transfer,
-        uint256 idsAndAmountsHash
+        uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
@@ -205,8 +219,8 @@ library HashLib {
             mstore(add(m, 0x60), calldataload(add(transfer, 0x20))) // nonce
             mstore(add(m, 0x80), calldataload(add(transfer, 0x40))) // expires
 
-            // Prepare final component of message data: idsAndAmountsHash.
-            mstore(add(m, 0xa0), idsAndAmountsHash)
+            // Prepare final component of message data: commitmentsHash.
+            mstore(add(m, 0xa0), commitmentsHash)
 
             // Derive the message hash from the prepared data.
             messageHash := keccak256(m, 0xc0)
@@ -244,11 +258,14 @@ library HashLib {
                     // Next data segment copied from calldata: sponsor, nonce & expires.
                     calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
-                    // Prepare final components of message data: id and amount.
-                    calldatacopy(add(m, 0xa0), add(claim, 0xe0), 0x40)
+                    // Prepare final components of message data: lockTag, token and amount.
+                    // Deconstruct id into lockTag + token by inserting an empty word.
+                    mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // lockTag
+                    mstore(add(m, 0xac), 0) // last 20 bytes of lockTag and first 12 of token
+                    calldatacopy(add(m, 0xcc), add(claim, 0xec), 0x34) // token + amount
 
                     // Derive the message hash from the prepared data.
-                    derivedMessageHash := keccak256(m, 0xe0)
+                    derivedMessageHash := keccak256(m, 0x100)
 
                     // Set Compact typehash
                     derivedTypehash := COMPACT_TYPEHASH
@@ -256,21 +273,22 @@ library HashLib {
                     leave
                 }
 
-                // Prepare first component of typestring from four one-word fragments.
+                // Prepare first component of typestring from five one-word fragments.
                 mstore(m, COMPACT_TYPESTRING_FRAGMENT_ONE)
                 mstore(add(m, 0x20), COMPACT_TYPESTRING_FRAGMENT_TWO)
-                mstore(add(m, 0x58), COMPACT_TYPESTRING_FRAGMENT_FOUR)
                 mstore(add(m, 0x40), COMPACT_TYPESTRING_FRAGMENT_THREE)
+                mstore(add(m, 0x6b), COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                mstore(add(m, 0x60), COMPACT_TYPESTRING_FRAGMENT_FOUR)
 
                 // Copy remaining typestring data from calldata to memory.
-                let witnessStart := add(m, 0x78)
+                let witnessStart := add(m, 0x8b)
                 calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
                 // Prepare closing ")" parenthesis at the very end of the memory region.
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the typehash from the prepared data.
-                derivedTypehash := keccak256(m, add(0x79, witnessTypestringLength))
+                derivedTypehash := keccak256(m, add(0x8c, witnessTypestringLength))
 
                 // Prepare initial components of message data: typehash & arbiter.
                 mstore(m, derivedTypehash)
@@ -283,12 +301,16 @@ library HashLib {
                 // Next data segment copied from calldata: sponsor, nonce, expires.
                 calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
-                // Prepare final components of message data: id, amount, & witness.
-                calldatacopy(add(m, 0xa0), add(claim, 0xe0), 0x40) // id & amount
-                mstore(add(m, 0xe0), calldataload(add(claim, 0xa0))) // witness
+                // Prepare final components of message data: lockTag, token, amount & witness.
+                // Deconstruct id into lockTag + token by inserting an empty word.
+                mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // lockTag
+                mstore(add(m, 0xac), 0) // last 20 bytes of lockTag and first 12 of token
+                calldatacopy(add(m, 0xcc), add(claim, 0xec), 0x34) // token + amount
+
+                mstore(add(m, 0x100), calldataload(add(claim, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
-                derivedMessageHash := keccak256(m, 0x100)
+                derivedMessageHash := keccak256(m, 0x120)
             }
 
             // Execute internal assembly function and store derived messageHash and typehashes.
@@ -299,18 +321,18 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch claim with or without a witness.
-     * @param claimPointer             Pointer to the claim location in calldata.
-     * @param idsAndAmountsHash A hash of the ids and amounts.
-     * @return messageHash      The EIP-712 compliant message hash.
-     * @return typehash         The EIP-712 typehash.
+     * @param claimPointer    Pointer to the claim location in calldata.
+     * @param commitmentsHash The EIP-712 hash of the Lock[] commitments array.
+     * @return messageHash    The EIP-712 compliant message hash.
+     * @return typehash       The EIP-712 typehash.
      */
-    function toBatchClaimMessageHash(uint256 claimPointer, uint256 idsAndAmountsHash)
+    function toBatchClaimMessageHash(uint256 claimPointer, uint256 commitmentsHash)
         internal
         view
         returns (bytes32 messageHash, bytes32 typehash)
     {
         assembly ("memory-safe") {
-            function createHash(claim, idsAmountsHash) -> derivedMessageHash, derivedTypehash {
+            function createHash(claim, lockCommitmentsHash) -> derivedMessageHash, derivedTypehash {
                 // Retrieve the free memory pointer; memory will be left dirtied.
                 let m := mload(0x40)
 
@@ -332,8 +354,8 @@ library HashLib {
                     // Next data segment copied from calldata: sponsor, nonce, expires.
                     calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
-                    // Prepare final component of message data: idsAndAmountsHash.
-                    mstore(add(m, 0xa0), idsAmountsHash)
+                    // Prepare final component of message data: commitmentsHash.
+                    mstore(add(m, 0xa0), lockCommitmentsHash)
 
                     // Derive the message hash from the prepared data.
                     derivedMessageHash := keccak256(m, 0xc0)
@@ -344,21 +366,23 @@ library HashLib {
                     leave
                 }
 
-                // Prepare first component of typestring from four one-word fragments.
+                // Prepare first component of typestring from six one-word fragments.
                 mstore(m, BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
                 mstore(add(m, 0x20), BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                mstore(add(m, 0x5e), BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
                 mstore(add(m, 0x40), BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                mstore(add(m, 0x60), BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                mstore(add(m, 0x88), BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX)
+                mstore(add(m, 0x80), BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE)
 
                 // Copy remaining typestring data from calldata to memory.
-                let witnessStart := add(m, 0x7e)
+                let witnessStart := add(m, 0xa8)
                 calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
                 // Prepare closing ")" parenthesis at the very end of the memory region.
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the typehash from the prepared data.
-                derivedTypehash := keccak256(m, add(0x7f, witnessTypestringLength))
+                derivedTypehash := keccak256(m, add(0xa9, witnessTypestringLength))
 
                 // Prepare initial components of message data: typehash & arbiter.
                 mstore(m, derivedTypehash)
@@ -371,8 +395,8 @@ library HashLib {
                 // Next data segment copied from calldata: sponsor, nonce, expires.
                 calldatacopy(add(m, 0x4c), add(claim, 0x4c), 0x54)
 
-                // Prepare final components of message data: idsAndAmountsHash & witness.
-                mstore(add(m, 0xa0), idsAmountsHash)
+                // Prepare final components of message data: commitmentsHash & witness.
+                mstore(add(m, 0xa0), lockCommitmentsHash)
                 mstore(add(m, 0xc0), calldataload(add(claim, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
@@ -380,7 +404,7 @@ library HashLib {
             }
 
             // Execute internal assembly function and store derived messageHash and typehashes.
-            messageHash, typehash := createHash(claimPointer, idsAndAmountsHash)
+            messageHash, typehash := createHash(claimPointer, commitmentsHash)
         }
     }
 
@@ -391,7 +415,7 @@ library HashLib {
      * @param additionalOffset          Additional offset from claim pointer to ID from most compact case.
      * @param elementTypehash           The element typehash.
      * @param multichainCompactTypehash The multichain compact typehash.
-     * @param idsAndAmountsHash         A hash of the ids and amounts.
+     * @param commitmentsHash           The EIP-712 hash of the Lock[] commitments array.
      * @return messageHash              The EIP-712 compliant message hash.
      */
     function toMultichainClaimMessageHash(
@@ -399,14 +423,14 @@ library HashLib {
         uint256 additionalOffset,
         bytes32 elementTypehash,
         bytes32 multichainCompactTypehash,
-        uint256 idsAndAmountsHash
+        uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
 
-            // Store the idsAndAmounts hash at the beginning of the memory region.
-            mstore(add(m, 0x60), idsAndAmountsHash)
+            // Store the commitments hash at the beginning of the memory region.
+            mstore(add(m, 0x60), commitmentsHash)
 
             // Prepare initial components of element data: element typehash, arbiter, & chainid.
             mstore(m, elementTypehash)
@@ -459,7 +483,7 @@ library HashLib {
      * @param additionalOffset          Additional offset from claim pointer to ID from most compact case.
      * @param elementTypehash           The element typehash.
      * @param multichainCompactTypehash The multichain compact typehash.
-     * @param idsAndAmountsHash         A hash of the ids and amounts.
+     * @param commitmentsHash           The EIP-712 hash of the Lock[] commitments array.
      * @return messageHash              The EIP-712 compliant message hash.
      */
     function toExogenousMultichainClaimMessageHash(
@@ -467,14 +491,14 @@ library HashLib {
         uint256 additionalOffset,
         bytes32 elementTypehash,
         bytes32 multichainCompactTypehash,
-        uint256 idsAndAmountsHash
+        uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
 
-            // Store the idsAndAmounts hash at the beginning of the memory region.
-            mstore(add(m, 0x60), idsAndAmountsHash)
+            // Store the commitments hash at the beginning of the memory region.
+            mstore(add(m, 0x60), commitmentsHash)
 
             // Prepare initial components of element data: element typehash, arbiter, & chainid.
             mstore(m, elementTypehash)
@@ -569,19 +593,20 @@ library HashLib {
                 mstore(add(m, 0x20), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
                 mstore(add(m, 0x40), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
                 mstore(add(m, 0x60), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                mstore(add(m, 0x8e), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
                 mstore(add(m, 0x80), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                mstore(add(m, 0xb8), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SEVEN)
+                mstore(add(m, 0xa0), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
 
                 // Copy remaining witness typestring from calldata to memory.
-                let witnessStart := add(m, 0xae)
+                let witnessStart := add(m, 0xd8)
                 calldatacopy(witnessStart, add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
                 // Prepare closing ")" parenthesis at the very end of the memory region.
                 mstore8(add(witnessStart, witnessTypestringLength), 0x29)
 
                 // Derive the element typehash and multichain compact typehash from the prepared data.
-                derivedElementTypehash := keccak256(add(m, 0x53), add(0x5c, witnessTypestringLength))
-                derivedMultichainCompactTypehash := keccak256(m, add(0xaf, witnessTypestringLength))
+                derivedElementTypehash := keccak256(add(m, 0x53), add(0x86, witnessTypestringLength))
+                derivedMultichainCompactTypehash := keccak256(m, add(0xd9, witnessTypestringLength))
             }
 
             elementTypehash, multichainCompactTypehash := createHash(claimPointer)
@@ -590,103 +615,142 @@ library HashLib {
 
     /**
      * @notice Internal pure function for deriving the EIP-712 message hash for
-     * a single id and amount.
-     * @param claim              Pointer to the claim location in calldata.
-     * @return idsAndAmountsHash The hash of the id and amount.
+     * a commitments array when the claim in question contains a single lock.
+     * @param claim            Pointer to the claim location in calldata.
+     * @return commitmentsHash The EIP-712 hash of the Lock[] commitments array.
      */
-    function toSingleIdAndAmountHash(uint256 claim) internal pure returns (uint256 idsAndAmountsHash) {
+    function toCommitmentsHashFromSingleLock(uint256 claim) internal pure returns (uint256 commitmentsHash) {
         assembly ("memory-safe") {
-            // Derive pointer to id and amount and copy into scratch space.
-            calldatacopy(0, add(claim, 0xe0), 0x40)
+            // Retrieve the free memory pointer; memory will be left dirtied.
+            let m := mload(0x40)
 
-            // Derive first idsAndAmount hash and place in scratch space.
-            mstore(0, keccak256(0, 0x40))
+            // Place the lock typehash into the start of memory.
+            mstore(m, LOCK_TYPEHASH)
 
-            // Hash again to derive idsAndAmountsHash.
-            idsAndAmountsHash := keccak256(0, 0x20)
+            // Deconstruct id into lockTag + token by inserting an empty word.
+            mstore(add(m, 0x20), calldataload(add(claim, 0xe0))) // lockTag
+            mstore(add(m, 0x2c), 0) // empty word between lockTag & token
+            calldatacopy(add(m, 0x4c), add(claim, 0xec), 0x34) // token & amount
+
+            // Derive first lock commitment hash and place in scratch space.
+            mstore(0, keccak256(m, 0x80))
+
+            // Hash again to derive commitmentsHash.
+            commitmentsHash := keccak256(0, 0x20)
         }
     }
 
     /**
-     * @notice Internal pure function for deriving the hash of ids and amounts provided.
+     * @notice Internal pure function for deriving the commitments hash of a provided
+     * idsAndAmounts array.
      * @param idsAndAmounts      An array of ids and amounts.
      * @param replacementAmounts An optional array of replacement amounts.
-     * @return idsAndAmountsHash The hash of the ids and amounts.
+     * @return commitmentsHash   The EIP-712 hash of the Lock[] commitments array.
      * @dev This function expects that the calldata of idsAndAmounts will have bounds
      * checked elsewhere; using it without this check occurring elsewhere can result in
      * erroneous hash values. This function also expects that replacementAmounts.length
      * equals idsAndAmounts.length and will break if the invariant is not upheld.
      */
-    function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)
+    function toCommitmentsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)
         internal
         pure
-        returns (bytes32 idsAndAmountsHash)
+        returns (bytes32 commitmentsHash)
     {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let ptr := mload(0x40)
 
+            // Temporarily allocate four words of memory.
+            let hashesPtr := add(ptr, 0x80)
+
+            // Write lock typehash to first word of memory.
+            mstore(ptr, LOCK_TYPEHASH)
+
             // Cache various memory pointer data locations.
             let replacementDataStart := add(replacementAmounts, 0x20)
+            let lockDataStart := add(ptr, 0x20)
 
             // Iterate over the replacementAmounts array, splicing in the updated amounts.
             for { let i := 0 } lt(i, idsAndAmounts.length) { i := add(i, 1) } {
-                // Copy id from calldata to first word of scratch space.
-                mstore(0, calldataload(add(idsAndAmounts.offset, shl(6, i))))
+                // Retrieve the id from the relevant segment of calldata.
+                let id := calldataload(add(idsAndAmounts.offset, shl(6, i)))
 
-                // Copy amount from replacement data to second word.
-                mstore(0x20, mload(add(replacementDataStart, shl(5, i))))
+                // Copy id from calldata to next two words of allocated memory region.
+                // Deconstruct id into lockTag + token by inserting an empty word.
+                mstore(lockDataStart, id) // lockTag
+                mstore(add(lockDataStart, 0x20), id) // token
+                mstore(add(lockDataStart, 0x0c), 0) // empty word between lockTag & token
 
-                // Derive hash using scratch space and write to next memory region.
-                mstore(add(ptr, shl(5, i)), keccak256(0, 0x40))
+                // Copy amount from replacement data to last word of allocated memory region.
+                mstore(add(lockDataStart, 0x40), mload(add(replacementDataStart, shl(5, i))))
+
+                // Derive hash of allocated memory & write to next hashes memory region.
+                mstore(add(hashesPtr, shl(5, i)), keccak256(ptr, 0x80))
             }
 
             // Compute hash of derived hashes that have been stored in memory.
-            idsAndAmountsHash := keccak256(ptr, shl(5, idsAndAmounts.length))
+            commitmentsHash := keccak256(hashesPtr, shl(5, idsAndAmounts.length))
         }
     }
 
     /**
-     * @notice Internal pure function for deriving the hash of the ids and amounts.
-     * @param claims             An array of BatchClaimComponent structs.
-     * @return idsAndAmountsHash The hash of the ids and amounts.
+     * @notice Internal pure function for deriving the commitments hash based on the
+     * ids and amounts of a given batch claim component.
+     * @param claims           An array of BatchClaimComponent structs.
+     * @return commitmentsHash The EIP-712 hash of the Lock[] commitments array.
      */
-    function toIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
-        internal
-        pure
-        returns (uint256 idsAndAmountsHash)
-    {
-        // Retrieve the total number of ids in the claims array.
-        uint256 totalIds = claims.length;
+    function toCommitmentsHash(BatchClaimComponent[] calldata claims) internal pure returns (uint256 commitmentsHash) {
+        // Retrieve the total number of committed locks in the batch claim.
+        uint256 totalLocks = claims.length;
 
-        // Prepare a memory region for storing hashes of ids and amounts.
-        bytes memory idsAndAmounts = new bytes(totalIds << 5);
-
-        // Cache the memory location where data begins in the new region.
-        uint256 idsAndAmountsDataStart;
-        assembly ("memory-safe") {
-            idsAndAmountsDataStart := add(idsAndAmounts, 0x20)
-        }
+        // Allocate working memory for hashing operations.
+        (uint256 ptr, uint256 hashesPtr) = totalLocks.allocateCommitmentsHashingMemory();
 
         unchecked {
+            // Cache lock-specific data start memory pointer location.
+            uint256 lockDataStart = ptr + 0x20;
+
             // Iterate over the claims array.
-            for (uint256 i = 0; i < totalIds; ++i) {
+            for (uint256 i = 0; i < totalLocks; ++i) {
                 // Navigate to the current claim component in calldata.
                 BatchClaimComponent calldata claimComponent = claims[i];
 
                 assembly ("memory-safe") {
-                    // Copy the id and amount into scratch space.
-                    calldatacopy(0, claimComponent, 0x40)
+                    // Copy data on committed lock from relevant segment of calldata.
+                    // Deconstruct id into lockTag + token by inserting an empty word.
+                    mstore(lockDataStart, calldataload(claimComponent)) // lockTag
+                    calldatacopy(add(lockDataStart, 0x2c), add(claimComponent, 0x0c), 0x34) // token + amount
+                    mstore(add(lockDataStart, 0x0c), 0) // empty word between lockTag & token
 
                     // Hash the elements in scratch space and store at current position.
-                    mstore(add(idsAndAmountsDataStart, shl(5, i)), keccak256(0, 0x40))
+                    mstore(add(hashesPtr, shl(5, i)), keccak256(ptr, 0x80))
                 }
             }
         }
 
         assembly ("memory-safe") {
-            // Derive the hash of all idsAndAmounts hashes from the prepared data.
-            idsAndAmountsHash := keccak256(idsAndAmountsDataStart, mload(idsAndAmounts))
+            // Derive the commitments hash using the prepared lock hashes data.
+            commitmentsHash := keccak256(hashesPtr, shl(5, totalLocks))
+        }
+    }
+
+    function allocateCommitmentsHashingMemory(uint256 totalLocks)
+        internal
+        pure
+        returns (uint256 ptr, uint256 hashesPtr)
+    {
+        assembly ("memory-safe") {
+            // Retrieve the current free memory pointer.
+            ptr := mload(0x40)
+
+            // Write lock typehash to first word of memory.
+            mstore(ptr, LOCK_TYPEHASH)
+
+            // Allocate four words of memory for deriving hashes.
+            hashesPtr := add(ptr, 0x80)
+
+            // Allocate additional memory based on the total committed locks.
+            mstore(0x40, add(hashesPtr, shl(5, totalLocks)))
         }
     }
 
@@ -723,13 +787,15 @@ library HashLib {
             mstore(add(m, 0x40), sponsor)
             mstore(add(m, 0x60), nonce)
             mstore(add(m, 0x80), expires)
-            mstore(add(m, 0xa0), tokenId)
-            mstore(add(m, 0xc0), amount)
-            mstore(add(m, 0xe0), witness)
+            mstore(add(m, 0xa0), tokenId) // lockTag
+            mstore(add(m, 0xc0), tokenId) // token
+            mstore(add(m, 0xac), 0) // empty word between lockTag and token
+            mstore(add(m, 0xe0), amount)
+            mstore(add(m, 0x100), witness)
 
             // Derive the message hash from the prepared data.
             // Do not include witness hash for no-witness case.
-            messageHash := keccak256(m, add(0xe0, shl(5, iszero(eq(typehash, COMPACT_TYPEHASH)))))
+            messageHash := keccak256(m, add(0x100, shl(5, iszero(eq(typehash, COMPACT_TYPEHASH)))))
         }
     }
 
@@ -755,7 +821,7 @@ library HashLib {
         bytes32 witness,
         uint256[] memory replacementAmounts
     ) internal pure returns (bytes32 messageHash) {
-        bytes32 idsAndAmountsHash = idsAndAmounts.toIdsAndAmountsHash(replacementAmounts);
+        bytes32 commitmentsHash = idsAndAmounts.toCommitmentsHash(replacementAmounts);
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -765,7 +831,7 @@ library HashLib {
             mstore(add(m, 0x40), sponsor)
             mstore(add(m, 0x60), nonce)
             mstore(add(m, 0x80), expires)
-            mstore(add(m, 0xa0), idsAndAmountsHash)
+            mstore(add(m, 0xa0), commitmentsHash)
             mstore(add(m, 0xc0), witness)
 
             // Derive the message hash from the prepared data.
