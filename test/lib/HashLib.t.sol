@@ -49,6 +49,8 @@ contract HashLibTest is Setup {
 
     function testToTransferMessageHash_SingleRecipient() public {
         uint256 id = vm.randomUint();
+        bytes12 expectedLockTag = bytes12(bytes32(id));
+        address token = address(uint160(id));
         uint256 amount = vm.randomUint();
         Component[] memory recipients = new Component[](1);
         uint256 claimant1_val = _makeClaimant(claimant1);
@@ -63,7 +65,9 @@ contract HashLibTest is Setup {
         });
 
         bytes32 expectedHash = keccak256(
-            abi.encode(COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, transfer.id, amount)
+            abi.encode(
+                COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, expectedLockTag, token, amount
+            )
         );
 
         vm.prank(sponsor);
@@ -73,6 +77,8 @@ contract HashLibTest is Setup {
 
     function test_toTransferMessageHash_MultipleRecipients() public {
         uint256 id = 9876;
+        bytes12 expectedLockTag = bytes12(bytes32(id));
+        address token = address(uint160(id));
         uint256 amount1 = 1000;
         uint256 amount2 = 500;
         uint256 totalAmount = amount1 + amount2;
@@ -94,7 +100,16 @@ contract HashLibTest is Setup {
         bytes32 actualHash = tester.callToTransferMessageHash(transfer);
 
         bytes32 expectedHash = keccak256(
-            abi.encode(COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, transfer.id, totalAmount)
+            abi.encode(
+                COMPACT_TYPEHASH,
+                sponsor,
+                sponsor,
+                transfer.nonce,
+                transfer.expires,
+                expectedLockTag,
+                token,
+                totalAmount
+            )
         );
 
         assertEq(actualHash, expectedHash, "Transfer multiple recipients hash mismatch");
@@ -183,12 +198,15 @@ contract HashLibTest is Setup {
 
     function testToFlatMessageHashWithWitness() public {
         uint256 tokenId = vm.randomUint();
+        bytes12 expectedLockTag = bytes12(bytes32(tokenId));
+        address token = address(uint160(tokenId));
         uint256 amount = vm.randomUint();
         bytes32 typehash = keccak256(bytes("SomeTypehash()"));
         bytes32 witness = keccak256(bytes("witness data"));
 
-        bytes32 expectedHash =
-            keccak256(abi.encode(typehash, address(this), sponsor, nonce, expiration, tokenId, amount, witness));
+        bytes32 expectedHash = keccak256(
+            abi.encode(typehash, address(this), sponsor, nonce, expiration, expectedLockTag, token, amount, witness)
+        );
 
         bytes32 actualHash = tester.callToFlatMessageHashWithWitness(
             sponsor, tokenId, amount, address(this), nonce, expiration, typehash, witness
@@ -286,26 +304,38 @@ contract HashLibTest is Setup {
     function testToIdsAndAmountsHash() public {
         uint256 id1 = vm.randomUint();
         uint256 amount1 = vm.randomUint();
+        bytes12 lockTag1 = bytes12(bytes32(id1));
+        address lockedToken1 = address(uint160(id1));
         Component[] memory portions1 = new Component[](1);
-        uint256 claimant1_val = _makeClaimant(claimant1);
-        portions1[0] = Component({ claimant: claimant1_val, amount: amount1 });
-        BatchClaimComponent memory claim1 =
-            BatchClaimComponent({ id: id1, allocatedAmount: amount1, portions: portions1 });
 
         uint256 id2 = vm.randomUint();
+        bytes12 lockTag2 = bytes12(bytes32(id2));
+        address lockedToken2 = address(uint160(id2));
         uint256 amount2 = vm.randomUint();
-        Component[] memory portions2 = new Component[](1);
-        uint256 claimant2_val = _makeClaimant(claimant2);
-        portions2[0] = Component({ claimant: claimant2_val, amount: amount2 });
-        BatchClaimComponent memory claim2 =
-            BatchClaimComponent({ id: id2, allocatedAmount: amount2, portions: portions2 });
 
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](2);
-        claims[0] = claim1;
-        claims[1] = claim2;
 
-        bytes32 expectedHash =
-            keccak256(abi.encode(keccak256(abi.encode(id1, amount1)), keccak256(abi.encode(id2, amount2))));
+        {
+            Component[] memory portions2 = new Component[](1);
+            uint256 claimant1_val = _makeClaimant(claimant1);
+            portions1[0] = Component({ claimant: claimant1_val, amount: amount1 });
+            uint256 claimant2_val = _makeClaimant(claimant2);
+            portions2[0] = Component({ claimant: claimant2_val, amount: amount2 });
+            BatchClaimComponent memory claim1 =
+                BatchClaimComponent({ id: id1, allocatedAmount: amount1, portions: portions1 });
+            BatchClaimComponent memory claim2 =
+                BatchClaimComponent({ id: id2, allocatedAmount: amount2, portions: portions2 });
+
+            claims[0] = claim1;
+            claims[1] = claim2;
+        }
+
+        bytes32 expectedHash = keccak256(
+            abi.encode(
+                keccak256(abi.encode(lockTypehash, lockTag1, lockedToken1, amount1)),
+                keccak256(abi.encode(lockTypehash, lockTag2, lockedToken2, amount2))
+            )
+        );
 
         uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
         assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
@@ -339,6 +369,18 @@ contract HashLibTest is Setup {
             idsAndAmounts[i][1] = amount;
         }
 
+        bytes32[] memory lockHashes = new bytes32[](idsAndAmounts.length);
+        for (uint256 i = 0; i < lockHashes.length; ++i) {
+            lockHashes[i] = keccak256(
+                abi.encode(
+                    lockTypehash,
+                    bytes12(bytes32(idsAndAmounts[i][0])),
+                    address(uint160(idsAndAmounts[i][0])),
+                    idsAndAmounts[i][1]
+                )
+            );
+        }
+
         return keccak256(
             abi.encode(
                 BATCH_COMPACT_TYPEHASH,
@@ -346,14 +388,22 @@ contract HashLibTest is Setup {
                 sponsor,
                 transfer.nonce,
                 transfer.expires,
-                uint256(keccak256(abi.encodePacked(idsAndAmounts)))
+                keccak256(abi.encodePacked(lockHashes))
             )
         );
     }
 
-    function testFuzz_ToTransferMessageHash(uint256 _id, uint256 _amount, uint256 _nonce, uint256 _expires) public {
+    function testFuzz_ToTransferMessageHash(
+        bytes12 _lockTag,
+        address _token,
+        uint256 _amount,
+        uint256 _nonce,
+        uint256 _expires
+    ) public {
         // Bound the inputs to avoid overflows
         vm.assume(_amount > 0 && _amount < type(uint128).max);
+
+        uint256 tokenId = uint256(bytes32(_lockTag)) | uint256(uint160(_token));
 
         Component[] memory recipients = new Component[](1);
         uint256 claimant1_val = _makeClaimant(claimant1);
@@ -363,12 +413,12 @@ contract HashLibTest is Setup {
             allocatorData: bytes(""),
             nonce: _nonce,
             expires: _expires,
-            id: _id,
+            id: tokenId,
             recipients: recipients
         });
 
         bytes32 expectedHash = keccak256(
-            abi.encode(COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, transfer.id, _amount)
+            abi.encode(COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, _lockTag, _token, _amount)
         );
 
         vm.prank(sponsor);
@@ -378,7 +428,8 @@ contract HashLibTest is Setup {
     }
 
     function testFuzz_ToTransferMessageHash_MultipleRecipients(
-        uint256 _id,
+        bytes12 _lockTag,
+        address _token,
         uint256 _amount1,
         uint256 _amount2,
         uint256 _nonce,
@@ -389,10 +440,12 @@ contract HashLibTest is Setup {
         vm.assume(_amount2 > 0 && _amount2 < type(uint128).max);
 
         Component[] memory recipients = new Component[](2);
-        uint256 claimant1_val = _makeClaimant(claimant1);
-        uint256 claimant2_val = _makeClaimant(claimant2);
-        recipients[0] = Component({ claimant: claimant1_val, amount: _amount1 });
-        recipients[1] = Component({ claimant: claimant2_val, amount: _amount2 });
+        {
+            uint256 claimant1_val = _makeClaimant(claimant1);
+            uint256 claimant2_val = _makeClaimant(claimant2);
+            recipients[0] = Component({ claimant: claimant1_val, amount: _amount1 });
+            recipients[1] = Component({ claimant: claimant2_val, amount: _amount2 });
+        }
 
         uint256 totalAmount = _amount1 + _amount2;
         vm.assume(totalAmount >= _amount1);
@@ -401,12 +454,14 @@ contract HashLibTest is Setup {
             allocatorData: bytes(""),
             nonce: _nonce,
             expires: _expires,
-            id: _id,
+            id: uint256(bytes32(_lockTag)) | uint256(uint160(_token)),
             recipients: recipients
         });
 
         bytes32 expectedHash = keccak256(
-            abi.encode(COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, transfer.id, totalAmount)
+            abi.encode(
+                COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, _lockTag, _token, totalAmount
+            )
         );
 
         vm.prank(sponsor);
@@ -415,24 +470,40 @@ contract HashLibTest is Setup {
         assertEq(actualHash, expectedHash, "Transfer multiple recipients hash mismatch");
     }
 
-    function testFuzz_ToFlatMessageHashWithWitness(uint256 _tokenId, uint256 _amount, uint256 _nonce, uint256 _expires)
-        public
-        view
-    {
+    function testFuzz_ToFlatMessageHashWithWitness(
+        bytes12 _lockTag,
+        address _token,
+        uint256 _amount,
+        uint256 _nonce,
+        uint256 _expires
+    ) public view {
         bytes32 typehash = keccak256(bytes("SomeTypehash()"));
         bytes32 witness = keccak256(bytes("witness data"));
 
-        bytes32 expectedHash =
-            keccak256(abi.encode(typehash, address(this), sponsor, _nonce, _expires, _tokenId, _amount, witness));
+        bytes32 expectedHash = keccak256(
+            abi.encode(typehash, address(this), sponsor, _nonce, _expires, _lockTag, _token, _amount, witness)
+        );
+
+        uint256 tokenId = uint256(bytes32(_lockTag)) | uint256(uint160(_token));
 
         bytes32 actualHash = tester.callToFlatMessageHashWithWitness(
-            sponsor, _tokenId, _amount, address(this), _nonce, _expires, typehash, witness
+            sponsor, tokenId, _amount, address(this), _nonce, _expires, typehash, witness
         );
 
         assertEq(actualHash, expectedHash, "FlatMessageWithWitness hash mismatch");
     }
 
-    function testFuzz_ToIdsAndAmountsHash(uint256 _id1, uint256 _amount1, uint256 _id2, uint256 _amount2) public view {
+    function testFuzz_ToIdsAndAmountsHash(
+        bytes12 _lockTag1,
+        address _token1,
+        uint256 _amount1,
+        bytes12 _lockTag2,
+        address _token2,
+        uint256 _amount2
+    ) public view {
+        uint256 _id1 = uint256(bytes32(_lockTag1)) | uint256(uint160(_token1));
+        uint256 _id2 = uint256(bytes32(_lockTag2)) | uint256(uint160(_token2));
+
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [_id1, _amount1];
         idsAndAmounts[1] = [_id2, _amount2];
@@ -490,8 +561,12 @@ contract HashLibTest is Setup {
         claims[0] = claim1;
         claims[1] = claim2;
 
-        bytes32 expectedHash =
-            keccak256(abi.encode(keccak256(abi.encode(_id1, _amount1)), keccak256(abi.encode(_id2, _amount2))));
+        bytes32 expectedHash = keccak256(
+            abi.encode(
+                keccak256(abi.encode(lockTypehash, bytes12(bytes32(_id1)), address(uint160(_id1)), _amount1)),
+                keccak256(abi.encode(lockTypehash, bytes12(bytes32(_id2)), address(uint160(_id2)), _amount2))
+            )
+        );
 
         uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
         assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
