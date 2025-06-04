@@ -61,7 +61,7 @@ contract RegistrationLogic is ConstructorLogic {
         internal
         returns (bytes32 claimHash)
     {
-        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x100, _domainSeparator(), sponsorSignature);
+        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x120, _domainSeparator(), sponsorSignature);
     }
 
     /**

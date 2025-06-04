@@ -87,7 +87,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         address sponsor,
         uint256, // nonce
         uint256, // expires
-        uint256, // id
+        bytes12, // lockTag
+        address, // token
         uint256, // amount
         bytes32, // witness
         bytes calldata sponsorSignature
@@ -101,7 +102,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         address sponsor,
         uint256, // nonce
         uint256, // expires
-        bytes32, // idsAndAmountsHash
+        bytes32, // commitmentsHash
         bytes32, // witness
         bytes calldata sponsorSignature
     ) external returns (bytes32 claimHash) {

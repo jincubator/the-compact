@@ -1067,7 +1067,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsOne))))
+                    _hashOfHashes(idsAndAmountsOne)
                 )
             );
 
@@ -1076,7 +1076,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
-                    keccak256(abi.encodePacked(keccak256(abi.encodePacked(idsAndAmountsTwo))))
+                    _hashOfHashes(idsAndAmountsTwo)
                 )
             );
 
@@ -1085,7 +1085,7 @@ contract MultichainClaimTest is Setup {
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     thirdChainId,
-                    keccak256(abi.encodePacked(idsAndAmountsTwo))
+                    _hashOfHashes(idsAndAmountsTwo)
                 )
             );
         }

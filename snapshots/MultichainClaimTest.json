@@ -7,6 +7,8 @@
   "cancelMultichainClaimWithWitness": "45565",
   "exogenousBatchMultichainClaim": "124680",
   "exogenousBatchMultichainClaimWithWitness": "125023",
+  "exogenousMultichainClaim": "96498",
   "exogenousMultichainClaimWithWitness": "96841",
+  "multichainClaim": "95748",
   "multichainClaimWithWitness": "96091"
 }
