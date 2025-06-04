@@ -45,8 +45,8 @@ contract DepositViaPermit2Logic is DepositLogic {
     // Selector for the single token `permit2.permitWitnessTransferFrom` function.
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
 
-    // Address of the Permit2 contract.
-    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+    // Address of the Permit2 contract (with 5 leading zeroes stripped).
+    uint120 private constant _PERMIT2 = 0x22D473030F116dDEE9F6B43aC78BA3;
 
     /**
      * @notice Internal function for depositing ERC20 tokens using Permit2 authorization. The
@@ -306,10 +306,7 @@ contract DepositViaPermit2Logic is DepositLogic {
                     // Derive the total memory offset for the witness.
                     let totalWitnessMemoryOffset :=
                         and(
-                            add(
-                                add(0x147, add(witness.length, iszero(iszero(witness.length)))),
-                                mul(eq(compactCategory, 1), 0x0b)
-                            ),
+                            add(add(0x147, add(witness.length, iszero(iszero(witness.length)))), mul(compactCategory, 0x0b)),
                             not(0x1f)
                         )
 

@@ -28,9 +28,8 @@ import {
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_WITNESS_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_WITNESS_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_WITNESS_TYPESTRING_FRAGMENT_SIX,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_MANDATE_FRAGMENT_ONE,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_MANDATE_FRAGMENT_TWO,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_ONE,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_TWO,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_THREE,
@@ -202,34 +201,28 @@ library DepositViaPermit2Lib {
                     // Prepare next typestring fragment using BatchCompact witness typestring.
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
+
+                    mstore(
+                        add(categorySpecificStart, 0x62),
+                        PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_MANDATE_FRAGMENT_ONE
+                    )
+                    mstore(add(categorySpecificStart, 0x52), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
                     mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    if iszero(witnessLength) {
-                        // handle no-witness case
-                        mstore(
-                            add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR
-                        )
-                        mstore(
-                            add(categorySpecificStart, 0x85), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX
-                        )
-                        mstore(
-                            add(categorySpecificStart, 0x80), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE
-                        )
-                    }
-                    if iszero(iszero(witnessLength)) {
-                        // else
-                        mstore(
-                            add(categorySpecificStart, 0x60),
-                            PERMIT2_ACTIVATION_BATCH_COMPACT_WITNESS_TYPESTRING_FRAGMENT_FOUR
-                        )
-                        mstore(
-                            add(categorySpecificStart, 0x9D),
-                            PERMIT2_ACTIVATION_BATCH_COMPACT_WITNESS_TYPESTRING_FRAGMENT_SIX
-                        )
-                        mstore(
-                            add(categorySpecificStart, 0x80),
-                            PERMIT2_ACTIVATION_BATCH_COMPACT_WITNESS_TYPESTRING_FRAGMENT_FIVE
-                        )
-                    }
+                    mstore(
+                        add(categorySpecificStart, 0x9d),
+                        PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_MANDATE_FRAGMENT_TWO
+                    )
+
+                    let categorySpecificStartIncorporatingWitness :=
+                        add(categorySpecificStart, shl(4, iszero(iszero(witnessLength))))
+                    mstore(
+                        add(categorySpecificStartIncorporatingWitness, 0x85),
+                        PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_SIX
+                    )
+                    mstore(
+                        add(categorySpecificStartIncorporatingWitness, 0x72),
+                        PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE
+                    )
 
                     // Set memory pointers for Activation and Category-specific data end.
                     categorySpecificEnd := add(categorySpecificStart, 0xbd)

@@ -128,7 +128,7 @@ contract Tstorish {
      * @param value       The value to write to the given storage slot.
      */
     function _setTstore(uint256 storageSlot, uint256 value) private {
-        assembly {
+        assembly ("memory-safe") {
             tstore(storageSlot, value)
         }
     }
@@ -162,7 +162,7 @@ contract Tstorish {
      * @return value The TSTORISH value at the given storage slot.
      */
     function _getTstore(uint256 storageSlot) private view returns (uint256 value) {
-        assembly {
+        assembly ("memory-safe") {
             value := tload(storageSlot)
         }
     }
@@ -178,11 +178,11 @@ contract Tstorish {
      */
     function _getTstorishWithSloadFallback(uint256 storageSlot) private view returns (uint256 value) {
         if (_useSstoreFallback()) {
-            assembly {
+            assembly ("memory-safe") {
                 value := sload(storageSlot)
             }
         } else {
-            assembly {
+            assembly ("memory-safe") {
                 value := tload(storageSlot)
             }
         }
@@ -195,7 +195,7 @@ contract Tstorish {
      * @param storageSlot The slot to clear the TSTORISH value for.
      */
     function _clearTstore(uint256 storageSlot) private {
-        assembly {
+        assembly ("memory-safe") {
             tstore(storageSlot, 0)
         }
     }
@@ -209,11 +209,11 @@ contract Tstorish {
      */
     function _clearTstorishWithSstoreFallback(uint256 storageSlot) private {
         if (_useSstoreFallback()) {
-            assembly {
+            assembly ("memory-safe") {
                 sstore(storageSlot, 0)
             }
         } else {
-            assembly {
+            assembly ("memory-safe") {
                 tstore(storageSlot, 0)
             }
         }
@@ -225,7 +225,7 @@ contract Tstorish {
      */
     function _prepareTloadTest() private returns (address contractAddress) {
         // Utilize assembly to deploy a contract testing TLOAD support.
-        assembly {
+        assembly ("memory-safe") {
             // Write the contract deployment code payload to scratch space.
             mstore(0, _TLOAD_TEST_PAYLOAD)
 
