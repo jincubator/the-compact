@@ -21,8 +21,6 @@ library RegistrationLib {
     uint256 private constant _COMPACT_REGISTERED_SIGNATURE =
         0x52dd3aeaf9d70bfcfdd63526e155ba1eea436e7851acf5c950299321c671b927;
 
-    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
-
     // Storage scope for active registrations:
     // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
     uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
@@ -43,9 +41,10 @@ library RegistrationLib {
             //  - topic1: CompactRegistered event signature
             //  - topic2: sponsor address (sanitized)
             //  - data: [claimHash, typehash]
-            // log2(claimHash, 0x40, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
+            mstore(0, claimHash)
+            mstore(0x20, typehash)
+            log2(0, 0x40, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
         }
-        emit CompactRegistered(sponsor, claimHash, typehash);
     }
 
     /**
