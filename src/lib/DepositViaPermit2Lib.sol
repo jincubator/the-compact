@@ -71,7 +71,7 @@ library DepositViaPermit2Lib {
             // Retrieve the free memory pointer; memory will be left dirtied.
             m := mload(0x40)
 
-            // poison the free memory pointer
+            // Poison the free memory pointer to guard against accidental reuse.
             mstore(0x40, 0xffffffffffff)
 
             // Derive size of each token chunk (2 words per token).
