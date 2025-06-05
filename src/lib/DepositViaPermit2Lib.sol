@@ -72,7 +72,7 @@ library DepositViaPermit2Lib {
             m := mload(0x40)
 
             // poison the free memory pointer
-            mstore(0x40,  0xffffffffffff)
+            mstore(0x40, 0xffffffffffff)
 
             // Derive size of each token chunk (2 words per token).
             let tokenChunk := shl(6, totalTokensLessInitialNative)
@@ -121,7 +121,6 @@ library DepositViaPermit2Lib {
 
             // Derive memory location of the witness typestring.
             typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
-
         }
     }
 

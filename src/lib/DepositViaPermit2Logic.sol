@@ -453,7 +453,7 @@ contract DepositViaPermit2Logic is DepositLogic {
             m := mload(0x40)
 
             // poison the free memory pointer
-            mstore(0x40,  0xffffffffffff)
+            mstore(0x40, 0xffffffffffff)
 
             // Begin preparing Permit2 call data.
             mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
@@ -465,7 +465,6 @@ contract DepositViaPermit2Logic is DepositLogic {
 
             // Derive the memory location for the typestring.
             typestringMemoryLocation := add(m, 0x160)
-
         }
     }
 
