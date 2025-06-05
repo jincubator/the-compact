@@ -6,5 +6,6 @@
   "getEmissaryStatus_enabled": "908",
   "getEmissaryStatus_scheduled": "909",
   "reassignEmissary": "3079",
-  "scheduleEmissaryAssignment": "3511"
+  "scheduleEmissaryAssignment": "3511",
+  "splitBatchClaimWithWitness": "148801"
 }
