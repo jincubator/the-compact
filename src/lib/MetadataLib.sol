@@ -124,7 +124,8 @@ library MetadataLib {
         returns (string memory uri)
     {
         Lock memory lock = Lock({ token: token, allocator: allocator, resetPeriod: resetPeriod, scope: scope });
-        string memory name = string.concat("{\"name\": \"Compact ", lock.token.readSymbolWithDefaultValue().escapeJSON(), "\",");
+        string memory name =
+            string.concat("{\"name\": \"Compact ", lock.token.readSymbolWithDefaultValue().escapeJSON(), "\",");
         string memory image;
         {
             // Generate dynamic SVG and Base64 encode it
