@@ -403,7 +403,7 @@ contract ForcedWithdrawalTest is Setup {
         assertEq(recipient.balance, withdrawAmount, "Recipient should have received tokens");
     }
 
-    function test_processForcedWithdrawal_zeroAmount() public {
+    function test_revert_zeroAmountForcedWithdrawal() public {
         // Setup: register allocator, make a deposit, and enable forced withdrawal
         ResetPeriod resetPeriod = ResetPeriod.OneDay;
         Scope scope = Scope.Multichain;
@@ -427,10 +427,8 @@ contract ForcedWithdrawalTest is Setup {
 
         // Test: process forced withdrawal with zero amount
         vm.prank(swapper);
-        bool success = theCompact.forcedWithdrawal(id, recipient, 0);
-
-        // Verify: operation was successful
-        assertTrue(success, "Processing forced withdrawal should succeed");
+        vm.expectRevert(abi.encodeWithSignature("InsufficientBalance()"));
+        theCompact.forcedWithdrawal(id, recipient, 0);
 
         // Verify: balances are unchanged
         assertEq(theCompact.balanceOf(swapper, id), amount, "Swapper should still have all tokens");
