@@ -29,14 +29,12 @@ import { EmissaryStatus } from "../types/EmissaryStatus.sol";
  * The contract provides functions to schedule and assign emissaries, as well as
  * get the current status of an emissary assignment.
  */
-abstract contract EmissaryLogic {
+contract EmissaryLogic {
     using IdLib for address;
     using IdLib for uint96;
     using IdLib for bytes12;
     using EmissaryLib for bytes12;
     using EmissaryLib for address;
-
-    error InvalidEmissaryAssignment();
 
     /**
      * @notice Initiates the timelock process for changing an emissary
@@ -86,8 +84,14 @@ abstract contract EmissaryLogic {
         // Extract allocatorId from locktag and ensure that the allocator is registered.
         address allocator = lockTag.toAllocatorId().toRegisteredAllocator();
 
-        // Ensure allocator is not the emissary, which would grant them unilateral control.
-        require(allocator != emissary, InvalidEmissaryAssignment());
+        // Ensure allocator is not the emissary as it would grant the entity unilateral control.
+        if (allocator == emissary) {
+            assembly ("memory-safe") {
+                // Revert InvalidEmissaryAssignment();
+                mstore(0, 0x2411f310)
+                revert(0x1c, 0x04)
+            }
+        }
 
         // Assign the emissary of the lock tag for the caller.
         lockTag.assignEmissary(emissary);

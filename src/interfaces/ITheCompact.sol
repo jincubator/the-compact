@@ -678,4 +678,5 @@ interface ITheCompact {
     error InconsistentAllocators();
     error InvalidAllocation(address allocator);
     error ChainIndexOutOfRange();
+    error InvalidEmissaryAssignment();
 }

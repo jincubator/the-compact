@@ -405,7 +405,7 @@ contract EmissaryTest is Setup {
 
         // Test: try to assign allocator as emissary
         vm.prank(swapper);
-        vm.expectRevert(abi.encodeWithSelector(EmissaryLogic.InvalidEmissaryAssignment.selector));
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidEmissaryAssignment.selector));
         theCompact.assignEmissary(lockTag, allocator);
     }
 
