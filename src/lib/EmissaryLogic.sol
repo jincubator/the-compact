@@ -105,7 +105,7 @@ abstract contract EmissaryLogic {
      *      The function also returns the timestamp when the emissary assignment will be available,
      *      and the address of the current emissary if one is assigned.
      *
-     *      The `usingAllocatorId` function is used to retrieve the allocator's ID, ensuring consistent
+     *      The `toAllocatorId` function is used to retrieve the allocator's ID, ensuring consistent
      *      and accurate status retrieval.
      *
      * @param sponsor The address of the sponsor who has delegated signature verification.

@@ -41,7 +41,6 @@ library EmissaryLib {
 
     error EmissaryAssignmentUnavailable(uint256 assignAt);
     error InvalidLockTag();
-    error InvalidEmissaryStatus();
 
     event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
     event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 indexed assignableAt);
@@ -164,14 +163,10 @@ library EmissaryLib {
         unchecked {
             // Extract five bit resetPeriod from lockTag, convert to seconds, & add to current time.
             assignableAt = block.timestamp + lockTag.toResetPeriod().toSeconds();
-
-            // Ensure that assignableAt is in the future and is not greater than type(uint96.max).
-            if ((assignableAt < block.timestamp).or(assignableAt > type(uint96).max)) {
-                revert InvalidLockTag();
-            }
         }
 
         // Write the resultant value to storage.
+        // assignableAt is expected to remain in uint96 range, as ResetPeriod is capped at thirty Days.
         emissaryConfig.assignableAt = uint96(assignableAt);
 
         // Emit an EmissaryAssignmentScheduled event.
@@ -184,19 +179,15 @@ library EmissaryLib {
      * @return lockTag The common lock tag across all IDs
      */
     function extractSameLockTag(uint256[2][] memory idsAndAmounts) internal pure returns (bytes12 lockTag) {
-        // Retrieve the length of the array.
-        uint256 idsAndAmountsLength = idsAndAmounts.length;
-
-        // Ensure length is at least 1.
-        if (idsAndAmountsLength == 0) {
-            revert InvalidLockTag();
-        }
-
         // Store the first lockTag for the first id.
+        // idsAndAmounts must be non-zero length at this point, as it gets checked in _buildIdsAndAmounts in ComponentLib.
         lockTag = idsAndAmounts[0][0].toLockTag();
 
         // Initialize an error buffer.
         uint256 errorBuffer;
+
+        // Retrieve the length of the array.
+        uint256 idsAndAmountsLength = idsAndAmounts.length;
 
         // Iterate over remaining array elements.
         unchecked {
@@ -321,17 +312,15 @@ library EmissaryLib {
         currentEmissary = emissaryConfig.emissary;
 
         // Determine the emissary's status based on its current state:
-        // - If there is no current emissary, the status is Disabled.
+        // - If there is no current emissary, the status is Disabled and assignableAt must be zero.
         // - If assignableAt is NOT_SCHEDULED, the emissary is Enabled and active.
         // - If assignableAt is set to a future timestamp, the emissary is Scheduled for reassignment.
         if (currentEmissary == address(0)) {
             status = EmissaryStatus.Disabled;
         } else if (assignableAt == NOT_SCHEDULED) {
             status = EmissaryStatus.Enabled;
-        } else if (assignableAt != 0) {
-            status = EmissaryStatus.Scheduled;
         } else {
-            revert InvalidEmissaryStatus();
+            status = EmissaryStatus.Scheduled;
         }
     }
 }

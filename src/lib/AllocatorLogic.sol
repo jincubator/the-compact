@@ -34,7 +34,7 @@ contract AllocatorLogic {
      */
     function _consume(uint256[] calldata nonces) internal returns (bool) {
         // NOTE: this may not be necessary, consider removing
-        msg.sender.usingAllocatorId().mustHaveARegisteredAllocator();
+        msg.sender.toAllocatorId().mustHaveARegisteredAllocator();
 
         unchecked {
             uint256 i;

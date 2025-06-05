@@ -253,7 +253,13 @@ library ComponentLib {
             }
 
             // Revert if any errors occurred.
-            _revertWithInvalidBatchAllocationIfError(errorBuffer);
+            assembly ("memory-safe") {
+                if errorBuffer {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
+            }
         }
     }
 
@@ -351,22 +357,6 @@ library ComponentLib {
 
                 // Perform the transfer or withdrawal for the portion.
                 msg.sender.performOperation(id, component.claimant, component.amount);
-            }
-        }
-    }
-
-    /**
-     * @notice Private pure function that reverts with an InvalidBatchAllocation error
-     * if an error buffer is nonzero.
-     * @param errorBuffer The error buffer to check.
-     */
-    function _revertWithInvalidBatchAllocationIfError(uint256 errorBuffer) private pure {
-        // Revert if any errors occurred.
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
             }
         }
     }

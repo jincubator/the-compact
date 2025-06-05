@@ -95,7 +95,7 @@ contract DirectDepositLogic is DepositLogic {
         }
 
         // Derive current allocator ID from first resource lock ID.
-        uint96 currentAllocatorId = id.toRegisteredAllocatorId();
+        uint96 currentAllocatorId = id.toAllocatorIdIfRegistered();
 
         // Declare variable for subsequent allocator IDs.
         uint96 newAllocatorId;

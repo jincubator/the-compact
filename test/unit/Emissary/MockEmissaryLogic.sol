@@ -36,7 +36,7 @@ contract MockEmissaryLogic is TheCompactLogic {
         bytes32 domainSeparator = _domainSeparator();
         bytes32 digest = claimHash.withDomain(domainSeparator);
 
-        bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
+        bytes12 lockTag = allocator.toAllocatorId().toLockTag(scope, resetPeriod);
         digest.verifyWithEmissary(claimHash, sponsor, lockTag, signature);
         return true;
     }

@@ -61,7 +61,7 @@ library ValidityLib {
      * @return allocator The address of the registered allocator.
      */
     function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
-        allocator = id.toAllocator();
+        allocator = id.toAllocatorId().toRegisteredAllocator();
         nonce.consumeNonceAsAllocator(allocator);
     }
 

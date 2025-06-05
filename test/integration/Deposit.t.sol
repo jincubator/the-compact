@@ -5,6 +5,7 @@ import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
+import { IdLib } from "../../src/lib/IdLib.sol";
 import { FeeOnTransferToken } from "../../src/test/FeeOnTransferToken.sol";
 import { ReentrantToken } from "../../src/test/ReentrantToken.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
@@ -679,5 +680,20 @@ contract DepositTest is Setup {
             assertEq(token.balanceOf(address(theCompact)), 0);
             assertEq(address(theCompact).balance, 0);
         }
+    }
+
+    function test_revert_NoAllocatorRegistered() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        uint96 allocatorId = uint96(uint160(allocator) >> (64 + 4) /* 1 byte for scope + 3 bytes for reset period */ ); // unregistered allocator
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        vm.prank(swapper);
+        vm.expectRevert(abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, allocatorId), address(theCompact));
+        theCompact.depositNative{ value: amount }(lockTag, address(0));
     }
 }
