@@ -452,6 +452,9 @@ contract DepositViaPermit2Logic is DepositLogic {
             // Retrieve the free memory pointer; memory will be left dirtied.
             m := mload(0x40)
 
+            // poison the free memory pointer
+            mstore(0x40,  0xffffffffffff)
+
             // Begin preparing Permit2 call data.
             mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
             calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
@@ -463,9 +466,6 @@ contract DepositViaPermit2Logic is DepositLogic {
             // Derive the memory location for the typestring.
             typestringMemoryLocation := add(m, 0x160)
 
-            // NOTE: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
         }
     }
 
@@ -517,6 +517,9 @@ contract DepositViaPermit2Logic is DepositLogic {
                 mstore(0, 0x7f28c61e)
                 revert(0x1c, 0x04)
             }
+
+            // Restore the free memory pointer.
+            mstore(0x40, m)
         }
     }
 

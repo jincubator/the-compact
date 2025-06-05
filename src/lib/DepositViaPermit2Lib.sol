@@ -71,6 +71,9 @@ library DepositViaPermit2Lib {
             // Retrieve the free memory pointer; memory will be left dirtied.
             m := mload(0x40)
 
+            // poison the free memory pointer
+            mstore(0x40,  0xffffffffffff)
+
             // Derive size of each token chunk (2 words per token).
             let tokenChunk := shl(6, totalTokensLessInitialNative)
 
@@ -119,9 +122,6 @@ library DepositViaPermit2Lib {
             // Derive memory location of the witness typestring.
             typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
 
-            // NOTE: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
         }
     }
 
