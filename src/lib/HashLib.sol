@@ -421,31 +421,15 @@ library HashLib {
         bytes32 multichainCompactTypehash,
         uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
+        // Derive the element hash for the current element.
+        bytes32 elementHash = claim.toElementHash(elementTypehash, commitmentsHash);
+
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
 
-            // Store the commitments hash at the beginning of the memory region.
-            mstore(add(m, 0x60), commitmentsHash)
-
-            // Prepare initial components of element data: element typehash, arbiter, & chainid.
-            mstore(m, elementTypehash)
-            mstore(add(m, 0x20), caller()) // arbiter
-            mstore(add(m, 0x40), chainid())
-
-            let elementEnd := 0x80
-
-            // Check if the element typehash is not ELEMENT_TYPEHASH, indicating a witness is present
-            if iszero(eq(elementTypehash, ELEMENT_TYPEHASH)) {
-                // Store the witness in memory.
-                mstore(add(m, elementEnd), calldataload(add(claim, 0xa0))) // witness
-
-                // Update the elementEnd pointer
-                elementEnd := add(elementEnd, 0x20)
-            }
-
-            // Derive the first element hash from the prepared data and write it to memory.
-            mstore(m, keccak256(m, elementEnd))
+            // Write the derived element hash to memory.
+            mstore(m, elementHash)
 
             // Derive the pointer to the additional chains and retrieve the length.
             let additionalChainsPtr := add(claim, calldataload(add(add(claim, additionalOffset), 0xa0)))
@@ -489,31 +473,12 @@ library HashLib {
         bytes32 multichainCompactTypehash,
         uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
+        // Derive the element hash for the current element.
+        bytes32 elementHash = claim.toElementHash(elementTypehash, commitmentsHash);
+
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
-
-            // Store the commitments hash at the beginning of the memory region.
-            mstore(add(m, 0x60), commitmentsHash)
-
-            // Prepare initial components of element data: element typehash, arbiter, & chainid.
-            mstore(m, elementTypehash)
-            mstore(add(m, 0x20), caller()) // arbiter
-            mstore(add(m, 0x40), chainid())
-
-            let elementEnd := 0x80
-
-            // Check if the element typehash is not ELEMENT_TYPEHASH, indicating a witness is present
-            if iszero(eq(elementTypehash, ELEMENT_TYPEHASH)) {
-                // Store the witness in memory.
-                mstore(add(m, elementEnd), calldataload(add(claim, 0xa0))) // witness
-
-                // Update the elementEnd pointer
-                elementEnd := add(elementEnd, 0x20)
-            }
-
-            // Derive the element hash from the prepared data and write it to memory.
-            let elementHash := keccak256(m, elementEnd)
 
             // Derive the pointer to the additional chains and retrieve the length.
             let claimWithAdditionalOffset := add(claim, additionalOffset)
@@ -525,18 +490,27 @@ library HashLib {
             // Retrieve the chain index from calldata.
             let chainIndex := shl(5, calldataload(add(claimWithAdditionalOffset, 0xc0)))
 
-            // NOTE: rather than using extraOffset, consider breaking into two distinct
-            // loops or potentially even two calldatacopy operations based on chainIndex
+            // Initialize an offset indicating whether a matching chain index has been located.
             let extraOffset := 0
+
+            // Move the additional chains pointer forward by a word to begin with data segment.
+            additionalChainsPtr := add(0x20, additionalChainsPtr)
 
             // Iterate over the additional chains array and store each element hash in memory.
             for { let i := 0 } lt(i, additionalChainsLength) { i := add(i, 0x20) } {
-                mstore(add(add(m, i), extraOffset), calldataload(add(add(0x20, additionalChainsPtr), i)))
+                mstore(add(add(m, i), extraOffset), calldataload(add(additionalChainsPtr, i)))
                 // If current index matches chain index, store derived hash and increment offset.
                 if eq(i, chainIndex) {
                     extraOffset := 0x20
                     mstore(add(m, add(i, extraOffset)), elementHash)
                 }
+            }
+
+            // Ensure provided chain index & additional chains array applied the current element.
+            if iszero(extraOffset) {
+                // Revert ChainIndexOutOfRange()
+                mstore(0, 0x71515b9a)
+                revert(0x1c, 0x04)
             }
 
             // Derive the hash of the element hashes from the prepared data and write it to memory.
@@ -554,6 +528,36 @@ library HashLib {
 
             // Derive the message hash from the prepared data.
             messageHash := keccak256(m, 0xa0)
+        }
+    }
+
+    /**
+     * @notice Internal view function for deriving the EIP-712 message hash for
+     * a specific element on a multichain claim with or without a witness.
+     * @param claim                     Pointer to the claim location in calldata.
+     * @param elementTypehash           The element typehash.
+     * @param commitmentsHash           The EIP-712 hash of the Lock[] commitments array.
+     * @return elementHash              The EIP-712 compliant element hash.
+     */
+    function toElementHash(uint256 claim, bytes32 elementTypehash, uint256 commitmentsHash)
+        internal
+        view
+        returns (bytes32 elementHash)
+    {
+        assembly ("memory-safe") {
+            // Retrieve the free memory pointer; memory will be left dirtied.
+            let m := mload(0x40)
+
+            // Prepare data: element typehash, arbiter, chainid, commitmentsHash, & witness.
+            mstore(m, elementTypehash)
+            mstore(add(m, 0x20), caller()) // arbiter
+            mstore(add(m, 0x40), chainid())
+            mstore(add(m, 0x60), commitmentsHash)
+            mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) // witness
+
+            // Derive the element hash from the prepared data and write it to memory.
+            // Omit the witness if the default "no-witness" typehash is provided.
+            elementHash := keccak256(m, add(0x80, shl(5, iszero(eq(elementTypehash, ELEMENT_TYPEHASH)))))
         }
     }
 

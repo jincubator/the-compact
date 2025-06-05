@@ -677,4 +677,5 @@ interface ITheCompact {
     error ReentrantCall(address existingCaller);
     error InconsistentAllocators();
     error InvalidAllocation(address allocator);
+    error ChainIndexOutOfRange();
 }
