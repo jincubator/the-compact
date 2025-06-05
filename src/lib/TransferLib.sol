@@ -181,7 +181,7 @@ library TransferLib {
             let fromBalance := sload(fromBalanceSlot)
 
             // Revert if insufficient balance.
-            if gt(amount, fromBalance) {
+            if or(iszero(amount), gt(amount, fromBalance)) {
                 mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
                 revert(0x1c, 0x04)
             }
