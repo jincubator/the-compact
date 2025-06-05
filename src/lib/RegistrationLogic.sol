@@ -20,7 +20,6 @@ import { ConstructorLogic } from "./ConstructorLogic.sol";
  */
 contract RegistrationLogic is ConstructorLogic {
     using AllocatorLib for uint256[2][];
-    using HashLib for address;
     using RegistrationLib for address;
     using RegistrationLib for bytes32;
     using RegistrationLib for bytes32[2][];
@@ -179,7 +178,8 @@ contract RegistrationLogic is ConstructorLogic {
         bytes32 typehash,
         bytes32 witness
     ) internal returns (bytes32 claimHash) {
-        claimHash = sponsor.toFlatMessageHashWithWitness(tokenId, amount, arbiter, nonce, expires, typehash, witness);
+        claimHash =
+            HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
         sponsor.registerCompact(claimHash, typehash);
     }
 
@@ -210,8 +210,8 @@ contract RegistrationLogic is ConstructorLogic {
         bytes32 witness,
         uint256[] memory replacementAmounts
     ) internal returns (bytes32 claimHash) {
-        claimHash = sponsor.toFlatBatchClaimWithWitnessMessageHash(
-            idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
+        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );
         sponsor.registerCompact(claimHash, typehash);
     }
