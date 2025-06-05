@@ -154,19 +154,19 @@ contract RegistrationLogic is ConstructorLogic {
     //// Registration of specific claims ////
 
     /**
-     * @notice Internal function to register a claim with witness by its components.
+     * @notice Internal function to register a compact by its components.
      * @dev Constructs and registers the compact that consists exactly of the provided
      * arguments.
-     * @param sponsor     Account that the claim should be registered for.
-     * @param tokenId     Identifier for the associated token & lock.
-     * @param amount      Claim's associated number of tokens.
-     * @param arbiter     Account verifying and initiating the settlement of the claim.
-     * @param nonce       Allocator replay protection nonce.
-     * @param expires     Timestamp when the claim expires. Not to be confused with the reset
-     * time of the compact.
-     * @param typehash    Typehash of the entire compact. Including the subtypes of the
-     * witness
-     * @param witness     EIP712 structured hash of witness.
+     * @param sponsor    Account that the claim should be registered for.
+     * @param tokenId    Identifier for the associated token & lock.
+     * @param amount     Claim's associated number of tokens.
+     * @param arbiter    Account verifying and initiating the settlement of the claim.
+     * @param nonce      Allocator replay protection nonce.
+     * @param expires    Timestamp when the claim expires. Not to be confused with the reset
+     *                   time of the compact.
+     * @param typehash   Typehash of the entire compact including the subtypes of the witness.
+     * @param witness    EIP712 structured hash of witness.
+     * @return claimHash EIP712 structured hash of the compact to register.
      */
     function _registerUsingClaimWithWitness(
         address sponsor,
@@ -177,27 +177,28 @@ contract RegistrationLogic is ConstructorLogic {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) internal returns (bytes32 claimhash) {
-        claimhash =
+    ) internal returns (bytes32 claimHash) {
+        claimHash =
             HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
-        sponsor.registerCompact(claimhash, typehash);
+        sponsor.registerCompact(claimHash, typehash);
     }
 
     /**
-     * @notice Internal function to register a batch claim with witness by its components.
+     * @notice Internal function to register a batch compact by its components.
      * @dev Constructs and registers the compact that consists exactly of the provided
      * arguments.
-     * @param sponsor       Account that the claim should be registered for.
-     * @param idsAndAmounts Ids and amounts associated with the to be registered claim.
-     * @param arbiter       Account verifying and initiating the settlement of the claim.
-     * @param nonce         Nonce to register the claim at. The nonce is not checked to be
-     * unspent
-     * @param expires       Timestamp when the claim expires. Not to be confused with the
-     * reset time of the compact.
-     * @param typehash      Typehash of the entire compact. Including the subtypes of the
-     * witness
-     * @param witness       EIP712 structured hash of witness.
-     * @param replacementAmounts An optional array of replacement amounts.
+     * @param sponsor            Account that the claim should be registered for.
+     * @param idsAndAmounts      Ids and amounts associated with the to be registered claim.
+     * @param arbiter            Account verifying and initiating the settlement of the claim.
+     * @param nonce              Nonce to register the claim at. The nonce is not checked to be
+     *                           unspent.
+     * @param expires            Timestamp when the claim expires. Not to be confused with the
+     *                           reset time of the compact.
+     * @param typehash           Typehash of the entire compact including the subtypes of the
+     *                           witness.
+     * @param witness            EIP712 structured hash of witness.
+     * @param replacementAmounts An array of replacement amounts.
+     * @return claimHash         EIP712 structured hash of the compact to register.
      */
     function _registerUsingBatchClaimWithWitness(
         address sponsor,
@@ -208,10 +209,10 @@ contract RegistrationLogic is ConstructorLogic {
         bytes32 typehash,
         bytes32 witness,
         uint256[] memory replacementAmounts
-    ) internal returns (bytes32 claimhash) {
-        claimhash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
+    ) internal returns (bytes32 claimHash) {
+        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );
-        sponsor.registerCompact(claimhash, typehash);
+        sponsor.registerCompact(claimHash, typehash);
     }
 }
