@@ -160,6 +160,15 @@ contract DirectDepositLogic is DepositLogic {
         // Derive resource lock ID using null address, provided parameters, and allocator.
         id = address(0).toIdIfRegistered(lockTag);
 
+        // Revert if the value is zero.
+        assembly ("memory-safe") {
+            if iszero(callvalue()) {
+                // revert InvalidDepositBalanceChange()
+                mstore(0, 0x426d8dcf)
+                revert(0x1c, 0x04)
+            }
+        }
+
         // Deposit native tokens and mint ERC6909 tokens to recipient.
         recipient.deposit(id, msg.value);
     }

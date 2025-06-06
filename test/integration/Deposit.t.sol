@@ -461,6 +461,38 @@ contract DepositTest is Setup {
         }
     }
 
+    function test_revert_depositEthBasicZeroValue() public {
+        address recipient = swapper;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        vm.prank(swapper);
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidDepositBalanceChange.selector), address(theCompact));
+        theCompact.depositNative{ value: 0 }(lockTag, recipient);
+    }
+
+    function test_revert_depositERC20ZeroValue() public {
+        address recipient = swapper;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        vm.prank(swapper);
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidDepositBalanceChange.selector), address(theCompact));
+        theCompact.depositERC20(address(token), lockTag, 0, recipient);
+    }
+
     function test_revert_InvalidDepositBalanceChange(uint8 fee_, uint8 failingAmount_, uint256 successfulAmount_)
         public
     {
