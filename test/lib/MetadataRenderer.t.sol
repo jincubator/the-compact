@@ -21,6 +21,23 @@ contract MockAllocator {
 // Test contract with no `name()`, `symbol()`, or `decimals()` functions
 contract Dummy { }
 
+// Mock malicious token with JSON-breaking characters in name and symbol
+contract MaliciousToken {
+    function name() public pure returns (string memory) {
+        // Contains quotes, backslashes, and newlines that could break JSON
+        return "Malicious\"Token\\with\nSpecial\r\tChars";
+    }
+
+    function symbol() public pure returns (string memory) {
+        // Contains quotes and control characters
+        return "MAL\"ICE\n\r\t";
+    }
+
+    function decimals() public pure returns (uint8) {
+        return 18;
+    }
+}
+
 contract MetadataRendererTest is Test {
     using EfficiencyLib for address;
     using IdLib for *;
@@ -294,6 +311,52 @@ contract MetadataRendererTest is Test {
             scope: Scope.ChainSpecific
         }).toId();
         assertEq(metadataRenderer.decimals(id), UNKNOWN_TOKEN_DECIMALS, "Unknown token decimals mismatch");
+    }
+
+    function test_uri_maliciousTokenEscaping() public {
+        // Deploy malicious token with JSON-breaking characters
+        address maliciousTokenAddr = address(new MaliciousToken());
+
+        MetadataLib.Lock memory lock = MetadataLib.Lock({
+            token: maliciousTokenAddr,
+            allocator: mockAllocator,
+            resetPeriod: ResetPeriod.OneHourAndFiveMinutes,
+            scope: Scope.ChainSpecific
+        });
+        uint256 id = lock.toId();
+
+        // Generate URI with malicious token
+        string memory uri = metadataRenderer.uri(lock.token, lock.allocator, lock.resetPeriod, lock.scope, id);
+
+        // Verify that the URI is valid JSON by parsing it
+        JSONParserLib.Item memory json = uri.parse();
+
+        // Verify the JSON structure is intact
+        assertTrue(json.at('"name"').isString(), "Name field should be a string");
+        assertTrue(json.at('"description"').isString(), "Description field should be a string");
+        assertTrue(json.at('"image"').isString(), "Image field should be a string");
+        assertTrue(json.at('"attributes"').isArray(), "Attributes should be an array");
+
+        // Verify attributes array contains escaped values
+        JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
+
+        // The token name should be properly escaped in the attributes
+        string memory expectedEscapedName = "Malicious\\\"Token\\\\with\\nSpecial\\r\\tChars";
+        assertAttribute(attributes, "Token Name", expectedEscapedName, true);
+
+        // The token symbol should be properly escaped in the attributes
+        string memory expectedEscapedSymbol = "MAL\\\"ICE\\n\\r\\t";
+        assertAttribute(attributes, "Token Symbol", expectedEscapedSymbol, true);
+
+        // Verify that the description field contains properly escaped values
+        string memory description = json.at('"description"').value();
+
+        // The description should contain the escaped token name
+        assertTrue(description.contains(expectedEscapedName), "Description should contain escaped token name");
+
+        // Verify that the name field in the JSON uses the escaped symbol
+        string memory nameField = json.at('"name"').value();
+        assertTrue(nameField.contains(expectedEscapedSymbol), "Name field should contain escaped token symbol");
     }
 
     function assertAttribute(

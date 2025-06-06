@@ -21,6 +21,7 @@ library MetadataLib {
     using EfficiencyLib for uint96;
     using IdLib for address;
     using IdLib for uint96;
+    using LibString for string;
     using LibString for address;
     using LibString for uint256;
     using LibString for uint96;
@@ -123,13 +124,13 @@ library MetadataLib {
         returns (string memory uri)
     {
         Lock memory lock = Lock({ token: token, allocator: allocator, resetPeriod: resetPeriod, scope: scope });
-        string memory name = string.concat("{\"name\": \"Compact ", lock.token.readSymbolWithDefaultValue(), "\",");
+        string memory name = string.concat('{"name": "Compact ', lock.token.readSymbolWithDefaultValue(), '",');
         string memory image;
         {
             // Generate dynamic SVG and Base64 encode it
             string memory svg = _generateSvgImage(lock);
             string memory encodedSvg = Base64.encode(bytes(svg));
-            image = string.concat("\"image\": \"data:image/svg+xml;base64,", encodedSvg, "\",");
+            image = string.concat('"image": "data:image/svg+xml;base64,', encodedSvg, '",');
         }
 
         uri = string.concat(name, _getDescription(lock), image, _getAttributes(lock, id));
@@ -187,7 +188,7 @@ library MetadataLib {
         string memory resetPeriod = lock.resetPeriod.toString();
         string memory scope = lock.scope.toString();
         description = string.concat(
-            "\"description\": \"[The Compact v1] ",
+            '"description": "[The Compact v1] ',
             tokenName,
             " (",
             tokenAddress,
@@ -197,11 +198,9 @@ library MetadataLib {
             lock.allocator.toHexStringChecksummed(),
             "), ",
             scope,
-            " scope, ",
-            "and a ",
+            " scope, and a ",
             resetPeriod,
-            " reset period",
-            "\","
+            ' reset period",'
         );
     }
 
@@ -276,83 +275,50 @@ library MetadataLib {
 
         // Filter definitions for background generation (used to create the gradient effect)
         string memory filterDefs = string.concat(
-            '<filter id="f1">',
             // feImage 1 (main background)
-            '<feImage result="p0" xlink:href="data:image/svg+xml;base64,',
+            '<defs><filter id="f1"><feImage result="p0" xlink:href="data:image/svg+xml;base64,',
             Base64.encode(
                 bytes(
                     string.concat(
-                        '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg">',
-                        '<rect width="500px" height="290px" fill="#',
+                        '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg"><rect width="500px" height="290px" fill="#',
                         bgColor1,
-                        '"/>',
-                        "</svg>"
+                        '"/></svg>'
                     )
                 )
             ),
-            '"/>',
             // feImage 2 (first circle overlay)
-            '<feImage result="p1" xlink:href="data:image/svg+xml;base64,',
+            '"/><feImage result="p1" xlink:href="data:image/svg+xml;base64,',
             Base64.encode(
                 bytes(
                     string.concat(
-                        '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg">',
-                        '<circle cx="400" cy="100" r="150px" fill="#',
+                        '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg"><circle cx="400" cy="100" r="150px" fill="#',
                         bgColor2,
-                        '"/>',
-                        "</svg>"
+                        '"/></svg>'
                     )
                 )
             ),
-            '"/>',
             // feImage 3 (second circle overlay)
-            '<feImage result="p2" xlink:href="data:image/svg+xml;base64,',
+            '"/><feImage result="p2" xlink:href="data:image/svg+xml;base64,',
             Base64.encode(
                 bytes(
                     string.concat(
-                        '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg">',
-                        '<circle cx="120" cy="200" r="120px" fill="#',
+                        '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg"><circle cx="120" cy="200" r="120px" fill="#',
                         bgColor3,
-                        '"/>',
-                        "</svg>"
+                        '"/></svg>'
                     )
                 )
             ),
-            '"/>',
-            // Blending directives (enhances the gradient effect)
-            '<feBlend mode="overlay" in="p0" in2="p1" />',
-            '<feBlend mode="exclusion" in2="p2" />',
-            '<feGaussianBlur stdDeviation="42" />',
-            "</filter>",
-            // Blur filter (makes the gradient smoother)
-            '<filter id="tb">',
-            '<feGaussianBlur in="SourceGraphic" stdDeviation="24" />',
-            "</filter>",
-            // Drop shadow filter (makes the text more readable)
-            '<filter id="ts" x="-20%" y="-20%" width="140%" height="140%">',
-            '<feDropShadow dx="0" dy="0" stdDeviation="1" flood-opacity="0.8" flood-color="black" />',
-            "</filter>"
+            // Blending directives (enhances the gradient effect), Blur filter (makes the gradient smoother), Drop shadow filter (makes the text more readable)
+            '"/><feBlend mode="overlay" in="p0" in2="p1" /><feBlend mode="exclusion" in2="p2" /><feGaussianBlur stdDeviation="42" /></filter><filter id="tb"><feGaussianBlur in="SourceGraphic" stdDeviation="24" /></filter><filter id="ts" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="0" stdDeviation="1" flood-opacity="0.8" flood-color="black" /></filter>'
         );
 
         // Path and mask definitions
-        string memory pathAndMaskDefs = string.concat(
-            // Outer clip path (clips the entire SVG)
-            '<clipPath id="c">',
-            '<rect width="500" height="290" rx="42" ry="42" />',
-            "</clipPath>",
-            // Path for the animated text (creates a looped animation)
-            '<path id="tp" d="M40 12 H460 A28 28 0 0 1 488 40 V250 A28 28 0 0 1 460 278 H40 A28 28 0 0 1 12 250 V40 A28 28 0 0 1 40 12 z" />',
-            // Gradient mask for the title text (fades out towards the right edge of the canvas)
-            '<linearGradient id="gs" x1="0" y1="0" x2="1" y2="0">',
-            '<stop offset="0.7" stop-color="white" stop-opacity="1" />',
-            '<stop offset=".95" stop-color="white" stop-opacity="0" />',
-            "</linearGradient>",
-            '<mask id="fs" maskContentUnits="userSpaceOnUse">',
-            '<rect width="440px" height="200px" fill="url(#gs)" />',
-            "</mask>"
+        string memory pathAndMaskDefs = string(
+            // Outer clip path (clips the entire SVG), Path for the animated text (creates a looped animation), & Gradient mask for the title text (fades out towards the right edge of the canvas)
+            '<clipPath id="c"><rect width="500" height="290" rx="42" ry="42" /></clipPath><path id="tp" d="M40 12 H460 A28 28 0 0 1 488 40 V250 A28 28 0 0 1 460 278 H40 A28 28 0 0 1 12 250 V40 A28 28 0 0 1 40 12 z" /><linearGradient id="gs" x1="0" y1="0" x2="1" y2="0"><stop offset="0.7" stop-color="white" stop-opacity="1" /><stop offset=".95" stop-color="white" stop-opacity="0" /></linearGradient><mask id="fs" maskContentUnits="userSpaceOnUse"><rect width="440px" height="200px" fill="url(#gs)" /></mask></defs>'
         );
 
-        return string.concat("<defs>", filterDefs, pathAndMaskDefs, "</defs>");
+        return filterDefs.concat(pathAndMaskDefs);
     }
 
     /**
@@ -361,14 +327,7 @@ library MetadataLib {
      */
     function _getSvgBackground() internal pure returns (string memory) {
         return string.concat(
-            '<g clip-path="url(#c)">',
-            '<rect fill="none" x="0px" y="0px" width="500px" height="290px" />',
-            '<rect style="filter: url(#f1)" x="0px" y="0px" width="500px" height="290px" />',
-            '<g style="filter:url(#tb); transform:scale(1.5); transform-origin:left top;">',
-            '<rect fill="none" x="0px" y="0px" width="500px" height="290px" />',
-            '<ellipse cx="25%" cy="0px" rx="180px" ry="120px" fill="#000" opacity="0.85" />',
-            "</g>",
-            "</g>"
+            '<g clip-path="url(#c)"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><rect style="filter: url(#f1)" x="0px" y="0px" width="500px" height="290px" /><g style="filter:url(#tb); transform:scale(1.5); transform-origin:left top;"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><ellipse cx="25%" cy="0px" rx="180px" ry="120px" fill="#000" opacity="0.85" /></g></g>'
         );
     }
 
@@ -377,10 +336,8 @@ library MetadataLib {
      * @return A string containing the SVG border markup.
      */
     function _getSvgBorder() internal pure returns (string memory) {
-        return string.concat(
-            '<rect x="0" y="0" width="500" height="290" rx="42" ry="42" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)" />',
-            '<rect x="16" y="16" width="468" height="258" rx="26" ry="26" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)" />'
-        );
+        return
+        '<rect x="0" y="0" width="500" height="290" rx="42" ry="42" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)" /><rect x="16" y="16" width="468" height="258" rx="26" ry="26" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)" />';
     }
 
     /**
@@ -434,8 +391,7 @@ library MetadataLib {
             startOffset,
             '" fill="white" font-family="monospace" font-size="10px" xlink:href="#tp">',
             text,
-            '<animate additive="sum" attributeName="startOffset" from="0%" to="100%" begin="0s" dur="30s" repeatCount="indefinite" />',
-            "</textPath>"
+            '<animate additive="sum" attributeName="startOffset" from="0%" to="100%" begin="0s" dur="30s" repeatCount="indefinite" /></textPath>'
         );
     }
 
@@ -449,20 +405,13 @@ library MetadataLib {
         string memory scope = lock.scope.toString();
         string memory lockId = lock.toId().toHexString();
         return string.concat(
-            "<g id=\"title\">",
-            '<text y="60px" x="32px" fill="white" font-family="monospace" font-weight="100" font-size="32px" filter="url(#ts)">',
-            "Compact ",
+            '<g id="title"><text y="60px" x="32px" fill="white" font-family="monospace" font-weight="100" font-size="32px" filter="url(#ts)">Compact ',
             tokenSymbol,
-            "</text>",
-            '<text y="90px" x="32px" fill="rgba(255,255,255,0.6)" font-family="monospace" font-weight="50" font-size="22px" filter="url(#ts)">',
+            '</text><text y="90px" x="32px" fill="rgba(255,255,255,0.6)" font-family="monospace" font-weight="50" font-size="22px" filter="url(#ts)">',
             scope,
-            " Resource Lock",
-            "</text>",
-            '<text y="110px" x="32px" fill="rgba(255,255,255,0.6)" font-family="monospace" font-weight="100" font-size="10px" filter="url(#ts)">',
-            "ID: ",
+            ' Resource Lock</text><text y="110px" x="32px" fill="rgba(255,255,255,0.6)" font-family="monospace" font-weight="100" font-size="10px" filter="url(#ts)">ID: ',
             lockId,
-            "</text>",
-            "</g>"
+            "</text></g>"
         );
     }
 
@@ -478,56 +427,31 @@ library MetadataLib {
         string memory resetPeriod = lock.resetPeriod.toString();
         string memory scope = lock.scope.toString();
         // Handshake Icon
-        string memory iconSvg = string.concat(
-            '<g style="transform:translate(420px, 50px)">',
-            '<text x="20px" y="28px" text-anchor="middle" font-size="64px" opacity="0.4">',
-            unicode"🤝",
-            "</text>",
-            "</g>"
-        );
+        string memory iconSvg = string(
+            '<g style="transform:translate(420px, 50px)"><text x="20px" y="28px" text-anchor="middle" font-size="64px" opacity="0.4">'
+        ).concat(unicode"🤝");
 
         // Detail Boxes
         string memory detailBoxesSvg = string.concat(
-            // Left column
-            // Locked Token
-            '<g style="transform:translate(32px, 140px)">',
-            '<rect width="200px" height="64px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" />',
-            '<text x="12px" y="17px" font-family="monospace" font-size="12px" fill="rgba(255,255,255,0.6)">Locked Token: </text>',
+            // Left column & Locked Token
+            '</text></g><g style="transform:translate(32px, 140px)"><rect width="200px" height="64px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" /><text x="12px" y="17px" font-family="monospace" font-size="12px" fill="rgba(255,255,255,0.6)">Locked Token: </text>',
             _makeWrappable(string.concat(tokenName, " (", tokenSymbol, ")"), "190px", "40px"),
-            "</g>",
             // Reset Period
-            '<g style="transform:translate(32px, 212px)">',
-            '<rect width="200px" height="26px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" />',
-            '<text x="12px" y="17px" font-family="monospace" font-size="12px" fill="white">',
-            '<tspan fill="rgba(255,255,255,0.6)">Reset Period: </tspan>',
+            '</g><g style="transform:translate(32px, 212px)"><rect width="200px" height="26px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" /><text x="12px" y="17px" font-family="monospace" font-size="12px" fill="white"><tspan fill="rgba(255,255,255,0.6)">Reset Period: </tspan>',
             resetPeriod,
-            "</text>",
-            "</g>",
-            // Right column
-            // Allocator
-            '<g style="transform:translate(260px, 140px)">',
-            '<rect width="210px" height="64px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" />',
-            '<text x="12px" y="17px" font-family="monospace" font-size="12px" fill="rgba(255,255,255,0.6)">Allocator: </text>',
+            // Right column & Allocator
+            '</text></g><g style="transform:translate(260px, 140px)"><rect width="210px" height="64px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" /><text x="12px" y="17px" font-family="monospace" font-size="12px" fill="rgba(255,255,255,0.6)">Allocator: </text>',
             _makeWrappable(allocatorName, "190px", "40px"),
-            "</g>",
             // Resource lock tag
-            '<g style="transform:translate(260px, 212px)">',
-            '<rect width="210px" height="26px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" />',
-            '<text x="12px" y="17px" font-family="monospace" font-size="12px" fill="white">',
-            '<tspan fill="rgba(255,255,255,0.6)">Scope: </tspan>',
+            '</g><g style="transform:translate(260px, 212px)"><rect width="210px" height="26px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" /><text x="12px" y="17px" font-family="monospace" font-size="12px" fill="white"><tspan fill="rgba(255,255,255,0.6)">Scope: </tspan>',
             scope,
-            "</text>",
-            "</g>",
             // Bottom row (Origin Chain)
-            "<g>",
-            '<text x="50%" y="260px" font-family="monospace" font-size="12px" fill="white" text-anchor="middle" filter="url(#ts)">',
-            '<tspan fill="rgba(255,255,255,0.6)">Origin Chain: </tspan>',
+            '</text></g><g><text x="50%" y="260px" font-family="monospace" font-size="12px" fill="white" text-anchor="middle" filter="url(#ts)"><tspan fill="rgba(255,255,255,0.6)">Origin Chain: </tspan>',
             LibString.toString(block.chainid),
-            "</text>",
-            "</g>"
+            "</text></g>"
         );
 
-        return string.concat(iconSvg, detailBoxesSvg);
+        return iconSvg.concat(detailBoxesSvg);
     }
 
     /**
@@ -544,9 +468,8 @@ library MetadataLib {
         returns (string memory attribute)
     {
         string memory maybeQuote = quoted ? '"' : "";
-        string memory terminator = terminal ? "" : ",";
-        attribute =
-            string.concat('{"trait_type": "', trait, '", "value": ', maybeQuote, value, maybeQuote, "}", terminator);
+        string memory terminator = terminal ? "}" : "},";
+        attribute = string.concat('{"trait_type": "', trait, '", "value": ', maybeQuote, value, maybeQuote, terminator);
     }
 
     /**
@@ -566,11 +489,9 @@ library MetadataLib {
             width,
             '" height="',
             height,
-            '">',
-            '<span xmlns="http://www.w3.org/1999/xhtml" style="font-family: monospace;font-size: 14px;color: white;">',
+            '"><span xmlns="http://www.w3.org/1999/xhtml" style="font-family: monospace;font-size: 14px;color: white;">',
             text,
-            "</span>",
-            "</foreignObject>"
+            "</span></foreignObject>"
         );
     }
 
@@ -598,7 +519,7 @@ library MetadataLib {
             return "Native Token";
         }
 
-        name = token.readName();
+        name = token.readName().escapeJSON();
         if (bytes(name).length == 0) {
             name = "Unknown Token";
         }
@@ -616,7 +537,7 @@ library MetadataLib {
             return "ETH";
         }
 
-        symbol = token.readSymbol();
+        symbol = token.readSymbol().escapeJSON();
         if (bytes(symbol).length == 0) {
             symbol = "???";
         }
