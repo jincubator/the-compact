@@ -49,6 +49,7 @@ contract ConstructorLogic is Tstorish {
     // Whether Permit2 was deployed on the chain at construction time.
     bool private immutable _PERMIT2_INITIALLY_DEPLOYED;
 
+    // Declare uint256 representations of various metadata-related function selectors.
     uint256 private constant _NAME_SELECTOR = 0xad800c;
     uint256 private constant _SYMBOL_SELECTOR = 0x4e41a1fb;
     uint256 private constant _DECIMALS_SELECTOR = 0x3f47e662;
@@ -223,17 +224,35 @@ contract ConstructorLogic is Tstorish {
         }
     }
 
+    /**
+     * @notice Private view function for calling the metadata renderer and passing
+     * through the result. Note that this function will forceably return or revert,
+     * exiting the current call stack.
+     * @param functionSelector A uint256 representation of the function selector to use.
+     * @param id The ERC6909 token identifier.
+     */
     function _viaMetadataRenderer(uint256 functionSelector, uint256 id) private view {
         assembly ("memory-safe") {
-            mstore(0x14, address())
-            mstore(0, 0xd694)
-            mstore8(0x34, 0x02)
+            // Prepare RLP-encoded inputs for metadata renderer address in scratch space.
+            mstore(0x14, address()) // Deployer address.
+            mstore(0, 0xd694) // RLP prefix for given input sizes.
+            mstore8(0x34, 0x02) // Metadata renderer contract deployment nonce.
+
+            // Derive metadata renderer contract address by hashing the prepared inputs.
+            // Dirty upper bits will be ignored when performing the subsequent staticcall.
             let metadataRenderer := keccak256(0x1e, 0x17)
 
+            // Prepare calldata for staticcall to metadata renderer via provided arguments.
             mstore(0, functionSelector)
             mstore(0x20, id)
+
+            // Perform staticcall to derived account using prepared calldata.
             let success := staticcall(gas(), metadataRenderer, 0x1c, 0x24, 0, 0)
+
+            // Copy the full returndata buffer to memory.
             returndatacopy(0, 0, returndatasize())
+
+            // Bubble up the revert if the staticcall reverted; otherwise return.
             if iszero(success) { revert(0, returndatasize()) }
             return(0, returndatasize())
         }
