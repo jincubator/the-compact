@@ -11,6 +11,7 @@ import { IdLib } from "../../src/lib/IdLib.sol";
 import { MetadataLib } from "../../src/lib/MetadataLib.sol";
 import { LibString } from "solady/utils/LibString.sol";
 import { JSONParserLib } from "solady/utils/JSONParserLib.sol";
+import { TheCompact } from "../../src/TheCompact.sol";
 
 contract MockAllocator {
     function name() public pure returns (string memory) {
@@ -48,6 +49,7 @@ contract MetadataRendererTest is Test {
     using JSONParserLib for string;
     using JSONParserLib for JSONParserLib.Item;
 
+    TheCompact public theCompact;
     MetadataRenderer public metadataRenderer;
     MockERC20 public mockToken;
     address public mockAllocator;
@@ -74,10 +76,14 @@ contract MetadataRendererTest is Test {
     uint8 constant UNKNOWN_TOKEN_DECIMALS = 0;
 
     function setUp() public {
-        metadataRenderer = new MetadataRenderer();
+        theCompact = new TheCompact();
+
+        metadataRenderer = MetadataRenderer(theCompact.getMetadataRenderer());
         mockToken =
             new MockERC20{ salt: bytes32(uint256(0xdeadbeef)) }(MOCK_TOKEN_NAME, MOCK_TOKEN_SYMBOL, MOCK_TOKEN_DECIMALS);
         mockAllocator = address(new MockAllocator());
+
+        theCompact.__registerAllocator(mockAllocator, "");
 
         tokenErc6909Id = MetadataLib.Lock({
             token: address(mockToken),
@@ -217,6 +223,7 @@ contract MetadataRendererTest is Test {
 
     function test_uri_unnamedAllocator() public {
         address unnamedAllocator = address(new Dummy());
+        theCompact.__registerAllocator(unnamedAllocator, "");
         MetadataLib.Lock memory lock = MetadataLib.Lock({
             token: address(mockToken),
             allocator: unnamedAllocator,

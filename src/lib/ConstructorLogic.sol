@@ -62,6 +62,14 @@ contract ConstructorLogic is Tstorish {
     }
 
     /**
+     * @notice External view function for returning the address of the metadata renderer contract.
+     * @return metadataRenderer An address representing the metadata renderer contract.
+     */
+    function getMetadataRenderer() external view returns (address) {
+        return _METADATA_RENDERER;
+    }
+
+    /**
      * @notice Internal function to set the reentrancy guard using either TSTORE or SSTORE.
      * Called as part of functions that require reentrancy protection. Reverts if called
      * again before the reentrancy guard has been cleared.

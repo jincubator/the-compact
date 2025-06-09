@@ -16,7 +16,7 @@ contract MetadataRenderer {
     using EfficiencyLib for uint256;
     using IdLib for uint256;
     using MetadataLib for address;
-    using MetadataLib for uint96;
+    using MetadataLib for uint256;
 
     address public immutable theCompact;
 
@@ -31,10 +31,7 @@ contract MetadataRenderer {
      * @return            The generated URI string.
      */
     function uri(uint256 id) external view returns (string memory) {
-        address allocator = id.toAllocatorId().toRegisteredAllocatorWithLookup(theCompact);
-        ResetPeriod resetPeriod = id.toResetPeriod();
-        Scope scope = id.toScope();
-        address token = id.toAddress();
+        (address token, address allocator, ResetPeriod resetPeriod, Scope scope) = id.toLockDetails(theCompact);
         return token.toURI(allocator, resetPeriod, scope, id);
     }
 
