@@ -127,6 +127,8 @@ describe("Compact Protocol E2E", function () {
       nonce: 0n,
       expires: BigInt(Math.floor(Date.now() / 1000) + 600 + 60), // 11 minutes from now
       id: tokenId,
+      lockTag: lockTag,
+      token: 0n,
       amount: depositAmount,
       mandate: {
         witnessArgument: 42n,
@@ -241,6 +243,8 @@ describe("Compact Protocol E2E", function () {
       nonce: 0n,
       expires: BigInt(Math.floor(Date.now() / 1000) + 600 + 60), // 11 minutes from now
       id: tokenId,
+      lockTag: BigInt(lockTag),
+      token: 0n,
       amount: depositAmount,
     };
 
@@ -327,13 +331,15 @@ describe("Compact Protocol E2E", function () {
       nonce: 0n,
       expires: BigInt(Math.floor(Date.now() / 1000) + 600 + 60), // 11 minutes from now
       id: tokenId,
+      lockTag: lockTag,
+      token: 0n,
       amount: depositAmount,
     };
 
     const claimHash = getClaimHash(compactData);
     const typehash = keccak256(
       toBytes(
-        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,bytes12 lockTag,address token,uint256 amount)"
       )
     );
 
