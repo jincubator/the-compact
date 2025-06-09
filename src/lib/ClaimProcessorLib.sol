@@ -66,7 +66,7 @@ library ClaimProcessorLib {
         uint256 expires;
         assembly ("memory-safe") {
             // Extract sponsor address from calldata, sanitizing upper 96 bits.
-            sponsor := shr(0x60, shl(0x60, calldataload(add(calldataPointer, 0x40))))
+            sponsor := shr(0x60, calldataload(add(calldataPointer, 0x4c)))
 
             // Extract nonce and expiration timestamp from calldata.
             nonce := calldataload(add(calldataPointer, 0x60))

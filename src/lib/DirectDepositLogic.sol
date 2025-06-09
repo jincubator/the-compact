@@ -71,7 +71,7 @@ contract DirectDepositLogic is DepositLogic {
             id := calldataload(idsAndAmountsOffset)
 
             // Determine if token encoded in first ID is the null address.
-            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, id)))
+            firstUnderlyingTokenIsNative := iszero(shl(96, id))
 
             // Revert if:
             //  * the array is empty

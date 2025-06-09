@@ -6,7 +6,7 @@ import { BenchmarkERC20 } from "./BenchmarkERC20.sol";
 /**
  * @title TransferBenchmarker
  * @notice External contract for measuring the cost of native and generic ERC20 token
- * transfers. Designed to account for the idiosyncracies of gas pricing across various
+ * transfers. Designed to account for the idiosyncrasies of gas pricing across various
  * chains, as well as to have functionality for updating the benchmarks should gas
  * prices change on a given chain.
  */

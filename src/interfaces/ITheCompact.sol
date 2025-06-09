@@ -63,6 +63,24 @@ interface ITheCompact {
     event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
 
     /**
+     * @notice Event indicating that an emissary has been assigned for a given sponsor and lock tag.
+     * @param sponsor  The address for which the emissary has been assigned.
+     * @param lockTag  The lock tag for which the emissary has been assigned.
+     * @param emissary The account of the emissary that has been assigned.
+     */
+    event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
+
+    /**
+     * @notice Event indicating that a new emissary assignment has been scheduled for a given sponsor
+     * and lock tag. Note that this is only required when a previous emissary has already been assigned
+     * for the given combination of sponsor and lock tag.
+     * @param sponsor      The address for which the emissary assignment has been scheduled.
+     * @param lockTag      The lock tag for which the emissary assignment has been scheduled.
+     * @param assignableAt The block timestamp at which a new emissary may be assigned.
+     */
+    event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 assignableAt);
+
+    /**
      * @notice Event indicating an allocator has been registered.
      * @param allocatorId The unique identifier assigned to the allocator.
      * @param allocator   The address of the registered allocator.
@@ -679,4 +697,6 @@ interface ITheCompact {
     error InvalidAllocation(address allocator);
     error ChainIndexOutOfRange();
     error InvalidEmissaryAssignment();
+    error EmissaryAssignmentUnavailable(uint256 assignableAt);
+    error InvalidLockTag();
 }

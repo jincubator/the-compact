@@ -69,7 +69,7 @@ contract TransferLogic is ConstructorLogic {
         // Perform the transfers or withdrawals.
         transfer.processTransfer();
 
-        // Clear the reentancy guard.
+        // Clear the reentrancy guard.
         _clearReentrancyGuard();
 
         return true;
@@ -116,7 +116,7 @@ contract TransferLogic is ConstructorLogic {
         // Perform the batch transfers or withdrawals.
         transfer.performBatchTransfer();
 
-        // Clear the reentancy guard.
+        // Clear the reentrancy guard.
         _clearReentrancyGuard();
 
         return true;
