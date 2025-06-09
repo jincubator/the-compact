@@ -17,6 +17,8 @@ type CompactData = {
   nonce: bigint;
   expires: bigint;
   id: bigint;
+  lockTag: bigint;
+  token: Address | bigint;
   amount: bigint;
   mandate?: {
     witnessArgument: bigint;
@@ -63,6 +65,15 @@ function getTokenId(lockTag: bigint, tokenAddress: bigint) {
   return (lockTag << 160n) | tokenAddress;
 }
 
+function lockTagFromTokenId(tokenId: bigint) {
+  return (tokenId >> 160n);
+}
+
+
+function getToken(tokenId: bigint) {
+  return tokenId & 0xffffffffffffffffffffffffffffffffffffffffn;
+}
+
 function getClaimant(lockTag: bigint, receiver: bigint | Address) {
   return (lockTag << 96n) | BigInt(receiver);
 }
@@ -84,6 +95,16 @@ async function getSignedCompact(
   message: CompactData
 ) {
   const client = await hre.viem.getWalletClient(sponsor);
+  
+  // Convert lockTag bigint to bytes12 hex string and token bigint to address
+  const messageWithFormattedData = {
+    ...message,
+    lockTag: `0x${message.lockTag.toString(16).padStart(24, '0')}` as Hex,
+    token: typeof message.token === 'bigint' 
+      ? `0x${message.token.toString(16).padStart(40, '0')}` as Address
+      : message.token,
+  };
+  
   return client.signTypedData({
     domain: {
       name: "The Compact",
@@ -93,15 +114,24 @@ async function getSignedCompact(
     },
     types: getTypes(message),
     primaryType: "Compact",
-    message,
+    message: messageWithFormattedData,
   });
 }
 
 function getClaimHash(message: CompactData) {
+  // Convert lockTag bigint to bytes12 hex string and token bigint to address
+  const messageWithFormattedData = {
+    ...message,
+    lockTag: `0x${message.lockTag.toString(16).padStart(24, '0')}` as Hex,
+    token: typeof message.token === 'bigint' 
+      ? `0x${message.token.toString(16).padStart(40, '0')}` as Address
+      : message.token,
+  };
+  
   return hashStruct({
     types: getTypes(message),
     primaryType: "Compact",
-    data: message,
+    data: messageWithFormattedData,
   });
 }
 
@@ -112,7 +142,8 @@ function getTypes(message: CompactData) {
       { name: "sponsor", type: "address" },
       { name: "nonce", type: "uint256" },
       { name: "expires", type: "uint256" },
-      { name: "id", type: "uint256" },
+      { name: "lockTag", type: "bytes12" },
+      { name: "token", type: "address" },
       { name: "amount", type: "uint256" },
       ...(message.mandate ? [{ name: "mandate", type: "Mandate" }] : []),
     ],
@@ -165,4 +196,6 @@ export {
   getSignedCompact,
   getSimpleWitnessHash,
   getTokenId,
+  getToken,
+  lockTagFromTokenId,
 };
