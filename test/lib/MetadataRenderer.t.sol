@@ -102,8 +102,7 @@ contract MetadataRendererTest is Test {
             resetPeriod: ResetPeriod.OneDay,
             scope: Scope.ChainSpecific
         });
-        string memory uri =
-            metadataRenderer.uri(lock.token, lock.allocator, lock.resetPeriod, lock.scope, tokenErc6909Id);
+        string memory uri = metadataRenderer.uri(tokenErc6909Id);
         vm.snapshotGasLastCall("uriERC20");
 
         JSONParserLib.Item memory json = uri.parse();
@@ -149,8 +148,7 @@ contract MetadataRendererTest is Test {
             resetPeriod: ResetPeriod.SevenDaysAndOneHour,
             scope: Scope.Multichain
         });
-        string memory uri =
-            metadataRenderer.uri(lock.token, lock.allocator, lock.resetPeriod, lock.scope, nativeErc6909Id);
+        string memory uri = metadataRenderer.uri(nativeErc6909Id);
         vm.snapshotGasLastCall("uriNative");
 
         JSONParserLib.Item memory json = uri.parse();
@@ -226,7 +224,7 @@ contract MetadataRendererTest is Test {
             scope: Scope.Multichain
         });
         uint256 id = lock.toId();
-        string memory uri = metadataRenderer.uri(lock.token, lock.allocator, lock.resetPeriod, lock.scope, id);
+        string memory uri = metadataRenderer.uri(id);
         JSONParserLib.Item memory json = uri.parse();
 
         string memory expectedDescription = string.concat(
@@ -256,7 +254,7 @@ contract MetadataRendererTest is Test {
             scope: Scope.ChainSpecific
         });
         uint256 id = lock.toId();
-        string memory uri = metadataRenderer.uri(lock.token, lock.allocator, lock.resetPeriod, lock.scope, id);
+        string memory uri = metadataRenderer.uri(id);
         JSONParserLib.Item memory json = uri.parse();
 
         assertEq(json.at('"name"').value(), string.concat('"Compact ', UNKNOWN_TOKEN_SYMBOL, '"'));
@@ -326,7 +324,7 @@ contract MetadataRendererTest is Test {
         uint256 id = lock.toId();
 
         // Generate URI with malicious token
-        string memory uri = metadataRenderer.uri(lock.token, lock.allocator, lock.resetPeriod, lock.scope, id);
+        string memory uri = metadataRenderer.uri(id);
 
         // Verify that the URI is valid JSON by parsing it
         JSONParserLib.Item memory json = uri.parse();

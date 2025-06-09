@@ -109,6 +109,32 @@ library MetadataLib {
         return scopeString;
     }
 
+    uint256 private constant _EXTSLOAD_FUNCTION_SELECTOR = 0x1e2eaeaf;
+    uint256 private constant _ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED = 0x000044036fc77deaed2300000000000000000000000;
+    uint256 private constant _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE = 0xcf90c3a8;
+
+    function toRegisteredAllocatorWithLookup(uint96 allocatorId, address theCompact)
+        internal
+        view
+        returns (address allocator)
+    {
+        assembly ("memory-safe") {
+            // Retrieve allocator using extsload based on allocator ID.
+            mstore(0, _EXTSLOAD_FUNCTION_SELECTOR)
+            mstore(0x20, or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))
+            pop(staticcall(gas(), theCompact, 0x1c, 0x24, 0, 0x20))
+
+            allocator := mload(0)
+
+            // Revert if no registered allocator is located.
+            if iszero(allocator) {
+                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
+                mstore(0x20, allocatorId)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
+
     /**
      * @notice Internal view function for generating a token URI for a given lock and ID.
      * @param token       The address of the underlying token (or address(0) for native tokens).

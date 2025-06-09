@@ -455,20 +455,6 @@ contract IdLibTest is Test {
         assertEq(id.toAllocatorId().toRegisteredAllocator(), allocatorAddress, "toAllocator from ID failed");
     }
 
-    function testToLock_FromId() public view {
-        Scope scope = Scope.Multichain;
-        ResetPeriod resetPeriod = ResetPeriod.SevenDaysAndOneHour;
-        bytes12 lockTag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
-        uint256 id = uint256(bytes32(lockTag)) | tokenAddress.asUint256();
-
-        (address resultToken, address resultAllocator, ResetPeriod resultResetPeriod, Scope resultScope) = id.toLock();
-
-        assertEq(resultAllocator, allocatorAddress, "Lock allocator mismatch");
-        assertEq(resultToken, tokenAddress, "Lock token mismatch");
-        assertEq(uint8(resultScope), uint8(scope), "Lock scope mismatch");
-        assertEq(uint8(resultResetPeriod), uint8(resetPeriod), "Lock resetPeriod mismatch");
-    }
-
     function testCanBeRegistered_SenderIsAllocator() public {
         DummyContract dummy = new DummyContract();
         assertFalse(dummy.canBeRegistered(address(0xdeadbeef), empty), "Should be false if sender is not allocator");

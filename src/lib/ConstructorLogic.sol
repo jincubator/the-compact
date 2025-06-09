@@ -5,6 +5,7 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
 import { DomainLib } from "./DomainLib.sol";
+import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { MetadataRenderer } from "./MetadataRenderer.sol";
 
@@ -21,6 +22,7 @@ import { Tstorish } from "./Tstorish.sol";
  */
 contract ConstructorLogic is Tstorish {
     using DomainLib for bytes32;
+    using EfficiencyLib for uint256;
     using DomainLib for uint256;
     using IdLib for uint256;
 
@@ -37,10 +39,15 @@ contract ConstructorLogic is Tstorish {
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
 
     // Instance of the metadata renderer contract deployed during construction.
-    MetadataRenderer private immutable _METADATA_RENDERER;
+    address private immutable _METADATA_RENDERER;
 
     // Whether Permit2 was deployed on the chain at construction time.
     bool private immutable _PERMIT2_INITIALLY_DEPLOYED;
+
+    uint256 private constant _NAME_SELECTOR = 0xad800c;
+    uint256 private constant _SYMBOL_SELECTOR = 0x4e41a1fb;
+    uint256 private constant _DECIMALS_SELECTOR = 0x3f47e662;
+    uint256 private constant _URI_SELECTOR = 0x0e89341c;
 
     /**
      * @notice Constructor that initializes immutable variables and deploys the metadata
@@ -50,7 +57,7 @@ contract ConstructorLogic is Tstorish {
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
         _INITIAL_DOMAIN_SEPARATOR = block.chainid.toNotarizedDomainSeparator();
-        _METADATA_RENDERER = new MetadataRenderer();
+        _METADATA_RENDERER = address(new MetadataRenderer());
         _PERMIT2_INITIALLY_DEPLOYED = _checkPermit2Deployment();
     }
 
@@ -125,7 +132,7 @@ contract ConstructorLogic is Tstorish {
      * @return The token's name.
      */
     function _name(uint256 id) internal view returns (string memory) {
-        return _METADATA_RENDERER.name(id);
+        _viaMetadataRenderer(uint256(_NAME_SELECTOR).asStubborn(), id);
     }
 
     /**
@@ -134,7 +141,7 @@ contract ConstructorLogic is Tstorish {
      * @return The token's symbol.
      */
     function _symbol(uint256 id) internal view returns (string memory) {
-        return _METADATA_RENDERER.symbol(id);
+        _viaMetadataRenderer(uint256(_SYMBOL_SELECTOR).asStubborn(), id);
     }
 
     /**
@@ -143,7 +150,7 @@ contract ConstructorLogic is Tstorish {
      * @return The token's decimals.
      */
     function _decimals(uint256 id) internal view returns (uint8) {
-        return _METADATA_RENDERER.decimals(id);
+        _viaMetadataRenderer(uint256(_DECIMALS_SELECTOR).asStubborn(), id);
     }
 
     /**
@@ -152,8 +159,7 @@ contract ConstructorLogic is Tstorish {
      * @return The token's URI.
      */
     function _tokenURI(uint256 id) internal view returns (string memory) {
-        (address token, address allocator, ResetPeriod resetPeriod, Scope scope) = id.toLock();
-        return _METADATA_RENDERER.uri(token, allocator, resetPeriod, scope, id);
+        _viaMetadataRenderer(uint256(_URI_SELECTOR).asStubborn(), id);
     }
 
     /**
@@ -164,6 +170,18 @@ contract ConstructorLogic is Tstorish {
     function _checkPermit2Deployment() private view returns (bool permit2Deployed) {
         assembly ("memory-safe") {
             permit2Deployed := iszero(iszero(extcodesize(_PERMIT2)))
+        }
+    }
+
+    function _viaMetadataRenderer(uint256 functionSelector, uint256 id) private view {
+        address metadataRenderer = _METADATA_RENDERER;
+        assembly ("memory-safe") {
+            mstore(0, functionSelector)
+            mstore(0x20, id)
+            let success := staticcall(gas(), metadataRenderer, 0x1c, 0x24, 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            if iszero(success) { revert(0, returndatasize()) }
+            return(0, returndatasize())
         }
     }
 }
