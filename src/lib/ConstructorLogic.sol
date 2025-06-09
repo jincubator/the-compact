@@ -8,6 +8,13 @@ import { DomainLib } from "./DomainLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { MetadataRenderer } from "./MetadataRenderer.sol";
+import {
+    TransferBenchmarkLib,
+    _NATIVE_TOKEN_BENCHMARK_SCOPE,
+    _ERC20_TOKEN_BENCHMARK_SCOPE
+} from "./TransferBenchmarkLib.sol";
+
+import { TransferBenchmarker } from "./TransferBenchmarker.sol";
 
 import { Tstorish } from "./Tstorish.sol";
 
@@ -25,6 +32,7 @@ contract ConstructorLogic is Tstorish {
     using EfficiencyLib for uint256;
     using DomainLib for uint256;
     using IdLib for uint256;
+    using TransferBenchmarkLib for uint256;
 
     // Address of the Permit2 contract, optionally used for depositing ERC20 tokens.
     address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
@@ -38,9 +46,6 @@ contract ConstructorLogic is Tstorish {
     // Initial EIP-712 domain separator, computed at deployment time.
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
 
-    // Instance of the metadata renderer contract deployed during construction.
-    address private immutable _METADATA_RENDERER;
-
     // Whether Permit2 was deployed on the chain at construction time.
     bool private immutable _PERMIT2_INITIALLY_DEPLOYED;
 
@@ -48,6 +53,9 @@ contract ConstructorLogic is Tstorish {
     uint256 private constant _SYMBOL_SELECTOR = 0x4e41a1fb;
     uint256 private constant _DECIMALS_SELECTOR = 0x3f47e662;
     uint256 private constant _URI_SELECTOR = 0x0e89341c;
+
+    // Declare an immutable argument for the account of the benchmarker contract.
+    address private immutable _BENCHMARKER;
 
     /**
      * @notice Constructor that initializes immutable variables and deploys the metadata
@@ -57,16 +65,13 @@ contract ConstructorLogic is Tstorish {
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
         _INITIAL_DOMAIN_SEPARATOR = block.chainid.toNotarizedDomainSeparator();
-        _METADATA_RENDERER = address(new MetadataRenderer());
+        new MetadataRenderer();
         _PERMIT2_INITIALLY_DEPLOYED = _checkPermit2Deployment();
-    }
 
-    /**
-     * @notice External view function for returning the address of the metadata renderer contract.
-     * @return metadataRenderer An address representing the metadata renderer contract.
-     */
-    function getMetadataRenderer() external view returns (address) {
-        return _METADATA_RENDERER;
+        // Deploy contract for benchmarking native and generic ERC20 token withdrawals. Note
+        // that benchmark cannot be evaluated as part of contract creation as it requires
+        // that the ERC20 account is not already warm as part of deriving the benchmark.
+        _BENCHMARKER = address(new TransferBenchmarker());
     }
 
     /**
@@ -110,6 +115,43 @@ contract ConstructorLogic is Tstorish {
         // Store a value of 1 for the updated sentinel value. This indicates that the
         // contract can be entered again while keeping the sentinel storage slot dirty.
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+    }
+
+    /**
+     * @notice Internal function to benchmark the gas costs of token transfers.
+     * Measures both native token and ERC20 token transfer costs and stores them.
+     */
+    function _benchmark() internal {
+        address benchmarker = _BENCHMARKER;
+
+        assembly ("memory-safe") {
+            calldatacopy(0, 0, calldatasize())
+            let success := call(gas(), benchmarker, callvalue(), 0, calldatasize(), 0, 0x40)
+            if iszero(success) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+
+            sstore(_NATIVE_TOKEN_BENCHMARK_SCOPE, mload(0))
+            sstore(_ERC20_TOKEN_BENCHMARK_SCOPE, mload(0x20))
+        }
+    }
+
+    /**
+     * @notice Internal view function for retrieving the benchmarked gas costs for
+     * both native token and ERC20 token withdrawals.
+     * @return nativeTokenStipend The benchmarked gas cost for native token withdrawals.
+     * @return erc20TokenStipend  The benchmarked gas cost for ERC20 token withdrawals.
+     */
+    function _getRequiredWithdrawalFallbackStipends()
+        internal
+        view
+        returns (uint256 nativeTokenStipend, uint256 erc20TokenStipend)
+    {
+        assembly ("memory-safe") {
+            nativeTokenStipend := sload(_NATIVE_TOKEN_BENCHMARK_SCOPE)
+            erc20TokenStipend := sload(_ERC20_TOKEN_BENCHMARK_SCOPE)
+        }
     }
 
     /**
@@ -182,8 +224,12 @@ contract ConstructorLogic is Tstorish {
     }
 
     function _viaMetadataRenderer(uint256 functionSelector, uint256 id) private view {
-        address metadataRenderer = _METADATA_RENDERER;
         assembly ("memory-safe") {
+            mstore(0x14, address())
+            mstore(0, 0xd694)
+            mstore8(0x34, 0x02)
+            let metadataRenderer := keccak256(0x1e, 0x17)
+
             mstore(0, functionSelector)
             mstore(0x20, id)
             let success := staticcall(gas(), metadataRenderer, 0x1c, 0x24, 0, 0)

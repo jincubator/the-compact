@@ -111,7 +111,7 @@ contract WithdrawalLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         // Process the withdrawal.
-        msg.sender.withdraw(recipient.usingCallerIfNull(), id, amount, (true).asStubborn());
+        msg.sender.withdraw(recipient.usingCallerIfNull(), id, amount, true);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();

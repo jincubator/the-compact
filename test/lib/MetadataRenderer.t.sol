@@ -13,6 +13,90 @@ import { LibString } from "solady/utils/LibString.sol";
 import { JSONParserLib } from "solady/utils/JSONParserLib.sol";
 import { TheCompact } from "../../src/TheCompact.sol";
 
+library CreateAddress {
+    /*────────────────── PUBLIC API ──────────────────*/
+
+    /**
+     * @param deployer The account that will call `new SomeContract()`.
+     * @param nonce    The deployer’s *creation* nonce (starts at 1, not 0).
+     * @return predicted The address Ethereum will assign for that <deployer, nonce>.
+     *
+     * @dev Implements the formula in the yellow-paper (App. H) / EIP-161:
+     *      addr = keccak256( RLP([deployer, nonce]) )[12:]
+     *      – Handles every nonce that fits in uint256.
+     *      – Gas cost ~400–650 gas (higher for very large nonces).
+     */
+    function compute(address deployer, uint256 nonce) internal pure returns (address predicted) {
+        unchecked {
+            require(nonce != 0, "nonce must be >= 1");
+
+            /* ───── 1. RLP-encode the nonce ───── */
+            bytes memory rlpNonce;
+            if (nonce <= 0x7f) {
+                // single-byte, no prefix
+                rlpNonce = abi.encodePacked(bytes1(uint8(nonce)));
+            } else {
+                // big-endian byte sequence (no leading zeros)
+                uint256 n = nonce;
+                uint256 len;
+                while (n != 0) {
+                    ++len;
+                    n >>= 8;
+                }
+                bytes memory buf = new bytes(len);
+                n = nonce;
+                for (uint256 i; i < len; ++i) {
+                    buf[len - 1 - i] = bytes1(uint8(n));
+                    n >>= 8;
+                }
+                // prefix 0x80 + len for strings <= 55 bytes (always true for uint256)
+                rlpNonce = abi.encodePacked(bytes1(uint8(0x80 + len)), buf);
+            }
+
+            /* ───── 2. Build the full RLP stream [deployer, nonce] ───── */
+            uint256 payloadLen = 1 /*0x94*/ + 20 /*addr*/ + rlpNonce.length;
+
+            bytes memory rlp;
+            if (payloadLen < 56) {
+                // short-form list header: 0xc0 + payloadLen
+                rlp = abi.encodePacked(bytes1(uint8(0xc0 + payloadLen)), bytes1(0x94), deployer, rlpNonce);
+            } else {
+                // long-form list header (payloadLen ≥ 56 — practically unreachable,
+                // would need nonce > 2²⁷⁷): kept for completeness.
+                uint256 lenOfLen;
+                uint256 tmp = payloadLen;
+                while (tmp != 0) {
+                    ++lenOfLen;
+                    tmp >>= 8;
+                }
+                bytes memory lenBytes = new bytes(lenOfLen);
+                tmp = payloadLen;
+                for (uint256 i; i < lenOfLen; ++i) {
+                    lenBytes[lenOfLen - 1 - i] = bytes1(uint8(tmp));
+                    tmp >>= 8;
+                }
+                rlp = abi.encodePacked(bytes1(uint8(0xf7 + lenOfLen)), lenBytes, bytes1(0x94), deployer, rlpNonce);
+            }
+
+            /* ───── 3. Hash & truncate ───── */
+            predicted = address(uint160(uint256(keccak256(rlp))));
+        }
+    }
+
+    /* ───── Convenience fast-path for nonce == 1 (costs ~220 gas) ───── */
+    function firstCreate(address deployer) internal pure returns (address) {
+        bytes32 h = keccak256(
+            abi.encodePacked(
+                bytes1(0xd6), // list header  (0xc0 + 0x16)
+                bytes1(0x94), // 20-byte addr
+                deployer,
+                bytes1(0x01) // nonce 1
+            )
+        );
+        return address(uint160(uint256(h)));
+    }
+}
+
 contract MockAllocator {
     function name() public pure returns (string memory) {
         return unicode"Smallocator 🤏";
@@ -48,6 +132,7 @@ contract MetadataRendererTest is Test {
     using MetadataLib for MetadataLib.Lock;
     using JSONParserLib for string;
     using JSONParserLib for JSONParserLib.Item;
+    using CreateAddress for address;
 
     TheCompact public theCompact;
     MetadataRenderer public metadataRenderer;
@@ -78,7 +163,10 @@ contract MetadataRendererTest is Test {
     function setUp() public {
         theCompact = new TheCompact();
 
-        metadataRenderer = MetadataRenderer(theCompact.getMetadataRenderer());
+        // NOTE: Tstorish is deployed first, metadata renderer second
+        metadataRenderer = MetadataRenderer(address(theCompact).compute(2));
+
+        console.log(address(metadataRenderer));
         mockToken =
             new MockERC20{ salt: bytes32(uint256(0xdeadbeef)) }(MOCK_TOKEN_NAME, MOCK_TOKEN_SYMBOL, MOCK_TOKEN_DECIMALS);
         mockAllocator = address(new MockAllocator());

@@ -105,9 +105,7 @@ library ClaimProcessorLib {
     function processSimpleClaim(bytes32 messageHash, uint256 calldataPointer, bytes32 typehash, bytes32 domainSeparator)
         internal
     {
-        messageHash.processClaimWithComponents(
-            calldataPointer, bytes32(0).asStubborn(), typehash, domainSeparator, validate
-        );
+        messageHash.processClaimWithComponents(calldataPointer, 0, typehash, domainSeparator, validate);
     }
 
     /**
@@ -126,9 +124,7 @@ library ClaimProcessorLib {
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithBatchComponents(
-            calldataPointer, bytes32(0).asStubborn(), typehash, domainSeparator, validate
-        );
+        messageHash.processClaimWithBatchComponents(calldataPointer, 0, typehash, domainSeparator, validate);
     }
 
     /**

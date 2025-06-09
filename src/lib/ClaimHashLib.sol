@@ -107,7 +107,7 @@ library ClaimHashLib {
         function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
     ) private view returns (bytes32 claimHash, bytes32 /* typehash */ ) {
         (bytes32 allocationTypehash, bytes32 typehash) = claim.toMultichainTypehashes();
-        return (hashFn(claim, uint256(0xa0).asStubborn(), allocationTypehash, typehash, additionalInput), typehash);
+        return (hashFn(claim, 0xa0, allocationTypehash, typehash, additionalInput), typehash);
     }
 
     function _toGenericBatchMultichainClaimWithWitnessMessageHash(
@@ -116,7 +116,7 @@ library ClaimHashLib {
         function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
     ) private view returns (bytes32 claimHash, bytes32 /* typehash */ ) {
         (bytes32 allocationTypehash, bytes32 typehash) = claim.toMultichainTypehashes();
-        return (hashFn(claim, uint256(0x60).asStubborn(), allocationTypehash, typehash, additionalInput), typehash);
+        return (hashFn(claim, 0x60, allocationTypehash, typehash, additionalInput), typehash);
     }
 
     function _toMultichainClaimWithWitnessMessageHash(MultichainClaim calldata claim)
