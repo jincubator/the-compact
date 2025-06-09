@@ -45,7 +45,7 @@ library AllocatorLib {
             // Sanitize sponsor.
             sponsor := shr(0x60, shl(0x60, sponsor))
 
-            // Retrieve the free memory pointer; memory will be left dirtieed.
+            // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
 
             // Get length of idsAndAmounts array, both in elements and as data.

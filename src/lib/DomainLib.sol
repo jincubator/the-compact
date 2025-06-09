@@ -31,12 +31,12 @@ library DomainLib {
         domainSeparator = initialDomainSeparator;
 
         assembly ("memory-safe") {
-            // Rederive the domain separator if the initial chain ID differs from the current one.
+            // Derive domain separator again if initial chain ID differs from current one.
             if xor(chainid(), initialChainId) {
                 // Retrieve the free memory pointer.
                 let m := mload(0x40)
 
-                // Prepare domain data: EIP-712 typehash, name hash, version hash, chain ID, and verifying contract.
+                // Prepare domain data: EIP-712 typehash, name hash, version hash, chain ID, & verifying contract.
                 mstore(m, _DOMAIN_TYPEHASH)
                 mstore(add(m, 0x20), _NAME_HASH)
                 mstore(add(m, 0x40), _VERSION_HASH)

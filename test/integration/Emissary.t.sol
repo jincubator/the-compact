@@ -111,7 +111,7 @@ contract EmissaryTest is Setup {
 
         // Try to assign second emissary without scheduling (should fail)
         vm.prank(swapper);
-        vm.expectRevert(abi.encodeWithSelector(EmissaryLib.EmissaryAssignmentUnavailable.selector, assignableAt));
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.EmissaryAssignmentUnavailable.selector, assignableAt));
         theCompact.assignEmissary(lockTag, emissary2);
     }
 
@@ -824,7 +824,7 @@ contract EmissaryTest is Setup {
         }
 
         // Execute claim
-        vm.expectRevert(abi.encodeWithSelector(EmissaryLib.InvalidLockTag.selector));
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidLockTag.selector));
         vm.prank(0x2222222222222222222222222222222222222222);
         theCompact.batchClaim(claim);
     }

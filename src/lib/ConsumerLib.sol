@@ -52,7 +52,7 @@ library ConsumerLib {
             let freeMemoryPointer := mload(0x40)
 
             // derive the nonce bucket slot:
-            // keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])
+            // keccak256(_ALLOCATOR_NONCE_SCOPE ++ account ++ nonce[0:31])
             mstore(0x20, account)
             mstore(0x0c, scope)
             mstore(0x40, nonce)
@@ -90,7 +90,7 @@ library ConsumerLib {
             let freeMemoryPointer := mload(0x40)
 
             // derive the nonce bucket slot:
-            // keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])
+            // keccak256(_ALLOCATOR_NONCE_SCOPE ++ account ++ nonce[0:31])
             mstore(0x20, account)
             mstore(0x0c, scope)
             mstore(0x40, nonceToCheck)

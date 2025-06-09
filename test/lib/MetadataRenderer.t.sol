@@ -190,12 +190,6 @@ contract MetadataRendererTest is Test {
     }
 
     function test_uri_erc20() public {
-        MetadataLib.Lock memory lock = MetadataLib.Lock({
-            token: address(mockToken),
-            allocator: mockAllocator,
-            resetPeriod: ResetPeriod.OneDay,
-            scope: Scope.ChainSpecific
-        });
         string memory uri = metadataRenderer.uri(tokenErc6909Id);
         vm.snapshotGasLastCall("uriERC20");
 
@@ -236,12 +230,6 @@ contract MetadataRendererTest is Test {
     }
 
     function test_uri_native() public {
-        MetadataLib.Lock memory lock = MetadataLib.Lock({
-            token: address(0), // Native token
-            allocator: mockAllocator,
-            resetPeriod: ResetPeriod.SevenDaysAndOneHour,
-            scope: Scope.Multichain
-        });
         string memory uri = metadataRenderer.uri(nativeErc6909Id);
         vm.snapshotGasLastCall("uriNative");
 

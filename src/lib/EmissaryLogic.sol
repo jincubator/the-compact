@@ -49,8 +49,8 @@ contract EmissaryLogic {
      *      providing a security buffer to prevent malicious or accidental redelegation attempts.
      *      This period allows time for any necessary reviews or interventions.
      *
-     *      The function utilizes `toAllocatorIdIfRegistered` to validate and convert the allocator
-     *      address to its corresponding ID, ensuring that only registered allocators can proceed.
+     *      The function utilizes `hasRegisteredAllocatorId` to validate the allocator ID
+     *      ensuring that only registered allocators can proceed.
      *
      * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period.
      */

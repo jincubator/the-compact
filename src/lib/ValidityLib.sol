@@ -118,7 +118,7 @@ library ValidityLib {
 
     /**
      * @notice Internal function that validates a signature or registration against an expected
-     * signer. If the initial verification fails, the emissary is used to valdiate the claim.
+     * signer. If the initial verification fails, the emissary is used to validate the claim.
      * Returns if the signature is valid or if the caller is the expected signer, otherwise
      * reverts. The claim hash is combined with the domain separator before verification.
      * If ECDSA recovery fails, an EIP-1271 isValidSignature check is performed with half of
