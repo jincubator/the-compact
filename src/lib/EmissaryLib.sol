@@ -249,10 +249,6 @@ library EmissaryLib {
         bytes12 lockTag
     ) private view {
         assembly ("memory-safe") {
-            // Sanitize sponsor and lock tag.
-            sponsor := shr(0x60, shl(0x60, sponsor))
-            lockTag := shl(0xa0, shr(0xa0, lockTag))
-
             // Retrieve the free memory pointer; memory will be left dirtieed.
             let m := mload(0x40)
 
@@ -260,12 +256,14 @@ library EmissaryLib {
             let dataStart := add(m, 0x1c)
 
             // Prepare fixed-location components of calldata.
-            mstore(m, _VERIFY_CLAIM_SELECTOR)
             mstore(add(m, 0x20), sponsor)
+            mstore(add(m, 0x0c), 0) // Clear any dirty upper bits on sponsor.
+            mstore(m, _VERIFY_CLAIM_SELECTOR)
             mstore(add(m, 0x40), digest)
             mstore(add(m, 0x60), claimHash)
             mstore(add(m, 0x80), 0xa0)
             mstore(add(m, 0xa0), lockTag)
+            mstore(add(m, 0xac), 0) // clear any dirty lower bits on lock tag.
             mstore(add(m, 0xc0), signature.length)
             calldatacopy(add(m, 0xe0), signature.offset, signature.length)
 
@@ -276,7 +274,7 @@ library EmissaryLib {
             let success := staticcall(gas(), emissary, dataStart, add(0xc4, signature.length), 0, 0x20)
 
             // Revert if the required magic value was not received back.
-            if iszero(eq(mload(0), shl(224, _VERIFY_CLAIM_SELECTOR))) {
+            if iszero(eq(mload(0), shl(0xe0, _VERIFY_CLAIM_SELECTOR))) {
                 // Bubble up revert if the call failed and there's data.
                 // NOTE: consider evaluating remaining gas to protect against revert bombing.
                 if iszero(or(success, iszero(returndatasize()))) {

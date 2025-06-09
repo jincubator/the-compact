@@ -1,11 +1,11 @@
 {
-  "disableForcedWithdrawal": "3296",
-  "enableForcedWithdrawal": "25672",
-  "getForcedWithdrawalStatus_disabled": "2715",
-  "getForcedWithdrawalStatus_enabled": "715",
-  "getForcedWithdrawalStatus_pending": "715",
-  "processForcedWithdrawal": "38552",
-  "processForcedWithdrawal_erc20Token": "30836",
-  "processForcedWithdrawal_fullBalance": "38552",
-  "processForcedWithdrawal_zeroAddress": "11052"
+  "disableForcedWithdrawal": "3288",
+  "enableForcedWithdrawal": "25664",
+  "getForcedWithdrawalStatus_disabled": "2707",
+  "getForcedWithdrawalStatus_enabled": "707",
+  "getForcedWithdrawalStatus_pending": "707",
+  "processForcedWithdrawal": "38460",
+  "processForcedWithdrawal_erc20Token": "30738",
+  "processForcedWithdrawal_fullBalance": "38460",
+  "processForcedWithdrawal_zeroAddress": "10960"
 }

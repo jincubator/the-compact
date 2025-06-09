@@ -15,6 +15,7 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
  */
 library TransferLib {
     using EfficiencyLib for bool;
+    using EfficiencyLib for bytes12;
     using TransferLib for address;
     using IdLib for uint256;
     using SafeTransferLib for address;
@@ -258,10 +259,10 @@ library TransferLib {
         // Extract the recipient address referenced by the claimant.
         address recipient = claimant.toAddress();
 
-        if (claimantLockTag == bytes12(0)) {
+        if (claimantLockTag.isZero()) {
             // Case 1: Zero lock tag - perform a standard withdrawal operation
             // to the recipient address referenced by the claimant.
-            from.withdraw(recipient, id, amount, (false).asStubborn());
+            from.withdraw(recipient, id, amount, false);
         } else if (claimantLockTag == lockTag) {
             // Case 2: Matching lock tags - transfer tokens to the recipient address
             // referenced by the claimant.

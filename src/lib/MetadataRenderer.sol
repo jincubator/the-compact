@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { IdLib } from "./IdLib.sol";
 import { MetadataLib } from "./MetadataLib.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
@@ -13,23 +14,24 @@ import { Scope } from "../types/Scope.sol";
  */
 contract MetadataRenderer {
     using EfficiencyLib for uint256;
+    using IdLib for uint256;
     using MetadataLib for address;
+    using MetadataLib for uint256;
+
+    address public immutable theCompact;
+
+    constructor() {
+        theCompact = msg.sender;
+    }
 
     /**
      * @notice External view function for generating the URI for a resource lock's ERC6909
      * token. The URI is derived from the lock's details and token identifier.
-     * @param token       The address of the underlying token (or address(0) for native tokens).
-     * @param allocator   The address of the allocator mediating the resource lock.
-     * @param resetPeriod The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
-     * @param scope       The scope of the resource lock (multichain or single chain).
      * @param id          The ERC6909 token identifier.
-     * @return     The generated URI string.
+     * @return            The generated URI string.
      */
-    function uri(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 id)
-        external
-        view
-        returns (string memory)
-    {
+    function uri(uint256 id) external view returns (string memory) {
+        (address token, address allocator, ResetPeriod resetPeriod, Scope scope) = id.toLockDetails(theCompact);
         return token.toURI(allocator, resetPeriod, scope, id);
     }
 

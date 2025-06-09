@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { ITheCompact } from "../interfaces/ITheCompact.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 import { IdLib } from "./IdLib.sol";
@@ -107,6 +108,14 @@ library MetadataLib {
             )
         }
         return scopeString;
+    }
+
+    function toLockDetails(uint256 id, address theCompact)
+        internal
+        view
+        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+    {
+        (token, allocator, resetPeriod, scope,) = ITheCompact(theCompact).getLockDetails(id);
     }
 
     /**
@@ -312,13 +321,10 @@ library MetadataLib {
             '"/><feBlend mode="overlay" in="p0" in2="p1" /><feBlend mode="exclusion" in2="p2" /><feGaussianBlur stdDeviation="42" /></filter><filter id="tb"><feGaussianBlur in="SourceGraphic" stdDeviation="24" /></filter><filter id="ts" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="0" stdDeviation="1" flood-opacity="0.8" flood-color="black" /></filter>'
         );
 
-        // Path and mask definitions
-        string memory pathAndMaskDefs = string(
+        return filterDefs.concat(
             // Outer clip path (clips the entire SVG), Path for the animated text (creates a looped animation), & Gradient mask for the title text (fades out towards the right edge of the canvas)
             '<clipPath id="c"><rect width="500" height="290" rx="42" ry="42" /></clipPath><path id="tp" d="M40 12 H460 A28 28 0 0 1 488 40 V250 A28 28 0 0 1 460 278 H40 A28 28 0 0 1 12 250 V40 A28 28 0 0 1 40 12 z" /><linearGradient id="gs" x1="0" y1="0" x2="1" y2="0"><stop offset="0.7" stop-color="white" stop-opacity="1" /><stop offset=".95" stop-color="white" stop-opacity="0" /></linearGradient><mask id="fs" maskContentUnits="userSpaceOnUse"><rect width="440px" height="200px" fill="url(#gs)" /></mask></defs>'
         );
-
-        return filterDefs.concat(pathAndMaskDefs);
     }
 
     /**
@@ -326,9 +332,8 @@ library MetadataLib {
      * @return A string containing the SVG background markup.
      */
     function _getSvgBackground() internal pure returns (string memory) {
-        return string.concat(
-            '<g clip-path="url(#c)"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><rect style="filter: url(#f1)" x="0px" y="0px" width="500px" height="290px" /><g style="filter:url(#tb); transform:scale(1.5); transform-origin:left top;"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><ellipse cx="25%" cy="0px" rx="180px" ry="120px" fill="#000" opacity="0.85" /></g></g>'
-        );
+        return
+        '<g clip-path="url(#c)"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><rect style="filter: url(#f1)" x="0px" y="0px" width="500px" height="290px" /><g style="filter:url(#tb); transform:scale(1.5); transform-origin:left top;"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><ellipse cx="25%" cy="0px" rx="180px" ry="120px" fill="#000" opacity="0.85" /></g></g>';
     }
 
     /**
@@ -427,9 +432,8 @@ library MetadataLib {
         string memory resetPeriod = lock.resetPeriod.toString();
         string memory scope = lock.scope.toString();
         // Handshake Icon
-        string memory iconSvg = string(
-            '<g style="transform:translate(420px, 50px)"><text x="20px" y="28px" text-anchor="middle" font-size="64px" opacity="0.4">'
-        ).concat(unicode"🤝");
+        string memory iconSvg =
+            unicode'<g style="transform:translate(420px, 50px)"><text x="20px" y="28px" text-anchor="middle" font-size="64px" opacity="0.4">🤝';
 
         // Detail Boxes
         string memory detailBoxesSvg = string.concat(

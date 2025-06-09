@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { TransferBenchmarkLogic } from "./TransferBenchmarkLogic.sol";
-
 import { BenchmarkERC20 } from "./BenchmarkERC20.sol";
 
 /**

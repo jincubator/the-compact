@@ -164,26 +164,6 @@ library IdLib {
     }
 
     /**
-     * @notice Internal view function for extracting the contents from a
-     * resource lock ID.
-     * @param id    The resource lock ID to extract from.
-     * @return token       The address of the underlying token (or address(0) for native tokens).
-     * @return allocator   The address of the allocator mediating the resource lock.
-     * @return resetPeriod The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
-     * @return scope       The scope of the resource lock (multichain or single chain).
-     */
-    function toLock(uint256 id)
-        internal
-        view
-        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-    {
-        token = id.toAddress();
-        allocator = id.toAllocatorId().toRegisteredAllocator();
-        resetPeriod = id.toResetPeriod();
-        scope = id.toScope();
-    }
-
-    /**
      * @notice Internal pure function for building the "lock tag" from an
      * allocatorId, scope, and reset period.
      * @param allocatorId The allocator ID.
