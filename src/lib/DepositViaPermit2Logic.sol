@@ -45,8 +45,8 @@ contract DepositViaPermit2Logic is DepositLogic {
     // Selector for the single token `permit2.permitWitnessTransferFrom` function.
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
 
-    // Address of the Permit2 contract.
-    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+    // Address of the Permit2 contract (with 5 leading zeroes stripped).
+    uint120 private constant _PERMIT2 = 0x22D473030F116dDEE9F6B43aC78BA3;
 
     /**
      * @notice Internal function for depositing ERC20 tokens using Permit2 authorization. The
@@ -306,10 +306,7 @@ contract DepositViaPermit2Logic is DepositLogic {
                     // Derive the total memory offset for the witness.
                     let totalWitnessMemoryOffset :=
                         and(
-                            add(
-                                add(0x11d, add(witness.length, iszero(iszero(witness.length)))),
-                                mul(eq(compactCategory, 1), 0x0b)
-                            ),
+                            add(add(0x147, add(witness.length, iszero(iszero(witness.length)))), mul(compactCategory, 0x0b)),
                             not(0x1f)
                         )
 
@@ -377,7 +374,7 @@ contract DepositViaPermit2Logic is DepositLogic {
             //  * the array is empty
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
-            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            //  * the first token is native and the callvalue doesn't equal the first amount
             if or(
                 iszero(totalTokens),
                 or(
@@ -455,6 +452,9 @@ contract DepositViaPermit2Logic is DepositLogic {
             // Retrieve the free memory pointer; memory will be left dirtied.
             m := mload(0x40)
 
+            // Poison the free memory pointer to guard against accidental reuse.
+            mstore(0x40, 0xffffffffffff)
+
             // Begin preparing Permit2 call data.
             mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
             calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
@@ -465,10 +465,6 @@ contract DepositViaPermit2Logic is DepositLogic {
 
             // Derive the memory location for the typestring.
             typestringMemoryLocation := add(m, 0x160)
-
-            // NOTE: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
         }
     }
 
@@ -520,6 +516,9 @@ contract DepositViaPermit2Logic is DepositLogic {
                 mstore(0, 0x7f28c61e)
                 revert(0x1c, 0x04)
             }
+
+            // Restore the free memory pointer.
+            mstore(0x40, m)
         }
     }
 

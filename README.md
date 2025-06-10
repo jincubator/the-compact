@@ -197,7 +197,12 @@ This supports:
 -   Smart wallet / EIP-7702 enabled sponsors with alternative signature logic.
 -   Chained deposit-and-register operations.
 
-Registration can be done by the sponsor or a third party (if they provide the sponsor's signature for `registerFor` type functions, or if they are providing the deposited tokens). When registering, the duration is inferred from the _shortest_ reset period of the involved locks. Registered compacts cannot be unregistered; they can be invalidated by the allocator consuming the nonce or by letting them expire.
+Registration can be done by the sponsor or a third party (if they provide the sponsor's signature for `registerFor` type functions, or if they are providing the deposited tokens). Registrations do not expire, and registered compacts cannot be unregistered by the sponsor. Registrations can be invalidated by the allocator consuming the nonce, or by letting them expire. Once a claim is processed for a compact its registration state is cleared.
+
+The current registration status for a given claim can be queried via the `ITheCompact.isRegistered` function:
+```solidity
+bool isRegistered = theCompact.isRegistered(sponsor, claimhash, typehash);
+```
 
 ### Claimant Processing & Structure
 When an arbiter submits a claim, they provide an array of `Component` structs. Each `Component` specifies an `amount` and a `claimant`.
@@ -408,7 +413,7 @@ Allocators are crucial infrastructure for ensuring resource lock integrity.
 ## View Functions
 The Compact provides several view functions defined in the [`ITheCompact`](./src/interfaces/ITheCompact.sol) interface for querying state:
 -   [`getLockDetails`](./src/interfaces/ITheCompact.sol#L582): Retrieves details (token, allocator, reset period, scope, lockTag) for a resource lock ID.
--   [`getRegistrationStatus`](./src/interfaces/ITheCompact.sol#L598): Checks if a compact is registered and its registration time.
+-   [`isRegistered`](./src/interfaces/ITheCompact.sol#L598): Checks if a compact is currently registered (true or false).
 -   [`getForcedWithdrawalStatus`](./src/interfaces/ITheCompact.sol#L613): Checks the current forced withdrawal status (Disabled, Pending, Enabled) for an account and lock ID.
 -   [`getEmissaryStatus`](./src/interfaces/ITheCompact.sol#L628): Gets the current emissary status (Disabled, Scheduled, Enabled) for a sponsor and lock tag.
 -   [`hasConsumedAllocatorNonce`](./src/interfaces/ITheCompact.sol#L640): Checks if an allocator has consumed a specific nonce.
@@ -460,13 +465,13 @@ Interface that allocators must implement.
 [`src/interfaces/IEmissary.sol`](./src/interfaces/IEmissary.sol)
 
 Interface for emissaries, providing fallback claim verification.
--   `verifyClaim(address sponsor, bytes32 claimHash, bytes calldata signature, bytes12 lockTag) external view returns (bytes4)`: Called by The Compact during claim processing _only if all other sponsor verification methods fail_. Must return `IEmissary.verifyClaim.selector`.
+-   `verifyClaim(address sponsor, bytes32 digest, bytes32 claimHash, bytes calldata signature, bytes12 lockTag) external view returns (bytes4)`: Called by The Compact during claim processing _only if all other sponsor verification methods fail_. Must return `IEmissary.verifyClaim.selector`.
 
 ## Contract Layout
 The Compact V1 is deployed as a single contract (`src/TheCompact.sol`), with the exception of a metadata renderer that surfaces metadata for resource locks (`src/lib/MetadataRenderer.sol`). The deployed contract is comprised of multiple inherited logic contracts which in turn make extensive use of specialized libraries (see `src/lib/TheCompactLogic.sol`). A shared set of struct and enum types are utilized throughout the codebase and as a component in many function interfaces.
 
 ## Credits
-The Compact was developed by [@0age](https://github.com/0age), [@ccashwell](https://github.com/ccashwell) and [@mgretzke](https://github.com/mgretzke) ([Uniswap Labs](https://uniswap.org)), with significant contributions from [@zeroknots](https://github.com/zeroknots) ([Rhinetone](https://rhinestone.wtf)) and [@reednaa](https://github.com/reednaa) ([LI.FI](https://li.fi)).
+The Compact was developed by [@0age](https://github.com/0age), [@ccashwell](https://github.com/ccashwell) and [@mgretzke](https://github.com/mgretzke) ([Uniswap Labs](https://uniswap.org)), with significant contributions from [@zeroknots](https://github.com/zeroknots) ([Rhinestone](https://rhinestone.wtf)) and [@reednaa](https://github.com/reednaa) ([LI.FI](https://li.fi)).
 
 ## License
 The Compact is published under the MIT License. See the [LICENSE](LICENSE.md) file for full details.

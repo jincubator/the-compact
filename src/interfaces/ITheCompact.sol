@@ -63,6 +63,24 @@ interface ITheCompact {
     event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
 
     /**
+     * @notice Event indicating that an emissary has been assigned for a given sponsor and lock tag.
+     * @param sponsor  The address for which the emissary has been assigned.
+     * @param lockTag  The lock tag for which the emissary has been assigned.
+     * @param emissary The account of the emissary that has been assigned.
+     */
+    event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
+
+    /**
+     * @notice Event indicating that a new emissary assignment has been scheduled for a given sponsor
+     * and lock tag. Note that this is only required when a previous emissary has already been assigned
+     * for the given combination of sponsor and lock tag.
+     * @param sponsor      The address for which the emissary assignment has been scheduled.
+     * @param lockTag      The lock tag for which the emissary assignment has been scheduled.
+     * @param assignableAt The block timestamp at which a new emissary may be assigned.
+     */
+    event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 assignableAt);
+
+    /**
      * @notice Event indicating an allocator has been registered.
      * @param allocatorId The unique identifier assigned to the allocator.
      * @param allocator   The address of the registered allocator.
@@ -194,9 +212,7 @@ interface ITheCompact {
 
     /**
      * @notice External function to register a claim hash and its associated EIP-712 typehash.
-     * The registered claim hash will remain valid for the duration of the shortest reset period
-     * across all locks on the compact. Once expired, the claim hash can no longer be used to
-     * initiate claims.
+     * The registered claim hash will remain valid until the allocator consumes the nonce.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
      * @return          Whether the claim hash was successfully registered.
@@ -205,9 +221,8 @@ interface ITheCompact {
 
     /**
      * @notice External function to register multiple claim hashes and their associated EIP-712
-     * typehashes in a single call. Each registered claim hash will remain valid the duration of
-     * the shortest reset period on each respective lock. Once expired, the claim hashes can no
-     * longer be used to initiate claims.
+     * typehashes in a single call. Each registered claim hash will remain valid until the allocator
+     * consumes the nonce.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */
@@ -220,7 +235,8 @@ interface ITheCompact {
      * @param sponsor          The address of the sponsor for whom the claim is being registered.
      * @param nonce            A parameter to enforce replay protection, scoped to allocator.
      * @param expires          The time at which the claim expires.
-     * @param id               The ERC6909 token identifier of the associated resource lock.
+     * @param lockTag          The lock tag containing allocator ID, reset period, and scope.
+     * @param token            The address of the token associated with the claim.
      * @param amount           The amount of tokens associated with the claim.
      * @param witness          Hash of the witness data.
      * @param sponsorSignature The signature from the sponsor authorizing the registration.
@@ -232,7 +248,8 @@ interface ITheCompact {
         address sponsor,
         uint256 nonce,
         uint256 expires,
-        uint256 id,
+        bytes12 lockTag,
+        address token,
         uint256 amount,
         bytes32 witness,
         bytes calldata sponsorSignature
@@ -592,13 +609,9 @@ interface ITheCompact {
      * @param sponsor   The account that registered the compact.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
-     * @return isActive              Whether the compact registration is currently active.
-     * @return registrationTimestamp The timestamp at which the compact was registered.
+     * @return isActive Whether the compact registration is currently active.
      */
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
-        external
-        view
-        returns (bool isActive, uint256 registrationTimestamp);
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive);
 
     /**
      * @notice External view function for checking the forced withdrawal status of a resource
@@ -668,6 +681,7 @@ interface ITheCompact {
     error Expired(uint256 expiration);
     error InvalidSignature();
     error PrematureWithdrawal(uint256 id);
+    error ForcedWithdrawalFailed();
     error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
     error UnallocatedTransfer(address operator, address from, address to, uint256 id, uint256 amount);
     error InvalidBatchAllocation();
@@ -681,4 +695,8 @@ interface ITheCompact {
     error ReentrantCall(address existingCaller);
     error InconsistentAllocators();
     error InvalidAllocation(address allocator);
+    error ChainIndexOutOfRange();
+    error InvalidEmissaryAssignment();
+    error EmissaryAssignmentUnavailable(uint256 assignableAt);
+    error InvalidLockTag();
 }

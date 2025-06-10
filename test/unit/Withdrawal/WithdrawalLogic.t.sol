@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { ITheCompact } from "src/interfaces/ITheCompact.sol";
 import { ForcedWithdrawalStatus } from "src/types/ForcedWithdrawalStatus.sol";
+import { MockERC20 } from "lib/solady/test/utils/mocks/MockERC20.sol";
 import "src/lib/IdLib.sol";
 import "./MockWithdrawalLogic.sol";
 
@@ -15,6 +16,7 @@ contract WithdrawalLogicTest is Test {
 
     address user;
     address recipient;
+    MockERC20 testToken;
     uint256 testTokenId;
 
     function setUp() public {
@@ -23,8 +25,11 @@ contract WithdrawalLogicTest is Test {
         user = makeAddr("user");
         recipient = makeAddr("recipient");
 
+        testToken = new MockERC20("Mock", "MOCK", 18);
+        testToken.mint(address(logic), 1000);
+
         // Create a token ID that encodes a reset period
-        testTokenId = 0x000001 | (uint256(ResetPeriod.OneDay) << 252);
+        testTokenId = uint256(uint160(address(testToken))) | (uint256(ResetPeriod.OneDay) << 252);
         logic.mint(user, testTokenId, 1000);
 
         vm.warp(1743479729);
@@ -81,12 +86,18 @@ contract WithdrawalLogicTest is Test {
         // Warp to after the withdrawal is enabled
         vm.warp(withdrawableAt + 1);
 
+        uint256 priorBalance = testToken.balanceOf(recipient);
+
         // Now withdrawal should work
         vm.prank(user);
         logic.processForcedWithdrawal(testTokenId, recipient, 500);
 
+        uint256 subsequentBalance = testToken.balanceOf(recipient);
+
         // Check balances
         assertEq(logic.balanceOf(user, testTokenId), 500, "User should have 500 tokens left");
+
+        assertEq(subsequentBalance - priorBalance, 500, "User should have received 500 tokens");
     }
 
     function test_getForcedWithdrawalStatus_disabled() public {
@@ -199,6 +210,7 @@ contract WithdrawalLogicTest is Test {
 
         // Try to withdraw zero tokens
         vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.ForcedWithdrawalFailed.selector));
         logic.processForcedWithdrawal(testTokenId, recipient, 0);
 
         // Check balances - should be unchanged

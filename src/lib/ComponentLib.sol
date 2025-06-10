@@ -92,7 +92,6 @@ library ComponentLib {
      * tokens to multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
@@ -101,11 +100,10 @@ library ComponentLib {
     function processClaimWithComponents(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
             validation
     ) internal {
         // Declare variables for parameters that will be extracted from calldata.
@@ -114,8 +112,8 @@ library ComponentLib {
         Component[] calldata components;
 
         assembly ("memory-safe") {
-            // Calculate pointer to claim parameters using provided offset.
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+            // Calculate pointer to claim parameters using expected offset.
+            let calldataPointerWithOffset := add(calldataPointer, 0xe0)
 
             // Extract resource lock id and allocated amount.
             id := calldataload(calldataPointerWithOffset)
@@ -139,8 +137,7 @@ library ComponentLib {
             domainSeparator,
             sponsorDomainSeparator,
             typehash,
-            idsAndAmounts,
-            id.toResetPeriod().toSeconds()
+            idsAndAmounts
         );
 
         // Verify the resource lock scope is compatible with the provided domain separator.
@@ -158,7 +155,6 @@ library ComponentLib {
      * identify specific issues. Each resource lock can be split among multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
@@ -167,24 +163,23 @@ library ComponentLib {
     function processClaimWithBatchComponents(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
             validation
     ) internal {
         // Declare variable for BatchClaimComponent array that will be extracted from calldata.
         BatchClaimComponent[] calldata claims;
         assembly ("memory-safe") {
             // Extract array of batch claim components.
-            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
+            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, 0xe0)))
             claims.offset := add(0x20, claimsPtr)
             claims.length := calldataload(claimsPtr)
         }
 
-        // Parse into idsAndAmounts & extract shortest reset period & first allocatorId.
-        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod) =
+        // Parse into idsAndAmounts & extract first allocatorId.
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
             _buildIdsAndAmounts(claims, sponsorDomainSeparator);
 
         // Validate the claim and extract the sponsor address.
@@ -195,8 +190,7 @@ library ComponentLib {
             domainSeparator,
             sponsorDomainSeparator,
             typehash,
-            idsAndAmounts,
-            shortestResetPeriod.asResetPeriod().toSeconds()
+            idsAndAmounts
         );
 
         unchecked {
@@ -212,10 +206,20 @@ library ComponentLib {
         }
     }
 
+    /**
+     * @notice Internal function for building an array of resource lock IDs and their allocated
+     * amounts from batch claim components. Also extracts the allocator ID from the first item
+     * for validation purposes. Verifies that all claims use the same allocator and have valid
+     * scopes.
+     * @param claims                 Array of batch claim components to process.
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @return idsAndAmounts         Array of [id, allocatedAmount] pairs for each claim component.
+     * @return firstAllocatorId      The allocator ID extracted from the first claim component.
+     */
     function _buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
         internal
         pure
-        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod)
+        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId)
     {
         uint256 totalClaims = claims.length;
         if (totalClaims == 0) {
@@ -226,7 +230,6 @@ library ComponentLib {
         BatchClaimComponent calldata claimComponent = claims[0];
         uint256 id = claimComponent.id;
         firstAllocatorId = id.toAllocatorId();
-        shortestResetPeriod = id.toResetPeriod().asUint256();
 
         // Initialize idsAndAmounts array and register the first element.
         idsAndAmounts = new uint256[2][](totalClaims);
@@ -241,8 +244,6 @@ library ComponentLib {
                 claimComponent = claims[i];
                 id = claimComponent.id;
 
-                shortestResetPeriod = shortestResetPeriod.min(id.toResetPeriod().asUint256());
-
                 errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
                     id.scopeNotMultichain(sponsorDomainSeparator)
                 ).asUint256();
@@ -252,7 +253,13 @@ library ComponentLib {
             }
 
             // Revert if any errors occurred.
-            _revertWithInvalidBatchAllocationIfError(errorBuffer);
+            assembly ("memory-safe") {
+                if errorBuffer {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
+            }
         }
     }
 
@@ -274,8 +281,8 @@ library ComponentLib {
     ) internal {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
-        uint256 spentAmount = 0;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
+        uint256 spentAmount;
+        uint256 errorBuffer;
 
         unchecked {
             // Process each component while tracking total amount and checking for overflow.
@@ -307,6 +314,7 @@ library ComponentLib {
 
     /**
      * @notice Internal pure function for summing all amounts in a Component array.
+     * Checks for arithmetic overflow during summation and reverts if detected.
      * @param recipients A Component struct array containing transfer details.
      * @return sum Total amount across all components.
      */
@@ -314,8 +322,8 @@ library ComponentLib {
         // Retrieve the total number of components.
         uint256 totalComponents = recipients.length;
 
-        uint256 errorBuffer;
         uint256 amount;
+        uint256 errorBuffer;
         unchecked {
             // Iterate over each additional component in calldata.
             for (uint256 i = 0; i < totalComponents; ++i) {
@@ -349,22 +357,6 @@ library ComponentLib {
 
                 // Perform the transfer or withdrawal for the portion.
                 msg.sender.performOperation(id, component.claimant, component.amount);
-            }
-        }
-    }
-
-    /**
-     * @notice Private pure function that reverts with an InvalidBatchAllocation error
-     * if an error buffer is nonzero.
-     * @param errorBuffer The error buffer to check.
-     */
-    function _revertWithInvalidBatchAllocationIfError(uint256 errorBuffer) private pure {
-        // Revert if any errors occurred.
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
             }
         }
     }

@@ -61,7 +61,7 @@ library ValidityLib {
      * @return allocator The address of the registered allocator.
      */
     function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
-        allocator = id.toAllocator();
+        allocator = id.toAllocatorId().toRegisteredAllocator();
         nonce.consumeNonceAsAllocator(allocator);
     }
 
@@ -118,7 +118,7 @@ library ValidityLib {
 
     /**
      * @notice Internal function that validates a signature or registration against an expected
-     * signer. If the initial verification fails, the emissary is used to valdiate the claim.
+     * signer. If the initial verification fails, the emissary is used to validate the claim.
      * Returns if the signature is valid or if the caller is the expected signer, otherwise
      * reverts. The claim hash is combined with the domain separator before verification.
      * If ECDSA recovery fails, an EIP-1271 isValidSignature check is performed with half of
@@ -129,27 +129,17 @@ library ValidityLib {
      * @param signature           The signature to verify.
      * @param domainSeparator     The domain separator to combine with the message hash.
      * @param typehash            The EIP-712 typehash used for the claim message.
-     * @param shortestResetPeriod The shortest reset period across all resource locks on the compact.
      */
-    function hasValidSponsorOrRegistration(
+    function validateSponsorAndConsumeRegistration(
         bytes32 claimHash,
         address expectedSigner,
         bytes calldata signature,
         bytes32 domainSeparator,
         uint256[2][] memory idsAndAmounts,
-        bytes32 typehash,
-        uint256 shortestResetPeriod
-    ) internal view {
-        // Get registration status early if no signature is supplied.
-        bool checkedRegistrationPeriod;
-        if (signature.length == 0) {
-            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(claimHash, typehash);
-
-            if ((registrationTimestamp != 0).and(registrationTimestamp + shortestResetPeriod > block.timestamp)) {
-                return;
-            }
-
-            checkedRegistrationPeriod = true;
+        bytes32 typehash
+    ) internal {
+        if (expectedSigner.consumeRegistrationIfRegistered(claimHash, typehash)) {
+            return;
         }
 
         // Apply domain separator to message hash to derive the digest.
@@ -160,22 +150,13 @@ library ValidityLib {
             return;
         }
 
-        // Next, check for an active registration if not yet checked.
-        if (!checkedRegistrationPeriod) {
-            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(claimHash, typehash);
-
-            if ((registrationTimestamp != 0).and(registrationTimestamp + shortestResetPeriod > block.timestamp)) {
-                return;
-            }
-        }
-
         // Then, check EIP1271 using the digest, supplying half of available gas.
         if (expectedSigner.isValidERC1271SignatureNowCalldataHalfGas(digest, signature)) {
             return;
         }
 
         // Finally, fallback to emissary using the claim hash.
-        claimHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature);
+        digest.verifyWithEmissary(claimHash, expectedSigner, idsAndAmounts.extractSameLockTag(), signature);
     }
 
     /**

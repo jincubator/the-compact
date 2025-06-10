@@ -19,7 +19,9 @@ import { TransferLib } from "./TransferLib.sol";
 contract WithdrawalLogic is ConstructorLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
+    using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
+    using EfficiencyLib for address;
     using EventLib for uint256;
     using TransferLib for address;
 
@@ -109,7 +111,7 @@ contract WithdrawalLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         // Process the withdrawal.
-        msg.sender.withdraw(recipient, id, amount);
+        msg.sender.withdraw(recipient.usingCallerIfNull(), id, amount, true);
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -150,10 +152,9 @@ contract WithdrawalLogic is ConstructorLogic {
      */
     function _getCutoffTimeSlot(address account, uint256 id) private pure returns (uint256 cutoffTimeSlotLocation) {
         assembly ("memory-safe") {
-            // Retrieve the current free memory pointer.
-            let m := mload(0x40)
-
-            // Pack data for computing storage slot.
+            // Pack data for computing storage slot. Note that the upper
+            // 24 bytes of the free memory pointer are dirtied and will
+            // be restored once the storage slot has been derived.
             mstore(0x14, account)
             mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
             mstore(0x34, id)
@@ -161,8 +162,8 @@ contract WithdrawalLogic is ConstructorLogic {
             // Compute storage slot from packed data.
             cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
 
-            // Restore the free memory pointer.
-            mstore(0x40, m)
+            // Restore the dirtied portion of the free memory pointer.
+            mstore(0x34, 0)
         }
     }
 }

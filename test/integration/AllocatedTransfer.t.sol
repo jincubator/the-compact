@@ -8,6 +8,7 @@ import { Scope } from "../../src/types/Scope.sol";
 import { Component, ComponentsById } from "../../src/types/Components.sol";
 import { AllocatedTransfer } from "../../src/types/Claims.sol";
 import { AllocatedBatchTransfer } from "../../src/types/BatchClaims.sol";
+import { IdLib } from "../../src/lib/IdLib.sol";
 
 import { QualifiedAllocator } from "../../src/examples/allocator/QualifiedAllocator.sol";
 
@@ -277,5 +278,27 @@ contract AllocatedTransferTest is Setup {
             assertEq(theCompact.balanceOf(recipientOne, id), 0);
             assertEq(theCompact.balanceOf(recipientTwo, id), 0);
         }
+    }
+
+    function test_revert_allocatorNotRegistered() public {
+        // Register allocator and create lock tag
+        uint96 allocatorId = 0x0123456789ab;
+        uint256 id = uint256(allocatorId) << 160 | uint256(uint160(address(token)));
+
+        // Prepare recipients
+        Component[] memory recipients = new Component[](0);
+
+        // Create and execute transfer
+        AllocatedTransfer memory transfer = AllocatedTransfer({
+            nonce: 0,
+            expires: block.timestamp + 1000,
+            allocatorData: "",
+            id: id,
+            recipients: recipients
+        });
+
+        vm.prank(swapper);
+        vm.expectRevert(abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, allocatorId));
+        theCompact.allocatedTransfer(transfer);
     }
 }

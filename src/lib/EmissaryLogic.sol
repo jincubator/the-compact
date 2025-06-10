@@ -29,14 +29,12 @@ import { EmissaryStatus } from "../types/EmissaryStatus.sol";
  * The contract provides functions to schedule and assign emissaries, as well as
  * get the current status of an emissary assignment.
  */
-abstract contract EmissaryLogic {
+contract EmissaryLogic {
     using IdLib for address;
     using IdLib for uint96;
     using IdLib for bytes12;
     using EmissaryLib for bytes12;
     using EmissaryLib for address;
-
-    error InvalidEmissaryAssignment();
 
     /**
      * @notice Initiates the timelock process for changing an emissary
@@ -51,8 +49,8 @@ abstract contract EmissaryLogic {
      *      providing a security buffer to prevent malicious or accidental redelegation attempts.
      *      This period allows time for any necessary reviews or interventions.
      *
-     *      The function utilizes `toAllocatorIdIfRegistered` to validate and convert the allocator
-     *      address to its corresponding ID, ensuring that only registered allocators can proceed.
+     *      The function utilizes `hasRegisteredAllocatorId` to validate the allocator ID
+     *      ensuring that only registered allocators can proceed.
      *
      * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period.
      */
@@ -86,8 +84,14 @@ abstract contract EmissaryLogic {
         // Extract allocatorId from locktag and ensure that the allocator is registered.
         address allocator = lockTag.toAllocatorId().toRegisteredAllocator();
 
-        // Ensure allocator is not the emissary, which would grant them unilateral control.
-        require(allocator != emissary, InvalidEmissaryAssignment());
+        // Ensure allocator is not the emissary as it would grant the entity unilateral control.
+        if (allocator == emissary) {
+            assembly ("memory-safe") {
+                // Revert InvalidEmissaryAssignment();
+                mstore(0, 0x2411f310)
+                revert(0x1c, 0x04)
+            }
+        }
 
         // Assign the emissary of the lock tag for the caller.
         lockTag.assignEmissary(emissary);
@@ -105,7 +109,7 @@ abstract contract EmissaryLogic {
      *      The function also returns the timestamp when the emissary assignment will be available,
      *      and the address of the current emissary if one is assigned.
      *
-     *      The `usingAllocatorId` function is used to retrieve the allocator's ID, ensuring consistent
+     *      The `toAllocatorId` function is used to retrieve the allocator's ID, ensuring consistent
      *      and accurate status retrieval.
      *
      * @param sponsor The address of the sponsor who has delegated signature verification.

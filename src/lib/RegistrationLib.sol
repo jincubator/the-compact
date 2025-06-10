@@ -32,34 +32,23 @@ library RegistrationLib {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      */
     function registerCompact(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
         assembly ("memory-safe") {
-            // Retrieve the current free memory pointer.
-            let m := mload(0x40)
-
-            // Pack data for deriving active registration storage slot.
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-
-            // Derive and load active registration storage slot to get current expiration.
-            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
-
-            // Store registration time in active registration storage slot.
-            sstore(cutoffSlot, timestamp())
+            // Store 1 (true) in active registration storage slot.
+            sstore(registrationSlot, 1)
 
             // Emit the CompactRegistered event:
             //  - topic1: CompactRegistered event signature
             //  - topic2: sponsor address (sanitized)
             //  - data: [claimHash, typehash]
-            log2(add(m, 0x34), 0x40, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
+            mstore(0, claimHash)
+            mstore(0x20, typehash)
+            log2(0, 0x40, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
         }
     }
 
     /**
-     * @notice Internal function for registering multiple claim hashes in a single call. All
-     * claim hashes will be registered using the shortest reset period on that compact as its
-     * duration using the caller as the sponsor.
+     * @notice Internal function for registering multiple claim hashes in a single call.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */
@@ -86,12 +75,48 @@ library RegistrationLib {
      * @param sponsor   The account that registered the claim hash.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the claim hash.
-     * @return registrationTimestamp The timestamp at which the registration occurred.
+     * @return registered Whether the compact has been registered.
      */
-    function toRegistrationTimestamp(address sponsor, bytes32 claimHash, bytes32 typehash)
+    function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
         internal
         view
-        returns (uint256 registrationTimestamp)
+        returns (bool registered)
+    {
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
+        assembly ("memory-safe") {
+            // Load registration storage slot to get registration status.
+            registered := sload(registrationSlot)
+        }
+    }
+
+    /**
+     * @notice Internal function for consuming (clearing) a registration.
+     * @param sponsor   The account that registered the claim hash.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     */
+    function consumeRegistrationIfRegistered(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        returns (bool consumed)
+    {
+        uint256 registrationSlot = sponsor.deriveRegistrationSlot(claimHash, typehash);
+        assembly ("memory-safe") {
+            consumed := sload(registrationSlot)
+            if consumed { sstore(registrationSlot, 0) }
+        }
+    }
+
+    /**
+     * @notice Internal function for deriving the registration storage slot for a given claim hash and typehash.
+     * @param sponsor   The account that registered the claim hash.
+     * @param claimHash A bytes32 hash derived from the details of the compact.
+     * @param typehash  The EIP-712 typehash associated with the claim hash.
+     * @return registrationSlot The storage slot for the registration.
+     */
+    function deriveRegistrationSlot(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        pure
+        returns (uint256 registrationSlot)
     {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
@@ -103,8 +128,8 @@ library RegistrationLib {
             mstore(add(m, 0x34), claimHash)
             mstore(add(m, 0x54), typehash)
 
-            // Derive and load active registration storage slot to get registration timestamp.
-            registrationTimestamp := sload(keccak256(add(m, 0x1c), 0x58))
+            // Derive active registration storage slot.
+            registrationSlot := keccak256(add(m, 0x1c), 0x58)
         }
     }
 }

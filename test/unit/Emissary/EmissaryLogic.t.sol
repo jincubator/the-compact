@@ -126,12 +126,26 @@ contract EmissaryLogicTest is Test {
 
     function test_lockTag() public view {
         address allocatorOne = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
-        uint96 allocatorOneId = allocatorOne.usingAllocatorId();
+        uint96 allocatorOneId = allocatorOne.toAllocatorId();
         bytes12 tag = toLockTag(allocatorOneId, Scope.Multichain, ResetPeriod.OneHourAndFiveMinutes);
         (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) = fromLockTag(tag);
         assertEq(allocatorOneId, _allocatorId);
         assertTrue(scope == _scope, "scope");
         assertTrue(ResetPeriod.OneHourAndFiveMinutes == _resetPeriod, "ResetPeriod");
+    }
+
+    function test_verifyWithEmissary() public {
+        test_new_emissary();
+        bytes32 claimHash = bytes32("claimHash");
+        bytes32 domainSep = logic.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), domainSep, claimHash));
+
+        bytes memory signature = hex"4141414141414141414141414141414141414141414141414141414141414141";
+
+        vm.expectCall(
+            address(emissary1), abi.encodeCall(IEmissary.verifyClaim, (sponsor, digest, claimHash, signature, lockTag))
+        );
+        logic.verifyWithEmissary(sponsor, signature, claimHash, address(allocator), resetPeriod, scope);
     }
 
     function toLockTag(uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) internal pure returns (bytes12) {

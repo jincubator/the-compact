@@ -30,6 +30,7 @@ contract TransferLogic is ConstructorLogic {
     using ComponentLib for AllocatedBatchTransfer;
     using ComponentLib for Component[];
     using IdLib for uint256;
+    using IdLib for uint96;
     using EfficiencyLib for bool;
     using EventLib for address;
     using ValidityLib for uint96;
@@ -68,7 +69,7 @@ contract TransferLogic is ConstructorLogic {
         // Perform the transfers or withdrawals.
         transfer.processTransfer();
 
-        // Clear the reentancy guard.
+        // Clear the reentrancy guard.
         _clearReentrancyGuard();
 
         return true;
@@ -115,7 +116,7 @@ contract TransferLogic is ConstructorLogic {
         // Perform the batch transfers or withdrawals.
         transfer.performBatchTransfer();
 
-        // Clear the reentancy guard.
+        // Clear the reentrancy guard.
         _clearReentrancyGuard();
 
         return true;
@@ -133,7 +134,7 @@ contract TransferLogic is ConstructorLogic {
      */
     function _ensureAttested(address from, address to, uint256 id, uint256 amount) internal {
         // Derive the allocator address from the supplied id.
-        address allocator = id.toAllocator();
+        address allocator = id.toAllocatorId().toRegisteredAllocator();
 
         assembly ("memory-safe") {
             // Sanitize from and to addresses.

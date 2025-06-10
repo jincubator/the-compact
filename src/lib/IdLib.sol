@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
-import { MetadataLib } from "./MetadataLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
 import { EfficientHashLib } from "solady/utils/EfficientHashLib.sol";
@@ -54,7 +53,7 @@ library IdLib {
      */
     function register(address allocator) internal returns (uint96 allocatorId) {
         // Derive the allocator ID for the provided allocator address.
-        allocatorId = allocator.usingAllocatorId();
+        allocatorId = allocator.toAllocatorId();
 
         assembly ("memory-safe") {
             // Derive storage slot for allocator registration by ID.
@@ -100,6 +99,17 @@ library IdLib {
     }
 
     /**
+     * @notice Internal view function for extracting and validating an allocator ID from
+     * a resource lock ID. Reverts if the allocator is not registered.
+     * @param id           The resource lock ID to extract from.
+     * @return allocatorId The validated allocator ID.
+     */
+    function toAllocatorIdIfRegistered(uint256 id) internal view returns (uint96 allocatorId) {
+        allocatorId = id.toAllocatorId();
+        allocatorId.mustHaveARegisteredAllocator();
+    }
+
+    /**
      * @notice Internal view function for retrieving an allocator's address from their ID.
      * Reverts if no allocator is registered with the provided ID.
      * @param allocatorId The ID to look up.
@@ -117,38 +127,6 @@ library IdLib {
                 revert(0x1c, 0x24)
             }
         }
-    }
-
-    /**
-     * @notice Internal view function that verifies an allocator is registered and
-     * returns their ID. Derives the allocator ID from the address and reverts if the
-     * stored address doesn't exactly match the provided one.
-     * @param allocator    The address to check registration for.
-     * @return allocatorId The derived allocator ID.
-     */
-    function toAllocatorIdIfRegistered(address allocator) internal view returns (uint96 allocatorId) {
-        // Derive the allocator ID for the provided allocator address.
-        allocatorId = allocator.usingAllocatorId();
-
-        assembly ("memory-safe") {
-            // Revert on any difference between original address and stored address.
-            if xor(allocator, sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
-                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
-                mstore(0x20, allocatorId)
-                revert(0x1c, 0x24)
-            }
-        }
-    }
-
-    /**
-     * @notice Internal view function for extracting and validating an allocator ID from
-     * a resource lock ID. Reverts if the allocator is not registered.
-     * @param id           The resource lock ID to extract from.
-     * @return allocatorId The validated allocator ID.
-     */
-    function toRegisteredAllocatorId(uint256 id) internal view returns (uint96 allocatorId) {
-        allocatorId = id.toAllocatorId();
-        allocatorId.mustHaveARegisteredAllocator();
     }
 
     /**
@@ -182,36 +160,6 @@ library IdLib {
         return (msg.sender == allocator).or(allocator.code.length > 0).or(
             proof.length == 85 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(proof.hashCalldata()))))
         );
-    }
-
-    /**
-     * @notice Internal view function for retrieving an allocator's address from a
-     * resource lock ID. Reverts if no allocator has been registered for the ID.
-     * @param id         The resource lock ID to extract the allocator from.
-     * @return allocator The address of the allocator.
-     */
-    function toAllocator(uint256 id) internal view returns (address allocator) {
-        allocator = id.toAllocatorId().toRegisteredAllocator();
-    }
-
-    /**
-     * @notice Internal view function for extracting the contents from a
-     * resource lock ID.
-     * @param id    The resource lock ID to extract from.
-     * @return token       The address of the underlying token (or address(0) for native tokens).
-     * @return allocator   The address of the allocator mediating the resource lock.
-     * @return resetPeriod The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
-     * @return scope       The scope of the resource lock (multichain or single chain).
-     */
-    function toLock(uint256 id)
-        internal
-        view
-        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-    {
-        token = id.toAddress();
-        allocator = id.toAllocator();
-        resetPeriod = id.toResetPeriod();
-        scope = id.toScope();
     }
 
     /**
@@ -317,19 +265,6 @@ library IdLib {
     }
 
     /**
-     * @notice Internal pure function for extracting the compact flag from a resource
-     * lock ID. The compact flag is a 4-bit component of the allocator ID.
-     * @param id           The resource lock ID to extract from.
-     * @return compactFlag The compact flag (bits 248-251).
-     */
-    function toCompactFlag(uint256 id) internal pure returns (uint8 compactFlag) {
-        assembly ("memory-safe") {
-            // extract 5th, 6th, 7th & 8th uppermost bits
-            compactFlag := and(shr(248, id), 15)
-        }
-    }
-
-    /**
      * @notice Internal pure function for extracting the allocator ID from a resource
      * lock ID. The allocator ID is a 92-bit value, with the first 4 bits representing
      * the compact flag and the last 88 bits matching the last 88 bits of the underlying
@@ -413,7 +348,7 @@ library IdLib {
      * @param allocator    The address to compute the ID for.
      * @return allocatorId The computed allocator ID.
      */
-    function usingAllocatorId(address allocator) internal pure returns (uint96 allocatorId) {
+    function toAllocatorId(address allocator) internal pure returns (uint96 allocatorId) {
         uint8 compactFlag = allocator.toCompactFlag();
 
         assembly ("memory-safe") {
@@ -467,7 +402,7 @@ library IdLib {
     {
         id = (
             (scope.asUint256() << 255) | (resetPeriod.asUint256() << 252)
-                | (allocator.usingAllocatorId().asUint256() << 160) | token.asUint256()
+                | (allocator.toAllocatorId().asUint256() << 160) | token.asUint256()
         );
     }
 }

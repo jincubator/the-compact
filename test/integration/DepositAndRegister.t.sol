@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import { console } from "forge-std/Test.sol";
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
-
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { Component, BatchClaimComponent } from "../../src/types/Components.sol";
@@ -10,16 +10,20 @@ import { Claim } from "../../src/types/Claims.sol";
 import { BatchClaim } from "../../src/types/BatchClaims.sol";
 
 import { Setup } from "./Setup.sol";
+import { LibString } from "solady/utils/LibString.sol";
 
 import {
     TestParams, CreateClaimHashWithWitnessArgs, CreateBatchClaimHashWithWitnessArgs
 } from "./TestHelperStructs.sol";
 
 import { EfficiencyLib } from "../../src/lib/EfficiencyLib.sol";
+import { RegistrationLib } from "../../src/lib/RegistrationLib.sol";
 
 contract DepositAndRegisterTest is Setup {
     using EfficiencyLib for bytes12;
     using EfficiencyLib for address;
+    using RegistrationLib for address;
+    using LibString for uint256;
 
     function test_depositNativeAndRegisterAndClaim() public {
         // Setup test parameters
@@ -74,12 +78,15 @@ contract DepositAndRegisterTest is Setup {
         }
 
         // Verify claim hash was registered
+        uint256 registrationSlot = swapper.deriveRegistrationSlot(claimHash, compactWithWitnessTypehash);
         {
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assertTrue(isRegistered);
+            assertEq(theCompact.extsload(bytes32(registrationSlot)), bytes32(uint256(1)));
+            console.log("Registration Slot", registrationSlot.toHexString());
+            console.log(
+                "Value Before Claim", uint256(theCompact.extsload(bytes32(registrationSlot))).toMinimalHexString()
+            );
         }
 
         // Prepare claim
@@ -132,6 +139,16 @@ contract DepositAndRegisterTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assertFalse(isRegistered);
+            assertEq(theCompact.extsload(bytes32(registrationSlot)), bytes32(uint256(0)));
+            console.log(
+                "Value After Claim", uint256(theCompact.extsload(bytes32(registrationSlot))).toMinimalHexString()
+            );
+        }
     }
 
     function test_depositERC20AndRegisterAndClaim() public {
@@ -189,11 +206,8 @@ contract DepositAndRegisterTest is Setup {
 
         // Verify claim hash was registered
         {
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assertTrue(isRegistered);
         }
 
         // Prepare claim
@@ -246,6 +260,12 @@ contract DepositAndRegisterTest is Setup {
         assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            assertFalse(isRegistered);
+        }
     }
 
     function test_batchDepositAndRegisterMultipleAndClaim_lengthOne() public {
@@ -292,7 +312,7 @@ contract DepositAndRegisterTest is Setup {
             args.sponsor = swapper;
             args.nonce = params.nonce;
             args.expires = params.deadline;
-            args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+            args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
             args.witness = witness;
 
             claimHashesAndTypehashes[0][0] = _createBatchClaimHashWithWitness(args);
@@ -308,18 +328,14 @@ contract DepositAndRegisterTest is Setup {
 
             assertEq(theCompact.balanceOf(swapper, params.id), params.amount);
             assertEq(address(theCompact).balance, params.amount);
-            assert(status);
+            assertTrue(status);
         }
 
         // Verify claim hash was registered
         {
-            bool isActive;
-            uint256 registeredAt;
-            (isActive, registeredAt) = theCompact.getRegistrationStatus(
-                swapper, claimHashesAndTypehashes[0][0], claimHashesAndTypehashes[0][1]
-            );
-            assert(isActive);
-            assertEq(registeredAt, block.timestamp);
+            bool isRegistered =
+                theCompact.isRegistered(swapper, claimHashesAndTypehashes[0][0], claimHashesAndTypehashes[0][1]);
+            assertTrue(isRegistered);
         }
 
         // Prepare claim
@@ -377,5 +393,12 @@ contract DepositAndRegisterTest is Setup {
         assertEq(address(theCompact).balance, params.amount);
         assertEq(theCompact.balanceOf(swapper, params.id), 0);
         assertEq(theCompact.balanceOf(params.recipient, params.id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered =
+                theCompact.isRegistered(swapper, claimHashesAndTypehashes[0][0], claimHashesAndTypehashes[0][1]);
+            assertFalse(isRegistered);
+        }
     }
 }
