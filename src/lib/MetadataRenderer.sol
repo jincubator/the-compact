@@ -2,7 +2,6 @@
 pragma solidity ^0.8.27;
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { IdLib } from "./IdLib.sol";
 import { MetadataLib } from "./MetadataLib.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
@@ -14,7 +13,6 @@ import { Scope } from "../types/Scope.sol";
  */
 contract MetadataRenderer {
     using EfficiencyLib for uint256;
-    using IdLib for uint256;
     using MetadataLib for address;
     using MetadataLib for uint256;
 

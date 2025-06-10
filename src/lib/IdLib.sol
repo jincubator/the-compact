@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
-import { MetadataLib } from "./MetadataLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
 import { EfficientHashLib } from "solady/utils/EfficientHashLib.sol";
