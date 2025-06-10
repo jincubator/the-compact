@@ -452,7 +452,7 @@ contract DepositViaPermit2Logic is DepositLogic {
             // Retrieve the free memory pointer; memory will be left dirtied.
             m := mload(0x40)
 
-            // poison the free memory pointer
+            // Poison the free memory pointer to guard against accidental reuse.
             mstore(0x40, 0xffffffffffff)
 
             // Begin preparing Permit2 call data.
