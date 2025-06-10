@@ -97,8 +97,8 @@ library AllocatorLib {
 
             // Revert if the required magic value was not received back or really huge idsAndAmounts was supplied.
             if or(gt(totalIdsAndAmounts, 0xffffffff), iszero(eq(mload(0), shl(224, _AUTHORIZE_CLAIM_SELECTOR)))) {
-                // Bubble up revert if the call failed and there's data.
-                // NOTE: consider evaluating remaining gas to protect against revert bombing.
+                // Bubble up if the call failed and there's data. Note that remaining gas is not evaluated before
+                // copying the returndata buffer into memory. Out-of-gas errors can be triggered via revert bombing.
                 if iszero(or(success, iszero(returndatasize()))) {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())

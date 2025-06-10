@@ -505,8 +505,8 @@ contract DepositViaPermit2Logic is DepositLogic {
                     call(gas(), _PERMIT2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0)
                 )
             ) {
-                // Bubble up if the call failed and there's data.
-                // NOTE: consider evaluating remaining gas to protect against revert bombing
+                // Bubble up if the call failed and there's data. Note that remaining gas is not evaluated before
+                // copying the returndata buffer into memory. Out-of-gas errors can be triggered via revert bombing.
                 if returndatasize() {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())

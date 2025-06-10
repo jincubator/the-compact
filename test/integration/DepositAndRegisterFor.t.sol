@@ -255,7 +255,7 @@ contract DepositAndRegisterForTest is Setup {
 
         // Verify registration was consumed
         {
-            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
             assert(!isRegistered);
         }
     }
@@ -384,7 +384,7 @@ contract DepositAndRegisterForTest is Setup {
 
         // Verify registration was consumed
         {
-            bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactWithWitnessTypehash);
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
             assert(!isRegistered);
         }
     }
@@ -1047,6 +1047,140 @@ contract DepositAndRegisterForTest is Setup {
             assertEq(token.balanceOf(address(theCompact)), 0);
             assertEq(theCompact.balanceOf(swapper, id2), 0);
             assertEq(anotherToken.balanceOf(address(theCompact)), 0);
+        }
+    }
+
+    function test_addressZeroReplacedWithCaller() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 5e17;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Additional parameters
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator and setup tokens
+        uint256 id;
+        bytes12 lockTag;
+        {
+            uint96 allocatorId;
+            (allocatorId, lockTag) = _registerAllocator(alwaysOKAllocator);
+        }
+
+        // Deposit some funds
+        id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+
+        // Send to address(0)
+        vm.prank(swapper);
+        theCompact.transfer(address(0), id, params.amount);
+
+        // ensure address(0) has balance of id
+        assertGt(theCompact.balanceOf(address(0), id), 0);
+
+        assertTrue(token.balanceOf(swapper) >= params.amount, "swapper does not have enough balance");
+
+        // Create witness and deposit/register
+        bytes32 registeredClaimHash;
+        {
+            vm.prank(swapper);
+            token.approve(address(theCompact), params.amount);
+
+            vm.prank(swapper);
+            (id, registeredClaimHash,) = theCompact.depositERC20AndRegisterFor(
+                address(0), // insert address(0) as this is replaced for the deposit, but not the registration
+                address(token),
+                lockTag,
+                params.amount,
+                arbiter,
+                params.nonce,
+                params.deadline,
+                COMPACT_TYPEHASH,
+                bytes32(0) // witness
+            );
+            vm.snapshotGasLastCall("depositERC20AndRegisterForNoWitness");
+
+            assertEq(theCompact.balanceOf(swapper, id), params.amount);
+            assertEq(token.balanceOf(address(theCompact)), params.amount * 2); // 2x because address(0) and the user will have that balance
+        }
+
+        // Verify claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = COMPACT_TYPEHASH;
+            args.arbiter = arbiter;
+            args.sponsor = address(0); // insert address(0) to withdraw from address(0)
+            args.nonce = params.nonce;
+            args.expires = params.deadline;
+            args.id = id;
+            args.amount = params.amount;
+            args.witness = bytes32(0);
+
+            // Claim hash expecting the sponsor to be address zero should fail
+            claimHash = _createClaimHash(args);
+            assertNotEq(registeredClaimHash, claimHash);
+            // Replacing the sponsor with the caller should work
+            args.sponsor = swapper;
+            claimHash = _createClaimHash(args);
+            assertEq(registeredClaimHash, claimHash);
+
+            {
+                bool isActive = theCompact.isRegistered(address(0), claimHash, COMPACT_TYPEHASH);
+                assert(!isActive); // address(0) must not have registrations
+                isActive = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
+                assert(isActive); // swapper received the registration instead
+            }
+        }
+
+        // Prepare claim
+        Claim memory claim;
+        {
+            // Skipping AllocatorSignature as its the AlwaysOKAllocator
+
+            // Create recipients
+            Component[] memory recipients;
+            {
+                recipients = new Component[](1);
+
+                uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), swapper)));
+
+                recipients[0] = Component({ claimant: claimantId, amount: params.amount });
+            }
+
+            // Build the claim
+            claim = Claim(
+                "", // allocatorSignature
+                "", // sponsorSignature
+                address(0), // sponsor
+                params.nonce,
+                params.deadline,
+                bytes32(0), // witness
+                "", // witnessTypestring
+                id,
+                params.amount,
+                recipients
+            );
+        }
+
+        // Execute claim
+        {
+            vm.prank(arbiter);
+            vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidSignature.selector));
+            theCompact.claim(claim);
+        }
+
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), params.amount * 2);
+        assertEq(theCompact.balanceOf(swapper, id), params.amount); // swapper keeps their balance
+        assertEq(theCompact.balanceOf(address(0), id), params.amount); // address(0) gets the balance
+
+        // Verify the adapted registration is still available
+        {
+            bool isRegistered = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
+            assert(isRegistered);
         }
     }
 }

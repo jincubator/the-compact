@@ -136,7 +136,7 @@ library IdLib {
      */
     function mustHaveARegisteredAllocator(uint96 allocatorId) internal view {
         assembly ("memory-safe") {
-            // NOTE: consider an SLOAD bypass for a fully compact allocator
+            // Derive storage slot using scope + allocatorId & ensure allocator is set.
             if iszero(sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
                 mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
                 mstore(0x20, allocatorId)

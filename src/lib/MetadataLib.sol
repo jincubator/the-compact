@@ -518,7 +518,8 @@ library MetadataLib {
      * @return name The token's name or a default value if not available.
      */
     function readNameWithDefaultValue(address token) internal view returns (string memory name) {
-        // NOTE: this will not be the correct name on many chains, should we use a chain id -> name mapping?
+        // Use "Native Token" as the default name for address(0). Note that this will not be the
+        // correct name on some chains.
         if (token == address(0)) {
             return "Native Token";
         }
@@ -535,8 +536,8 @@ library MetadataLib {
      * @return symbol The token's symbol or a default value if not available.
      */
     function readSymbolWithDefaultValue(address token) internal view returns (string memory symbol) {
-        // NOTE: returning the correct symbol on many chains requires a chain id -> symbol mapping
-        // which is not currently implemented; current default set to ETH
+        // Use "ETH" as the default symbol for address(0). Note that this will not be the
+        // correct symbol on some chains.
         if (token.isNullAddress()) {
             return "ETH";
         }

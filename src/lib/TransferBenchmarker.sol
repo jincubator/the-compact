@@ -146,8 +146,6 @@ contract TransferBenchmarker {
                 }
 
                 // Store the current block number for the sentinel value.
-                // Note that TSTORE could be used here assuming it is supported;
-                // consider using Tstorish as in the reentrancy lock.
                 sstore(_ERC20_TOKEN_BENCHMARK_SENTINEL, number())
             }
 
