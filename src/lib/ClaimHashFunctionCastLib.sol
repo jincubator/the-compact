@@ -68,7 +68,7 @@ library ClaimHashFunctionCastLib {
     /**
      * @notice Function cast to provide a Claim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `HashLib.toClaimMessageHash(uint256)`.
+     * @param fnIn   Function pointer to `HashLib.toClaimHash(uint256)`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(Claim calldata)`.
      */
     function usingClaim(function (uint256) internal view returns (bytes32, bytes32) fnIn)
@@ -84,7 +84,7 @@ library ClaimHashFunctionCastLib {
     /**
      * @notice Function cast to provide a BatchClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `HashLib.toClaimMessageHash(uint256, uint256)`.
+     * @param fnIn   Function pointer to `HashLib.toClaimHash(uint256, uint256)`.
      * @return fnOut Modified function used in `BatchClaim.toMessageHashes(BatchClaimWithWitness calldata)`.
      */
     function usingBatchClaim(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)

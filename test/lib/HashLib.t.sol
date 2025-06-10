@@ -215,7 +215,7 @@ contract HashLibTest is Setup {
         assertEq(actualHash, expectedHash, "FlatMessageWithWitness hash mismatch");
     }
 
-    function testToFlatBatchClaimWithWitnessMessageHash() public {
+    function testToFlatBatchCompactClaimHash() public {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [vm.randomUint(), vm.randomUint()];
         idsAndAmounts[1] = [vm.randomUint(), vm.randomUint()];
@@ -228,14 +228,14 @@ contract HashLibTest is Setup {
         bytes32 expectedHash =
             keccak256(abi.encode(typehash, address(this), sponsor, nonce, expiration, expectedIdsAmountsHash, witness));
 
-        bytes32 actualHash = tester.callToFlatBatchClaimWithWitnessMessageHash(
+        bytes32 actualHash = tester.callToFlatBatchCompactClaimHash(
             sponsor, idsAndAmounts, address(this), nonce, expiration, typehash, witness, noReplacements
         );
 
         assertEq(actualHash, expectedHash, "FlatBatchClaimWithWitness hash mismatch");
     }
 
-    function testToFlatBatchClaimWithWitnessMessageHash_WithReplacements() public {
+    function testToFlatBatchCompactClaimHash_WithReplacements() public {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [vm.randomUint(), vm.randomUint()];
         idsAndAmounts[1] = [vm.randomUint(), vm.randomUint()];
@@ -250,7 +250,7 @@ contract HashLibTest is Setup {
         bytes32 expectedHash =
             keccak256(abi.encode(typehash, address(this), sponsor, nonce, expiration, expectedIdsAmountsHash, witness));
 
-        bytes32 actualHash = tester.callToFlatBatchClaimWithWitnessMessageHash(
+        bytes32 actualHash = tester.callToFlatBatchCompactClaimHash(
             sponsor, idsAndAmounts, address(this), nonce, expiration, typehash, witness, replacementAmounts
         );
 
@@ -618,11 +618,10 @@ contract HashLibTester {
         bytes32 typehash,
         bytes32 witness
     ) external pure returns (bytes32 messageHash) {
-        return
-            HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+        return HashLib.toClaimHashFromDeposit(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
     }
 
-    function callToFlatBatchClaimWithWitnessMessageHash(
+    function callToFlatBatchCompactClaimHash(
         address sponsor,
         uint256[2][] calldata idsAndAmounts,
         address arbiter,
@@ -632,7 +631,7 @@ contract HashLibTester {
         bytes32 witness,
         uint256[] memory replacementAmounts
     ) external pure returns (bytes32 messageHash) {
-        return HashLib.toFlatBatchClaimWithWitnessMessageHash(
+        return HashLib.toClaimHashFromBatchDeposit(
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );
     }

@@ -142,7 +142,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     ) external payable returns (uint256 id, bytes32 claimHash) {
         id = _performCustomNativeTokenDeposit(lockTag, recipient);
 
-        claimHash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
+        claimHash = _registerUsingCompact(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
     function depositERC20AndRegister(
@@ -170,8 +170,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     ) external returns (uint256 id, bytes32 claimHash, uint256 registeredAmount) {
         (id, registeredAmount) = _performCustomERC20Deposit(token, lockTag, amount, recipient);
 
-        claimHash =
-            _registerUsingClaimWithWitness(recipient, id, registeredAmount, arbiter, nonce, expires, typehash, witness);
+        claimHash = _registerUsingCompact(recipient, id, registeredAmount, arbiter, nonce, expires, typehash, witness);
     }
 
     function batchDepositAndRegisterMultiple(
@@ -194,7 +193,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     ) external payable returns (bytes32 claimHash, uint256[] memory registeredAmounts) {
         registeredAmounts = _processBatchDeposit(idsAndAmounts, recipient, true);
 
-        claimHash = _registerUsingBatchClaimWithWitness(
+        claimHash = _registerUsingBatchCompact(
             recipient, idsAndAmounts, arbiter, nonce, expires, typehash, witness, registeredAmounts
         );
     }

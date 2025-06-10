@@ -24,7 +24,7 @@ contract MockRegistrationLogic is TheCompactLogic {
         return _isRegistered(sponsor, claimHash, typehash);
     }
 
-    function registerUsingClaimWithWitness(
+    function registerUsingCompact(
         address sponsor,
         uint256 tokenId,
         uint256 amount,
@@ -34,10 +34,10 @@ contract MockRegistrationLogic is TheCompactLogic {
         bytes32 typehash,
         bytes32 witness
     ) external returns (bytes32) {
-        return _registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+        return _registerUsingCompact(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
     }
 
-    function registerUsingBatchClaimWithWitness(
+    function registerUsingBatchCompact(
         address sponsor,
         uint256[2][] calldata idsAndAmounts,
         address arbiter,
@@ -50,7 +50,7 @@ contract MockRegistrationLogic is TheCompactLogic {
         for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
             replacementAmounts[i] = idsAndAmounts[i][1];
         }
-        return _registerUsingBatchClaimWithWitness(
+        return _registerUsingBatchCompact(
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );
     }

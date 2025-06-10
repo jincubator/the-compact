@@ -163,8 +163,8 @@ contract TransferLogic is ConstructorLogic {
 
             // Revert if the required magic value was not received back.
             if iszero(eq(mload(0), shl(224, _ATTEST_SELECTOR))) {
-                // Bubble up revert if the call failed and there's data.
-                // NOTE: consider evaluating remaining gas to protect against revert bombing.
+                // Bubble up if the call failed and there's data. Note that remaining gas is not evaluated before
+                // copying the returndata buffer into memory. Out-of-gas errors can be triggered via revert bombing.
                 if iszero(or(success, iszero(returndatasize()))) {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())

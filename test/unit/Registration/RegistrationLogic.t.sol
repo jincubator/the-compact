@@ -62,7 +62,7 @@ contract RegistrationLogicTest is Setup {
         }
     }
 
-    function test_registerUsingClaimWithWitness() public {
+    function test_registerUsingCompact() public {
         uint256 tokenId = 1;
         uint256 amount = 100;
         uint256 nonce = 42;
@@ -71,7 +71,7 @@ contract RegistrationLogicTest is Setup {
         bytes32 witness = keccak256(abi.encode(witnessTypehash, uint256(234)));
 
         bytes32 claimHash =
-            logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+            logic.registerUsingCompact(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
         bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
@@ -79,11 +79,11 @@ contract RegistrationLogicTest is Setup {
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash =
-            HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+            HashLib.toClaimHashFromDeposit(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
         assertEq(claimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function test_registerUsingClaimNoWitness() public {
+    function test_registerUsingCompactNoWitness() public {
         uint256 tokenId = 1;
         uint256 amount = 100;
         uint256 nonce = 42;
@@ -91,20 +91,19 @@ contract RegistrationLogicTest is Setup {
         bytes32 typehash = COMPACT_TYPEHASH;
 
         bytes32 claimHash =
-            logic.registerUsingClaimWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0));
+            logic.registerUsingCompact(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0));
 
         // Verify the claim is registered
         bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration not detected");
 
         // Verify the generated claimHash matches expected
-        bytes32 expectedClaimHash = HashLib.toFlatMessageHashWithWitness(
-            sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0)
-        );
+        bytes32 expectedClaimHash =
+            HashLib.toClaimHashFromDeposit(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, bytes32(0));
         assertEq(claimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function test_registerUsingBatchClaimWithWitness() public {
+    function test_registerUsingBatchCompact() public {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [uint256(1), uint256(100)];
         idsAndAmounts[1] = [uint256(2), uint256(200)];
@@ -115,7 +114,7 @@ contract RegistrationLogicTest is Setup {
         bytes32 witness = keccak256(abi.encode(witnessTypehash, uint256(234)));
 
         bytes32 claimHash =
-            logic.registerUsingBatchClaimWithWitness(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+            logic.registerUsingBatchCompact(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
         bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
@@ -123,7 +122,7 @@ contract RegistrationLogicTest is Setup {
 
         // Verify the generated claimHash matches expected
         bytes32 expectedClaimHash =
-            _toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+            _toFlatBatchCompactClaimHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
     }
 
@@ -135,7 +134,7 @@ contract RegistrationLogicTest is Setup {
         assertFalse(isRegistered, "Registration for nonexistent claim should be inactive");
     }
 
-    function test_registerUsingBatchClaimNoWitness() public {
+    function test_registerUsingBatchCompactNoWitness() public {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [uint256(1), uint256(100)];
         idsAndAmounts[1] = [uint256(2), uint256(200)];
@@ -144,18 +143,16 @@ contract RegistrationLogicTest is Setup {
         uint256 expires = block.timestamp + 1 days;
         bytes32 typehash = BATCH_COMPACT_TYPEHASH;
 
-        bytes32 claimHash = logic.registerUsingBatchClaimWithWitness(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0)
-        );
+        bytes32 claimHash =
+            logic.registerUsingBatchCompact(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0));
 
         // Verify the claim is registered
         bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration not detected");
 
         // Verify the generated claimHash matches expected
-        bytes32 expectedClaimHash = _toFlatBatchClaimWithWitnessMessageHash(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0)
-        );
+        bytes32 expectedClaimHash =
+            _toFlatBatchCompactClaimHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, bytes32(0));
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
     }
 
@@ -241,7 +238,7 @@ contract RegistrationLogicTest is Setup {
         }
     }
 
-    function test_registerUsingClaimWithWitness_zeroValues() public {
+    function test_registerUsingCompact_zeroValues() public {
         uint256 tokenId;
         uint256 amount;
         uint256 nonce;
@@ -249,15 +246,15 @@ contract RegistrationLogicTest is Setup {
         bytes32 typehash = COMPACT_TYPEHASH;
         bytes32 witness = bytes32(0);
 
-        bytes32 claimHash = logic.registerUsingClaimWithWitness(
-            address(0), tokenId, amount, address(0), nonce, expires, typehash, witness
-        );
+        vm.prank(address(0));
+        bytes32 claimHash =
+            logic.registerUsingCompact(address(0), tokenId, amount, address(0), nonce, expires, typehash, witness);
 
         bool isRegistered = logic.isRegistered(address(0), claimHash, typehash);
         assertTrue(isRegistered, "Registration with zero values should be active");
     }
 
-    function test_registerUsingBatchClaimWithWitness_emptyArray() public {
+    function test_registerUsingBatchCompact_emptyArray() public {
         uint256[2][] memory emptyArray = new uint256[2][](0);
 
         uint256 nonce = 42;
@@ -266,14 +263,14 @@ contract RegistrationLogicTest is Setup {
         bytes32 witness = keccak256("empty batch witness data");
 
         bytes32 claimHash =
-            logic.registerUsingBatchClaimWithWitness(sponsor, emptyArray, arbiter, nonce, expires, typehash, witness);
+            logic.registerUsingBatchCompact(sponsor, emptyArray, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
         bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
         assertTrue(isRegistered, "Registration with empty array should be active");
     }
 
-    function test_registerUsingBatchClaimWithWitness_maxValues() public {
+    function test_registerUsingBatchCompact_maxValues() public {
         uint256[2][] memory maxValues = new uint256[2][](2);
         maxValues[0] = [type(uint256).max, type(uint256).max];
         maxValues[1] = [type(uint256).max, type(uint256).max];
@@ -284,7 +281,7 @@ contract RegistrationLogicTest is Setup {
         bytes32 witness = keccak256("max value witness");
 
         bytes32 claimHash =
-            logic.registerUsingBatchClaimWithWitness(sponsor, maxValues, arbiter, nonce, expires, typehash, witness);
+            logic.registerUsingBatchCompact(sponsor, maxValues, arbiter, nonce, expires, typehash, witness);
 
         // Verify the claim is registered
         bool isRegistered = logic.isRegistered(sponsor, claimHash, typehash);
@@ -292,7 +289,7 @@ contract RegistrationLogicTest is Setup {
     }
 
     /// @dev this is a copy of the function in HashLib, modified to accept memory args
-    function _toFlatBatchClaimWithWitnessMessageHash(
+    function _toFlatBatchCompactClaimHash(
         address _sponsor,
         uint256[2][] memory _idsAndAmounts,
         address _arbiter,

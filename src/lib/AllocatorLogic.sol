@@ -33,24 +33,31 @@ contract AllocatorLogic {
      * @return       Whether all nonces were successfully marked as consumed.
      */
     function _consume(uint256[] calldata nonces) internal returns (bool) {
-        // NOTE: this may not be necessary, consider removing
+        // Ensure that the caller is a registered allocator.
         msg.sender.toAllocatorId().mustHaveARegisteredAllocator();
 
         unchecked {
+            // Declare an pointer starting at the data offset of the nonces array.
             uint256 i;
-
             assembly ("memory-safe") {
                 i := nonces.offset
             }
 
+            // Determine the terminal pointer.
             uint256 end = i + (nonces.length << 5);
             uint256 nonce;
+
+            // Iterate over each pointer in the array.
             for (; i < end; i += 0x20) {
                 assembly ("memory-safe") {
+                    // Retrieve the respective nonce from calldata.
                     nonce := calldataload(i)
                 }
+
+                // Consume the nonce in the scope of the caller.
                 nonce.consumeNonceAsAllocator(msg.sender);
 
+                // Emit a NonceConsumedDirectly event.
                 emit ITheCompact.NonceConsumedDirectly(msg.sender, nonce);
             }
         }
@@ -67,7 +74,10 @@ contract AllocatorLogic {
      * @return allocatorId A unique identifier assigned to the registered allocator.
      */
     function _registerAllocator(address allocator, bytes calldata proof) internal returns (uint96 allocatorId) {
+        // Santitize the allocator address out of an abundance of caution.
         allocator = uint256(uint160(allocator)).asSanitizedAddress();
+
+        // Ensure that the allocator in question can be registered.
         if (!allocator.canBeRegistered(proof)) {
             assembly ("memory-safe") {
                 // revert InvalidRegistrationProof(allocator)
@@ -77,6 +87,7 @@ contract AllocatorLogic {
             }
         }
 
+        // Register the allocator.
         allocatorId = allocator.register();
     }
 
