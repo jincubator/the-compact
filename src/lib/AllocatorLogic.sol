@@ -9,8 +9,6 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
-import { ITheCompact } from "../interfaces/ITheCompact.sol";
-
 /**
  * @title AllocatorLogic
  * @notice Inherited contract implementing internal functions with logic for registering
@@ -24,6 +22,10 @@ contract AllocatorLogic {
     using ConsumerLib for uint256;
     using EfficiencyLib for uint256;
     using ValidityLib for address;
+
+    // keccak256(bytes("NonceConsumedDirectly(address,uint256)")).
+    uint256 private constant _NONCE_CONSUMED_DIRECTLY_EVENT_SIGNATURE =
+        0x378325bc73c84116a385ff3c287be7229f0aa047254a780befebba0fc966216e;
 
     /**
      * @notice Internal function for marking allocator nonces as consumed. Once consumed, a nonce
@@ -58,7 +60,11 @@ contract AllocatorLogic {
                 nonce.consumeNonceAsAllocator(msg.sender);
 
                 // Emit a NonceConsumedDirectly event.
-                emit ITheCompact.NonceConsumedDirectly(msg.sender, nonce);
+                assembly ("memory-safe") {
+                    // Emit NonceConsumedDirectly(msg.sender, nonce) event.
+                    mstore(0, nonce)
+                    log2(0, 0x20, _NONCE_CONSUMED_DIRECTLY_EVENT_SIGNATURE, caller())
+                }
             }
         }
 
