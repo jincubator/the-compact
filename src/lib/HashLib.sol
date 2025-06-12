@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
 import { AllocatedTransfer } from "../types/Claims.sol";
-import { TransferComponent, Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
+import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
     COMPACT_TYPESTRING_FRAGMENT_ONE,
@@ -32,7 +32,6 @@ import {
 } from "../types/EIP712Types.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 
 /**
  * @title HashLib

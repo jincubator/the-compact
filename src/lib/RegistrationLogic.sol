@@ -4,7 +4,6 @@ pragma solidity ^0.8.27;
 import { AllocatorLib } from "./AllocatorLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { HashLib } from "./HashLib.sol";
-import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";

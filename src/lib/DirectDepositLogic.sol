@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Scope } from "../types/Scope.sol";
-
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { DepositLogic } from "./DepositLogic.sol";

@@ -210,20 +210,6 @@ library EfficiencyLib {
 
     /**
      * @notice Internal pure function that prevents the function specializer from
-     * inlining functions that take fixed bytes32 arguments. Since calldatasize()
-     * will always be non-zero when making a standard function call, an OR
-     * against iszero(calldatasize()) will always result in the original value.
-     * @param a  The bytes32 value to make stubborn.
-     * @return b The original value, preventing specialization.
-     */
-    function asStubborn(bytes32 a) internal pure returns (bytes32 b) {
-        assembly ("memory-safe") {
-            b := or(iszero(calldatasize()), a)
-        }
-    }
-
-    /**
-     * @notice Internal pure function that prevents the function specializer from
      * inlining functions that take fixed boolean arguments. Since calldatasize()
      * will always be non-zero when making a standard function call, an OR
      * against iszero(calldatasize()) will always result in the original value.

@@ -3,9 +3,6 @@ pragma solidity ^0.8.27;
 
 import { EmissaryLib } from "./EmissaryLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { IAllocator } from "../interfaces/IAllocator.sol";
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Scope } from "../types/Scope.sol";
 import { EmissaryStatus } from "../types/EmissaryStatus.sol";
 
 /**

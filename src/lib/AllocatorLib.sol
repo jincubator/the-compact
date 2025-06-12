@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { IAllocator } from "../interfaces/IAllocator.sol";
-
 import { IdLib } from "./IdLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
