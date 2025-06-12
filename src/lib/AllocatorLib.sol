@@ -78,7 +78,7 @@ library AllocatorLib {
                 calldatacopy(add(allocatorDataMemoryOffset, 0x20), allocatorData.offset, allocatorData.length)
             }
 
-            // Ensure sure initial scratch space is cleared as an added precaution.
+            // Ensure initial scratch space is cleared as an added precaution.
             mstore(0, 0)
 
             // Perform call to allocator and write response to scratch space.

@@ -143,7 +143,7 @@ contract TransferLogic is ConstructorLogic {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
 
-            // Ensure sure initial scratch space is cleared as an added precaution.
+            // Ensure initial scratch space is cleared as an added precaution.
             mstore(0, 0)
 
             // Derive offset to start of data for the call from memory pointer.
