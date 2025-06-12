@@ -40,11 +40,11 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal pure function for converting a ResetPeriod enum to a human-readable string.
+     * @notice Private pure function for converting a ResetPeriod enum to a human-readable string.
      * @param resetPeriod The ResetPeriod enum value to convert.
      * @return resetPeriodString A string representation of the reset period.
      */
-    function toString(ResetPeriod resetPeriod) internal pure returns (string memory resetPeriodString) {
+    function toString(ResetPeriod resetPeriod) private pure returns (string memory resetPeriodString) {
         // Equivalent to:
         // if (resetPeriod == ResetPeriod.OneSecond) {
         //     return "1s";
@@ -85,11 +85,11 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal pure function for converting a Scope enum to a human-readable string.
+     * @notice Private pure function for converting a Scope enum to a human-readable string.
      * @param scope The Scope enum value to convert.
      * @return A string representation of the scope.
      */
-    function toString(Scope scope) internal pure returns (string memory) {
+    function toString(Scope scope) private pure returns (string memory) {
         // Equivalent to:
         // if (scope == Scope.Multichain) {
         //     return "Multichain";
@@ -146,12 +146,12 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal view function for generating the attributes section of the token metadata.
+     * @notice Private view function for generating the attributes section of the token metadata.
      * @param lock The lock.
      * @param id The ERC6909 token identifier.
      * @return attributes The attributes section of the token metadata.
      */
-    function _getAttributes(Lock memory lock, uint256 id) internal view returns (string memory attributes) {
+    function _getAttributes(Lock memory lock, uint256 id) private view returns (string memory attributes) {
         // Initialize the attributes string and add Token details
         {
             (
@@ -187,11 +187,11 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal view function for generating the description section of the token metadata.
+     * @notice Private view function for generating the description section of the token metadata.
      * @param lock The lock containing token, allocator, reset period, and scope information.
      * @return description The description section of the token metadata as a JSON string.
      */
-    function _getDescription(Lock memory lock) internal view returns (string memory description) {
+    function _getDescription(Lock memory lock) private view returns (string memory description) {
         (string memory tokenAddress, string memory tokenName,,) = _getTokenDetails(lock);
         string memory allocatorName = _tryReadAllocatorName(lock.allocator);
         string memory resetPeriod = lock.resetPeriod.toString();
@@ -214,7 +214,7 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal view function for retrieving token details.
+     * @notice Private view function for retrieving token details.
      * @param lock The lock containing the token address.
      * @return tokenAddress The token's address as a checksummed hex string.
      * @return tokenName The token's name or a default value if not available.
@@ -222,7 +222,7 @@ library MetadataLib {
      * @return tokenDecimals The token's decimals as a string or a default value if not available.
      */
     function _getTokenDetails(Lock memory lock)
-        internal
+        private
         view
         returns (
             string memory tokenAddress,
@@ -238,11 +238,11 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal view function to generate a dynamic SVG image for the token.
+     * @notice Private view function to generate a dynamic SVG image for the token.
      * @param lock The lock containing token, allocator, reset period, and scope information.
      * @return A string containing the complete SVG image markup.
      */
-    function _generateSvgImage(Lock memory lock) internal view returns (string memory) {
+    function _generateSvgImage(Lock memory lock) private view returns (string memory) {
         return string.concat(
             '<svg width="500" height="290" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">',
             _getSvgDefs(lock),
@@ -262,7 +262,7 @@ library MetadataLib {
      * @return bgColor2 The second background color.
      * @return bgColor3 The third background color.
      */
-    function _generateColors(address token) internal pure returns (string memory, string memory, string memory) {
+    function _generateColors(address token) private pure returns (string memory, string memory, string memory) {
         bytes32 tokenHash = keccak256(abi.encodePacked(token));
 
         string memory bgColor1 = LibString.toHexStringNoPrefix(uint24(bytes3(tokenHash)));
@@ -279,7 +279,7 @@ library MetadataLib {
      * @param lock The lock containing the token address used for color generation.
      * @return A string containing the SVG definitions markup.
      */
-    function _getSvgDefs(Lock memory lock) internal pure returns (string memory) {
+    function _getSvgDefs(Lock memory lock) private pure returns (string memory) {
         (string memory bgColor1, string memory bgColor2, string memory bgColor3) = _generateColors(lock.token);
 
         // Filter definitions for background generation (used to create the gradient effect)
@@ -331,7 +331,7 @@ library MetadataLib {
      * @notice Returns the SVG background section with gradient and filter effects.
      * @return A string containing the SVG background markup.
      */
-    function _getSvgBackground() internal pure returns (string memory) {
+    function _getSvgBackground() private pure returns (string memory) {
         return
         '<g clip-path="url(#c)"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><rect style="filter: url(#f1)" x="0px" y="0px" width="500px" height="290px" /><g style="filter:url(#tb); transform:scale(1.5); transform-origin:left top;"><rect fill="none" x="0px" y="0px" width="500px" height="290px" /><ellipse cx="25%" cy="0px" rx="180px" ry="120px" fill="#000" opacity="0.85" /></g></g>';
     }
@@ -340,7 +340,7 @@ library MetadataLib {
      * @notice Returns the SVG border elements that frame the token image.
      * @return A string containing the SVG border markup.
      */
-    function _getSvgBorder() internal pure returns (string memory) {
+    function _getSvgBorder() private pure returns (string memory) {
         return
         '<rect x="0" y="0" width="500" height="290" rx="42" ry="42" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)" /><rect x="16" y="16" width="468" height="258" rx="26" ry="26" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)" />';
     }
@@ -349,7 +349,7 @@ library MetadataLib {
      * @notice Returns the SVG animated text that moves along the border.
      * @return The SVG animated text.
      */
-    function _getSvgAnimatedText(Lock memory lock) internal view returns (string memory) {
+    function _getSvgAnimatedText(Lock memory lock) private view returns (string memory) {
         (string memory tokenAddress, string memory tokenName, string memory tokenSymbol,) = _getTokenDetails(lock);
         string memory middot = unicode" • ";
         string memory token = string.concat(
@@ -390,7 +390,7 @@ library MetadataLib {
      * @param startOffset The starting offset of the text.
      * @return The SVG animated text.
      */
-    function _getTextPath(string memory text, string memory startOffset) internal pure returns (string memory) {
+    function _getTextPath(string memory text, string memory startOffset) private pure returns (string memory) {
         return string.concat(
             '<textPath startOffset="',
             startOffset,
@@ -405,7 +405,7 @@ library MetadataLib {
      * @param lock The lock.
      * @return The SVG title section.
      */
-    function _getSvgTitleSection(Lock memory lock) internal view returns (string memory) {
+    function _getSvgTitleSection(Lock memory lock) private view returns (string memory) {
         (,, string memory tokenSymbol,) = _getTokenDetails(lock);
         string memory scope = lock.scope.toString();
         string memory lockId = lock.toId().toHexString();
@@ -426,7 +426,7 @@ library MetadataLib {
      * @param lock The lock.
      * @return The SVG details section.
      */
-    function _getSvgDetailsSection(Lock memory lock) internal view returns (string memory) {
+    function _getSvgDetailsSection(Lock memory lock) private view returns (string memory) {
         (, string memory tokenName, string memory tokenSymbol,) = _getTokenDetails(lock);
         string memory allocatorName = _tryReadAllocatorName(lock.allocator);
         string memory resetPeriod = lock.resetPeriod.toString();
@@ -459,7 +459,7 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal pure function for formatting a metadata attribute as a JSON string.
+     * @notice Private pure function for formatting a metadata attribute as a JSON string.
      * @param trait      The trait name.
      * @param value      The trait value.
      * @param terminal   Whether this is the last attribute in the list.
@@ -467,7 +467,7 @@ library MetadataLib {
      * @return attribute The formatted attribute string.
      */
     function _makeAttribute(string memory trait, string memory value, bool terminal, bool quoted)
-        internal
+        private
         pure
         returns (string memory attribute)
     {
@@ -484,7 +484,7 @@ library MetadataLib {
      * @return The wrapped text.
      */
     function _makeWrappable(string memory text, string memory width, string memory height)
-        internal
+        private
         pure
         returns (string memory)
     {
@@ -504,7 +504,7 @@ library MetadataLib {
      * @param allocatorAddress The address of the allocator.
      * @return The name of the allocator or "Unnamed Allocator" if not readable.
      */
-    function _tryReadAllocatorName(address allocatorAddress) internal view returns (string memory) {
+    function _tryReadAllocatorName(address allocatorAddress) private view returns (string memory) {
         string memory name = allocatorAddress.readName();
         if (bytes(name).length == 0) {
             name = "Unnamed Allocator";

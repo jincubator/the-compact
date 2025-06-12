@@ -196,7 +196,7 @@ library HashLib {
     }
 
     /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
+     * @notice Private view function for deriving the EIP-712 message hash for
      * a batch transfer or withdrawal once a commitments hash is available.
      * @param transfer        An AllocatedBatchTransfer struct containing the transfer details.
      * @param commitmentsHash A hash of the commitments array.
@@ -205,7 +205,7 @@ library HashLib {
     function toBatchTransferMessageHashUsingCommitmentsHash(
         AllocatedBatchTransfer calldata transfer,
         uint256 commitmentsHash
-    ) internal view returns (bytes32 messageHash) {
+    ) private view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)

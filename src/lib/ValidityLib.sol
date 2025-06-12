@@ -223,7 +223,7 @@ library ValidityLib {
     /// @dev Returns whether `signature` is valid for `signer` and `hash`.
     /// using `ecrecover`.
     function isValidECDSASignatureCalldata(address signer, bytes32 hash, bytes calldata signature)
-        internal
+        private
         view
         returns (bool isValid)
     {
@@ -276,7 +276,7 @@ library ValidityLib {
     /// @dev Returns whether `signature` is valid for `hash` for an ERC1271 `signer` contract.
     /// Sourced from Solady with a modification to only supply half of available gas.
     function isValidERC1271SignatureNowCalldataHalfGas(address signer, bytes32 hash, bytes calldata signature)
-        internal
+        private
         view
         returns (bool isValid)
     {
