@@ -264,7 +264,7 @@ library EmissaryLib {
             mstore(add(m, 0xc0), signature.length)
             calldatacopy(add(m, 0xe0), signature.offset, signature.length)
 
-            // Ensure sure initial scratch space is cleared as an added precaution.
+            // Ensure initial scratch space is cleared as an added precaution.
             mstore(0, 0)
 
             // Perform a staticcall to emissary and write response to scratch space.
