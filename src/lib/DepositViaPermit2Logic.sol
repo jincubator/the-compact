@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import { CompactCategory } from "../types/CompactCategory.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Scope } from "../types/Scope.sol";
 
 import { DepositLogic } from "./DepositLogic.sol";
 import { DepositViaPermit2Lib } from "./DepositViaPermit2Lib.sol";

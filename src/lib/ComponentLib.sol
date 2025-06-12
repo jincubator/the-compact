@@ -5,7 +5,7 @@ import { AllocatedTransfer } from "../types/Claims.sol";
 import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
-import { TransferComponent, Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
+import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
@@ -32,7 +32,6 @@ library ComponentLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for ResetPeriod;
     using EfficiencyLib for uint256;
-    using EfficiencyLib for bytes32;
     using EventLib for address;
     using HashLib for uint256;
     using IdLib for uint256;

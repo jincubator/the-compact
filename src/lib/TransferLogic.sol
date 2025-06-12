@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
 import { AllocatedTransfer } from "../types/Claims.sol";
-import { TransferComponent, Component, ComponentsById } from "../types/Components.sol";
+import { Component, ComponentsById } from "../types/Components.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ComponentLib } from "./ComponentLib.sol";
