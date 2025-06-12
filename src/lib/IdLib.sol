@@ -315,7 +315,7 @@ library IdLib {
      * @param allocator    The address to compute the flag for.
      * @return compactFlag The computed compact flag.
      */
-    function toCompactFlag(address allocator) internal pure returns (uint8 compactFlag) {
+    function toCompactFlag(address allocator) private pure returns (uint8 compactFlag) {
         assembly ("memory-safe") {
             // Extract the uppermost 72 bits of the address.
             let x := shr(184, shl(96, allocator))

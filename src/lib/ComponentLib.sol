@@ -28,7 +28,6 @@ import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
  */
 library ComponentLib {
     using TransferLib for address;
-    using ComponentLib for Component[];
     using EfficiencyLib for bool;
     using EfficiencyLib for ResetPeriod;
     using EfficiencyLib for uint256;
@@ -144,7 +143,7 @@ library ComponentLib {
         sponsorDomainSeparator.ensureValidScope(id);
 
         // Process each component, verifying total amount and executing operations.
-        components.verifyAndProcessComponents(sponsor, id, allocatedAmount);
+        verifyAndProcessComponents(components, sponsor, id, allocatedAmount);
     }
 
     /**
@@ -199,8 +198,8 @@ library ComponentLib {
                 BatchClaimComponent calldata claimComponent = claims[i];
 
                 // Process each component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessComponents(
-                    sponsor, claimComponent.id, claimComponent.allocatedAmount
+                verifyAndProcessComponents(
+                    claimComponent.portions, sponsor, claimComponent.id, claimComponent.allocatedAmount
                 );
             }
         }
@@ -217,7 +216,7 @@ library ComponentLib {
      * @return firstAllocatorId      The allocator ID extracted from the first claim component.
      */
     function _buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
-        internal
+        private
         pure
         returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId)
     {
@@ -278,7 +277,7 @@ library ComponentLib {
         address sponsor,
         uint256 id,
         uint256 allocatedAmount
-    ) internal {
+    ) private {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
         uint256 spentAmount;
