@@ -35,7 +35,6 @@ contract TransferLogic is ConstructorLogic {
     using EventLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
-    using ValidityLib for bytes32;
     using
     TransferFunctionCastLib
     for function(bytes32, address, AllocatedTransfer calldata, uint256[2][] memory) internal;

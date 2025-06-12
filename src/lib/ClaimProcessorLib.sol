@@ -26,7 +26,6 @@ library ClaimProcessorLib {
     using ClaimProcessorLib for bytes32;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using EfficiencyLib for bytes32;
     using EventLib for address;
     using HashLib for uint256;
     using IdLib for uint256;

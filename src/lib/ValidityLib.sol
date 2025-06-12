@@ -24,16 +24,11 @@ library ValidityLib {
     using ValidityLib for address;
     using IdLib for uint96;
     using IdLib for uint256;
-    using IdLib for ResetPeriod;
     using ConsumerLib for uint256;
     using EfficiencyLib for bool;
-    using EfficiencyLib for uint256;
-    using EfficiencyLib for ResetPeriod;
     using DomainLib for bytes32;
-    using ValidityLib for uint256;
     using EmissaryLib for bytes32;
     using EmissaryLib for uint256[2][];
-    using FixedPointMathLib for uint256;
     using SignatureCheckerLib for address;
 
     error NoIdsAndAmountsProvided();

@@ -30,17 +30,9 @@ contract ClaimProcessorLogic is ConstructorLogic {
     using ClaimHashLib for ExogenousMultichainClaim;
     using ClaimHashLib for BatchMultichainClaim;
     using ClaimHashLib for ExogenousBatchMultichainClaim;
-    using ClaimProcessorLib for uint256;
     using ClaimProcessorFunctionCastLib for function(bytes32, uint256, bytes32, bytes32, bytes32) internal;
     using ClaimProcessorFunctionCastLib for function(bytes32, uint256, bytes32, bytes32) internal;
-    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal;
-    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32) internal;
-    using
-    ClaimProcessorFunctionCastLib
-    for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal;
     using DomainLib for uint256;
-    using HashLib for uint256;
-    using EfficiencyLib for uint256;
 
     ///// 1. Claims /////
     function _processClaim(Claim calldata claimPayload) internal returns (bytes32 claimHash) {
