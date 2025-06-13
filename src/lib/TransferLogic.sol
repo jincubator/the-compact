@@ -60,7 +60,7 @@ contract TransferLogic is ConstructorLogic {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
         _notExpiredAndAuthorizedByAllocator(
             transfer.toClaimHash(),
-            transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
+            transfer.id.toAllocatorId().fromRegisteredAllocatorIdWithConsumed(transfer.nonce),
             transfer,
             idsAndAmounts
         );
