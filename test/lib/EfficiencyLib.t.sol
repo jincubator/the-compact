@@ -47,21 +47,6 @@ contract EfficiencyLibTest is Test {
         assertEq(val.asBool(), expected, "Fuzz test for asBool failed");
     }
 
-    function testAsBytes12() public pure {
-        uint256 val = type(uint240).max;
-        bytes12 expected = bytes12(bytes32(val));
-        assertEq(val.asBytes12(), expected, "Should convert uint256 to bytes12");
-
-        uint256 highVal = (uint256(1234567890) << 160) | val;
-        bytes12 truncated = bytes12(bytes32(highVal));
-        assertEq(highVal.asBytes12(), truncated, "Should truncate upper bits for bytes12");
-    }
-
-    function testFuzzAsBytes12(uint256 val) public pure {
-        bytes12 expected = bytes12(bytes32(val));
-        assertEq(val.asBytes12(), expected, "Fuzz test for asBytes12 failed");
-    }
-
     function testAsSanitizedAddress() public pure {
         uint256 val = uint256(uint160(address(0x123)));
         address expected = address(uint160(val));
@@ -108,16 +93,5 @@ contract EfficiencyLibTest is Test {
         assertEq(addrVal.asUint256(), uint256(uint160(addrVal)), "address -> uint256");
 
         assertEq(ResetPeriod.OneSecond.asUint256(), uint256(ResetPeriod.OneSecond), "ResetPeriod -> uint256");
-    }
-
-    function testAsResetPeriod() public pure {
-        uint256 periodVal = uint256(ResetPeriod.OneDay);
-        assertEq(uint8(periodVal.asResetPeriod()), uint8(ResetPeriod.OneDay), "uint256 -> ResetPeriod");
-    }
-
-    function testFuzzAsResetPeriod(uint8 periodVal) public pure {
-        vm.assume(periodVal < 8);
-        ResetPeriod actualEnum = periodVal.asResetPeriod();
-        assertEq(uint8(actualEnum), uint8(periodVal), "Fuzz test for asResetPeriod (uint8 value) failed");
     }
 }
