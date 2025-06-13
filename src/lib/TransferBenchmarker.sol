@@ -131,7 +131,7 @@ contract TransferBenchmarker {
         // Set the reference ERC20 as the token.
         address token = _BENCHMARK_ERC20;
 
-        // Set the caller as the target.
+        // Set the caller as the target (TheCompact in case of benchmarking).
         address target = msg.sender;
 
         assembly ("memory-safe") {
@@ -183,28 +183,32 @@ contract TransferBenchmarker {
                 }
             }
 
-            // Get gas before third call.
-            let thirdStart := gas()
-
+            // Place `transfer(address,uint256)` calldata into memory before `thirdStart` to ensure accurate gas measurement
             mstore(0x14, target) // Store target `to` argument in memory.
             mstore(0x34, 1) // Store an `amount` argument of 1 in memory.
             mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
 
-            // Perform the third call and ensure it succeeds.
+            // Get gas before third call.
+            let thirdStart := gas()
+
+            // Perform the third call, only the first word of the return data is loaded into memory at word 0.
+            let transferCallStatus := call(gas(), token, 0, 0x10, 0x44, 0, 0x20)
+
+            // Get gas after third call.
+            let thirdEnd := gas()
+
+            mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten by amount.
+
+            // Revert if call failed, or return data exists and is not equal to 1 (success)
             if iszero(
-                and( // The arguments of `and` are evaluated from right to left.
+                and(
                     or(eq(mload(0x00), 1), iszero(returndatasize())), // Returned 1 or nothing.
-                    call(gas(), token, 0, 0x10, 0x44, 0, 0x20)
+                    transferCallStatus
                 )
             ) {
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
-
-            mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
-
-            // Get gas after third call.
-            let thirdEnd := gas()
 
             // Derive the execution benchmark cost using the difference.
             let thirdCallCost := sub(thirdStart, thirdEnd)
