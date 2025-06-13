@@ -49,18 +49,6 @@ library ValidityLib {
     }
 
     /**
-     * @notice Internal function that retrieves an allocator's address from a resource lock ID
-     * and consumes a nonce in their scope. Reverts if the allocator is not registered.
-     * @param id         The ERC6909 token identifier containing the allocator ID.
-     * @param nonce      The nonce to consume in the allocator's scope.
-     * @return allocator The address of the registered allocator.
-     */
-    function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
-        allocator = id.toAllocatorId().toRegisteredAllocator();
-        nonce.consumeNonceAsAllocator(allocator);
-    }
-
-    /**
      * @notice Internal view function that ensures that a timestamp has not yet passed.
      * Reverts if the provided timestamp is not in the future.
      * @param expires The timestamp to check.
