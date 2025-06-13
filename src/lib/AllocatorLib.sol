@@ -50,6 +50,13 @@ library AllocatorLib {
             let totalIdsAndAmounts := mload(idsAndAmounts)
             let totalIdsAndAmountsDataLength := shl(6, totalIdsAndAmounts)
 
+            if gt(totalIdsAndAmounts, 0xffffffff) {
+                // revert InvalidIdsAndAmountsLength(totalIdsAndAmounts)
+                mstore(0, 0xabab0cbb)
+                mstore(0x20, totalIdsAndAmounts)
+                revert(0x1c, 0x24)
+            }
+
             // Prepare fixed-location components of calldata.
             mstore(m, _AUTHORIZE_CLAIM_SELECTOR)
             mstore(add(m, 0x20), claimHash)
@@ -94,7 +101,7 @@ library AllocatorLib {
                 )
 
             // Revert if the required magic value was not received back or really huge idsAndAmounts was supplied.
-            if or(gt(totalIdsAndAmounts, 0xffffffff), iszero(eq(mload(0), shl(224, _AUTHORIZE_CLAIM_SELECTOR)))) {
+            if iszero(eq(mload(0), shl(224, _AUTHORIZE_CLAIM_SELECTOR))) {
                 // Bubble up if the call failed and there's data. Note that remaining gas is not evaluated before
                 // copying the returndata buffer into memory. Out-of-gas errors can be triggered via revert bombing.
                 if iszero(or(success, iszero(returndatasize()))) {
