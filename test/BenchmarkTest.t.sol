@@ -58,7 +58,7 @@ contract BenchmarkTest is Test {
     }
 
     // Only 2 wei can be provided to the `__benchmark` call
-    function test_benchmark_ok_with_value_two() external {
+    function test_benchmarkSucceedWithValueTwo() external {
         (bool success,) =
             address(theCompact).call{ value: 2 wei }(abi.encodeWithSelector(theCompact.__benchmark.selector, salt));
         require(success, "Benchmark call failed");
@@ -70,15 +70,9 @@ contract BenchmarkTest is Test {
         assertGt(erc20TokenStipend, 0, "ERC20 token stipend should be set after benchmarking");
     }
 
-    function test_benchmark_fails_with_non_zero_target_balance() external {
+    function test_benchmarkFailsWithNonZeroTargetBalance() external {
         // Recalculate the target address to which the benchmarker will attempt to send the native token.
-        address target;
-
-        assembly {
-            mstore(0, sload(benchmarker.slot))
-            mstore(0x20, sload(salt.slot))
-            target := shr(0x60, keccak256(0x0c, 0x34))
-        }
+        address target = getBenchmarkerTarget();
 
         // Increase balance to non-zero
         deal(target, 1 ether);
@@ -90,7 +84,7 @@ contract BenchmarkTest is Test {
     }
 
     // Fails with other values
-    function testFuzz_benchmark_revert_with_value_different_from_two(uint256 val) external {
+    function testFuzz_benchmarkRevertWithValueDifferentFromTwo(uint256 val) external {
         vm.assume(val != 2);
 
         deal(address(this), val);
@@ -104,5 +98,32 @@ contract BenchmarkTest is Test {
         assertFalse(success, "Benchmark call succeeded with incorrect value");
         assertEq(nativeTokenStipend, 0, "Native token stipend shouldn't change with failed call");
         assertEq(erc20TokenStipend, 0, "ERC20 token stipend shouldn't change with failed call");
+    }
+
+    function test_ifNativeTokenTransferFailsRevert() external {
+        address target = getBenchmarkerTarget();
+        vm.etch(target, hex"5f5ffd"); // push0 push0 revert
+
+        (bool success,) =
+            address(theCompact).call{ value: 2 wei }(abi.encodeWithSelector(theCompact.__benchmark.selector, salt));
+        assertFalse(success, "Benchmark succeeded while target reverted");
+    }
+
+    function test_ifTokenTransferFailsRevert() external {
+        address token = vm.computeCreateAddress(benchmarker, 1);
+        vm.etch(token, hex"5f5ffd"); // push0 push0 revert
+
+        (bool success,) =
+            address(theCompact).call{ value: 2 wei }(abi.encodeWithSelector(theCompact.__benchmark.selector, salt));
+        assertFalse(success, "Benchmark succeeded while target reverted");
+    }
+
+    // Helpers
+    function getBenchmarkerTarget() private view returns (address target) {
+        assembly {
+            mstore(0, sload(benchmarker.slot))
+            mstore(0x20, sload(salt.slot))
+            target := shr(0x60, keccak256(0x0c, 0x34))
+        }
     }
 }

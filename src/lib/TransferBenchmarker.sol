@@ -106,7 +106,7 @@ contract TransferBenchmarker {
             // Also ensure the first balance check cost exceeded the second, and use
             // the balances to ensure the checks are not removed during optimization.
             if or(
-                or(iszero(success1), iszero(success2)),
+                iszero(and(success1, success2)),
                 or(
                     iszero(gt(transferToWarmUncreatedAccountCost, sub(gasCheckpointTwo, gasCheckpointThree))),
                     or(iszero(warmAccountAccessCost), xor(balanceOne, balanceTwo))
@@ -177,7 +177,7 @@ contract TransferBenchmarker {
 
                 // Ensure that both calls succeeded and that the cost of the first call
                 // exceeded that of the second, indicating that the account was not warm.
-                if or(or(iszero(success1), iszero(success2)), iszero(gt(firstCallCost, secondCallCost))) {
+                if or(iszero(and(success1, success2)), iszero(gt(firstCallCost, secondCallCost))) {
                     mstore(0, 0x9f608b8a)
                     revert(0x1c, 4)
                 }
