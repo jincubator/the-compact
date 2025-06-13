@@ -98,7 +98,7 @@ contract TransferBenchmarker {
 
             // Determine the difference between the cost of the first balance check
             // and the cost of the second balance check.
-            let warmAccountAccessCost :=
+            let coldAccountAccessCost :=
                 sub(sub(gasCheckpointThree, gasCheckpointFour), sub(gasCheckpointFour, gasCheckpointFive))
 
             // Ensure that both calls succeeded and that the cost of the first call
@@ -109,7 +109,7 @@ contract TransferBenchmarker {
                 or(iszero(success1), iszero(success2)),
                 or(
                     iszero(gt(transferToWarmUncreatedAccountCost, sub(gasCheckpointTwo, gasCheckpointThree))),
-                    or(iszero(warmAccountAccessCost), xor(balanceOne, balanceTwo))
+                    or(iszero(coldAccountAccessCost), xor(balanceOne, balanceTwo))
                 )
             ) {
                 mstore(0, 0x9f608b8a)
@@ -117,7 +117,7 @@ contract TransferBenchmarker {
             }
 
             // Derive benchmark cost using first transfer cost and warm access cost.
-            benchmark := add(transferToWarmUncreatedAccountCost, warmAccountAccessCost)
+            benchmark := add(transferToWarmUncreatedAccountCost, coldAccountAccessCost)
         }
     }
 
