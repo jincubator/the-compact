@@ -60,7 +60,7 @@ contract TransferBenchmarker {
             // First: measure transfer cost to an uncreated account — note that the
             // balance check prior to making the transfer will warm the account.
             // Ensure callvalue is exactly 2 wei and the target balance is zero.
-            if or(iszero(eq(callvalue(), 2)), iszero(iszero(balance(target)))) {
+            if or(xor(callvalue(), 2), balance(target)) {
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
