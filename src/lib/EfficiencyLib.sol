@@ -57,8 +57,7 @@ library EfficiencyLib {
     }
 
     /**
-     * @notice Internal pure function that converts a uint256 to a boolean. Only
-     * safe when the input is known to be exactly 0 or 1 with no dirty bits.
+     * @notice Internal pure function that converts a uint256 to a boolean.
      * @param a  The uint256 to convert.
      * @return b The resulting boolean.
      */
