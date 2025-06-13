@@ -64,19 +64,7 @@ library EfficiencyLib {
      */
     function asBool(uint256 a) internal pure returns (bool b) {
         assembly ("memory-safe") {
-            b := a
-        }
-    }
-
-    /**
-     * @notice Internal pure function that converts a uint256 to a bytes12. Only
-     * safe when the input is known to have no dirty lower bits.
-     * @param a  The uint256 to convert.
-     * @return b The resulting bytes12 value.
-     */
-    function asBytes12(uint256 a) internal pure returns (bytes12 b) {
-        assembly ("memory-safe") {
-            b := a
+            b := iszero(iszero(a))
         }
     }
 
@@ -177,19 +165,6 @@ library EfficiencyLib {
      * @return b The resulting uint256.
      */
     function asUint256(ResetPeriod a) internal pure returns (uint256 b) {
-        assembly ("memory-safe") {
-            b := a
-        }
-    }
-
-    /**
-     * @notice Internal pure function that converts a uint256 to a ResetPeriod enum without
-     * performing any bounds checks. Do not use in cases where the reset period may be
-     * outside the acceptable bounds.
-     * @param a  The uint256 to convert.
-     * @return b The resulting ResetPeriod enum.
-     */
-    function asResetPeriod(uint256 a) internal pure returns (ResetPeriod b) {
         assembly ("memory-safe") {
             b := a
         }

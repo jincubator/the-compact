@@ -150,8 +150,9 @@ contract EmissaryLogicTest is Test {
 
     function toLockTag(uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) internal pure returns (bytes12) {
         // Derive lock tag (pack scope, reset period, & allocator ID).
-        return ((_scope.asUint256() << 255) | (_resetPeriod.asUint256() << 252) | (_allocatorId.asUint256() << 160))
-            .asBytes12();
+        return asBytes12(
+            ((_scope.asUint256() << 255) | (_resetPeriod.asUint256() << 252) | (_allocatorId.asUint256() << 160))
+        );
     }
 
     function fromLockTag(bytes12 tag)
@@ -168,5 +169,12 @@ contract EmissaryLogicTest is Test {
 
         // Extract allocatorId (bits 160 to 250, which is 91 bits)
         _allocatorId = uint96((value >> 160) & ((1 << 91) - 1));
+    }
+
+    // Note: expects value without dirty bits.
+    function asBytes12(uint256 val) private pure returns (bytes12 res) {
+        assembly {
+            res := val
+        }
     }
 }

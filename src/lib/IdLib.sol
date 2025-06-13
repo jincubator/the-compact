@@ -164,15 +164,20 @@ library IdLib {
     /**
      * @notice Internal pure function for building the "lock tag" from an
      * allocatorId, scope, and reset period.
-     * @param allocatorId The allocator ID.
+     * @param allocatorId The allocator ID, must be at most 92 bits: 4 bits for the compact flag, 88 bits from the allocator address.
      * @param scope       The scope of the resource lock (multichain or single chain).
      * @param resetPeriod The duration after which the resource lock can be reset.
-     * @return            The lock tag.
+     * @return lockTag    The lock tag.
      */
-    function toLockTag(uint96 allocatorId, Scope scope, ResetPeriod resetPeriod) internal pure returns (bytes12) {
+    function toLockTag(uint96 allocatorId, Scope scope, ResetPeriod resetPeriod)
+        internal
+        pure
+        returns (bytes12 lockTag)
+    {
         // Derive lock tag (pack scope, reset period, & allocator ID).
-        return ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160))
-            .asBytes12();
+        assembly {
+            lockTag := or(or(shl(255, scope), shl(252, resetPeriod)), shl(160, allocatorId))
+        }
     }
 
     /**
