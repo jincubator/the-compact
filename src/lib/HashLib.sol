@@ -43,9 +43,7 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using HashLib for uint256;
     using HashLib for uint256[2][];
-    using HashLib for AllocatedBatchTransfer;
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
@@ -122,7 +120,7 @@ library HashLib {
         uint256 totalLocks = transfers.length;
 
         // Allocate working memory for hashing operations.
-        (uint256 ptr, uint256 hashesPtr) = totalLocks.allocateCommitmentsHashingMemory();
+        (uint256 ptr, uint256 hashesPtr) = allocateCommitmentsHashingMemory(totalLocks);
 
         // Declare a buffer for arithmetic errors.
         uint256 errorBuffer;
@@ -421,7 +419,7 @@ library HashLib {
         uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
         // Derive the element hash for the current element.
-        bytes32 elementHash = claim.toElementHash(elementTypehash, commitmentsHash);
+        bytes32 elementHash = toElementHash(claim, elementTypehash, commitmentsHash);
 
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
@@ -473,7 +471,7 @@ library HashLib {
         uint256 commitmentsHash
     ) internal view returns (bytes32 messageHash) {
         // Derive the element hash for the current element.
-        bytes32 elementHash = claim.toElementHash(elementTypehash, commitmentsHash);
+        bytes32 elementHash = toElementHash(claim, elementTypehash, commitmentsHash);
 
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
@@ -539,7 +537,7 @@ library HashLib {
      * @return elementHash              The EIP-712 compliant element hash.
      */
     function toElementHash(uint256 claim, bytes32 elementTypehash, uint256 commitmentsHash)
-        internal
+        private
         view
         returns (bytes32 elementHash)
     {
@@ -702,7 +700,7 @@ library HashLib {
         uint256 totalLocks = claims.length;
 
         // Allocate working memory for hashing operations.
-        (uint256 ptr, uint256 hashesPtr) = totalLocks.allocateCommitmentsHashingMemory();
+        (uint256 ptr, uint256 hashesPtr) = allocateCommitmentsHashingMemory(totalLocks);
 
         unchecked {
             // Cache lock-specific data start memory pointer location.
