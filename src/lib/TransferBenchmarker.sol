@@ -149,35 +149,32 @@ contract TransferBenchmarker {
                 sstore(_ERC20_TOKEN_BENCHMARK_SENTINEL, number())
             }
 
-            // Store function selector for name().
-            mstore(0, 0x06fdde03)
-
             let firstCallCost
             let secondCallCost
 
             {
-                // Get gas before first call.
+                // Get gas before first account access.
                 let firstStart := gas()
 
-                // Perform the first call.
-                let success1 := call(gas(), token, 0, 0x1c, 4, codesize(), 0)
+                // First account access.
+                let balanceOne := balance(token)
 
-                // Get gas before second call.
+                // Get gas before second access.
                 let secondStart := gas()
 
-                // Perform the second call.
-                let success2 := call(gas(), token, 0, 0x1c, 4, codesize(), 0)
+                // Perform the second access.
+                let balanceTwo := balance(token)
 
-                // Get gas after second call.
+                // Get gas after second access.
                 let secondEnd := gas()
 
-                // Derive the benchmark cost of the call.
+                // Derive the benchmark cost of account access.
                 firstCallCost := sub(firstStart, secondStart)
                 secondCallCost := sub(secondStart, secondEnd)
 
-                // Ensure that both calls succeeded and that the cost of the first call
-                // exceeded that of the second, indicating that the account was not warm.
-                if or(iszero(and(success1, success2)), iszero(gt(firstCallCost, secondCallCost))) {
+                // Ensure that the cost of the first call exceeded that of the second, indicating that the account was not warm.
+                // Use the balances to ensure the checks are not removed during optimization
+                if or(iszero(gt(firstCallCost, secondCallCost)), xor(balanceOne, balanceTwo)) {
                     mstore(0, 0x9f608b8a)
                     revert(0x1c, 4)
                 }
