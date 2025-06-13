@@ -51,7 +51,7 @@ contract DepositViaPermit2Logic is DepositLogic {
      * @notice Internal function for depositing ERC20 tokens using Permit2 authorization. The
      * depositor must approve Permit2 to transfer the tokens on its behalf unless the token in
      * question automatically grants approval to Permit2. The ERC6909 token amount received by the
-     * by the recipient is derived from the difference between the starting and ending balance held
+     * recipient is derived from the difference between the starting and ending balance held
      * in the resource lock, which may differ from the amount transferred depending on the
      * implementation details of the respective token. The Permit2 authorization signed by the
      * depositor must contain a CompactDeposit witness containing the allocator, the reset period,
