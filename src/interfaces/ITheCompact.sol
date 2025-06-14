@@ -695,7 +695,6 @@ interface ITheCompact {
     error ReentrantCall(address existingCaller);
     error InconsistentAllocators();
     error InvalidAllocation(address allocator);
-    error InvalidIdsAndAmountsLength(uint256 idsAndAmountsLength);
     error ChainIndexOutOfRange();
     error InvalidEmissaryAssignment();
     error EmissaryAssignmentUnavailable(uint256 assignableAt);
