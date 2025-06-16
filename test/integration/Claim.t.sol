@@ -1332,10 +1332,10 @@ contract ClaimTest is Setup {
         claim.expires = block.timestamp + 1000;
         claim.allocatedAmount = 1e18;
 
-        vm.prank(swapper); // mints tokens to the swapper
-        ExcessiveToken excessiveToken = new ExcessiveToken();
-        vm.prank(swapper);
+        ExcessiveToken excessiveToken = new ExcessiveToken(swapper);
+        vm.startPrank(swapper); // mints tokens to the swapper
         excessiveToken.approve(address(theCompact), claim.allocatedAmount);
+        vm.stopPrank();
 
         // Recipient information
         address recipientOne = 0x1111111111111111111111111111111111111111;

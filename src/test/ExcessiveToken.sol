@@ -8,8 +8,8 @@ contract ExcessiveToken is ERC20 {
     mapping(address => uint256) public transferAmount;
     mapping(address => uint256) public receivedAmount;
 
-    constructor() {
-        _mint(msg.sender, 1 ether);
+    constructor(address target) {
+        _mint(target, 1 ether);
     }
 
     function name() public view virtual override returns (string memory) {

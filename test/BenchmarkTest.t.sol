@@ -144,7 +144,7 @@ contract BenchmarkTest is Test {
 
         // Call the __benchmark function with a random salt
         // We do not supply exactly 2 wei to the __benchmark call
-        bytes32 salt = keccak256(abi.encodePacked("test salt"));
+        salt = keccak256(abi.encodePacked("test salt"));
 
         vm.expectRevert(abi.encodeWithSelector(TransferBenchmarker.InvalidBenchmark.selector));
         theCompact.__benchmark{ value: wrongValue }(salt);
@@ -168,7 +168,7 @@ contract BenchmarkTest is Test {
 
         // Call the __benchmark function with a random salt
         // We need to supply exactly 2 wei to the __benchmark call
-        bytes32 salt = keccak256(abi.encodePacked("test salt"));
+        salt = keccak256(abi.encodePacked("test salt"));
         (bool success,) =
             address(theCompact).call{ value: 2 wei }(abi.encodeWithSelector(theCompact.__benchmark.selector, salt));
         require(success, "Benchmark call failed");
@@ -219,7 +219,7 @@ contract BenchmarkTest is Test {
             )
         );
 
-        bytes32 salt = keccak256(abi.encodePacked("test salt"));
+        salt = keccak256(abi.encodePacked("test salt"));
         address maliciousBenchmarkTarget = address(bytes20(keccak256(abi.encodePacked(benchmark, salt)))); // recreate the benchmark target address
         deployCodeTo("MaliciousBenchmarkTarget", maliciousBenchmarkTarget);
 
@@ -237,7 +237,7 @@ contract BenchmarkTest is Test {
             )
         );
 
-        bytes32 salt = keccak256(abi.encodePacked("test salt"));
+        salt = keccak256(abi.encodePacked("test salt"));
         address benchmarkTarget = address(bytes20(keccak256(abi.encodePacked(benchmark, salt)))); // recreate the benchmark target address
 
         // Send ETH to manipulate the benchmark target
@@ -249,7 +249,7 @@ contract BenchmarkTest is Test {
     }
 
     function test_revert_sameBlockBenchmark() public {
-        bytes32 salt = keccak256(abi.encodePacked("test salt"));
+        salt = keccak256(abi.encodePacked("test salt"));
         bytes32 differentSalt = keccak256(abi.encodePacked("different salt"));
 
         address benchmark = address(
@@ -273,7 +273,7 @@ contract BenchmarkTest is Test {
     }
 
     function test_revert_warmTokenAccount() public {
-        bytes32 salt = keccak256(abi.encodePacked("test salt"));
+        salt = keccak256(abi.encodePacked("test salt"));
         address benchmark = address(
             uint160(uint256(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), address(theCompact), bytes1(0x03)))))
         );
