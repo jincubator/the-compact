@@ -11,6 +11,9 @@ import { BatchClaim } from "../../src/types/BatchClaims.sol";
 import { MultichainClaim, ExogenousMultichainClaim } from "../../src/types/MultichainClaims.sol";
 import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/types/BatchMultichainClaims.sol";
 import { ConsumerLib } from "../../src/lib/ConsumerLib.sol";
+import { AlwaysDenyingToken } from "../../src/test/AlwaysDenyingToken.sol";
+import { ExcessiveToken } from "../../src/test/ExcessiveToken.sol";
+import { TransferBenchmarker } from "../../src/lib/TransferBenchmarker.sol";
 
 import { AlwaysDenyingAllocator } from "../../src/test/AlwaysDenyingAllocator.sol";
 import { AlwaysRevertingAllocator } from "../../src/test/AlwaysRevertingAllocator.sol";
@@ -112,6 +115,7 @@ contract ClaimTest is Setup {
             vm.prank(arbiter);
             returnedClaimHash = theCompact.claim(claim);
             vm.snapshotGasLastCall("claimAndWithdraw");
+
             assertEq(returnedClaimHash, claimHash);
         }
 
@@ -998,5 +1002,431 @@ contract ClaimTest is Setup {
             )
         );
         theCompact.claim(claim);
+    }
+
+    function test_claimAndConvert() public {
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        uint96 allocatorId;
+        {
+            bytes12 lockTag;
+            {
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Prepare recipients
+        uint256 convertedId;
+        {
+            // Manipulated lock tag
+            bytes12 lockTag = bytes12(bytes32(claim.id));
+            bytes12 convertedLockTag = _createLockTag(ResetPeriod.OneMinute, Scope.Multichain, allocatorId);
+            assertTrue(lockTag != convertedLockTag);
+
+            convertedId = uint256(bytes32(convertedLockTag) | bytes32(claim.id << 96 >> 96));
+
+            uint256 claimantOne = abi.decode(abi.encodePacked(convertedLockTag, recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(convertedLockTag, recipientTwo), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+                recipients = new Component[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("claimAndConvert");
+
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, claim.allocatedAmount);
+        assertEq(recipientOne.balance, 0);
+        assertEq(recipientTwo.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, convertedId), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, convertedId), amountTwo);
+    }
+
+    function test_withdrawalConvertedToTransfer() public {
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // deploy AlwaysDenyingToken and mint tokens to the swapper. Set theCompact as the blocked address
+        AlwaysDenyingToken alwaysDenyingToken = new AlwaysDenyingToken(address(theCompact), swapper);
+        vm.prank(swapper);
+        alwaysDenyingToken.approve(address(theCompact), claim.allocatedAmount);
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, address(alwaysDenyingToken), claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory split = Component({ claimant: claimantOne, amount: claim.allocatedAmount });
+
+                recipients = new Component[](1);
+                recipients[0] = split;
+            }
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Ensure benchmarker is set
+        {
+            bytes32 salt = keccak256(abi.encodePacked("test salt"));
+            theCompact.__benchmark{ value: 2 }(salt);
+        }
+
+        // Check previous token balance of the compact
+        assertEq(alwaysDenyingToken.balanceOf(address(theCompact)), claim.allocatedAmount);
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("claimAndTokenWithdrawalFailed");
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(alwaysDenyingToken.balanceOf(address(theCompact)), claim.allocatedAmount);
+        // Ensure the swappers tokens have been removed
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        // Ensure the recipient has received the ERC6909 tokens (failing withdrawal converted to transfer)
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), claim.allocatedAmount);
+    }
+
+    function test_revert_InsufficientStipendForWithdrawalFallback() public {
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, address(token), claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory split = Component({ claimant: claimantOne, amount: claim.allocatedAmount });
+
+                recipients = new Component[](1);
+                recipients[0] = split;
+            }
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Ensure benchmarker is set
+        {
+            bytes32 salt = keccak256(abi.encodePacked("test salt"));
+            theCompact.__benchmark{ value: 2 }(salt);
+        }
+
+        // Check previous token balance of the compact
+        assertEq(token.balanceOf(address(theCompact)), claim.allocatedAmount);
+
+        // Execute claim
+        {
+            vm.prank(arbiter);
+            vm.expectRevert(
+                abi.encodeWithSelector(TransferBenchmarker.InsufficientStipendForWithdrawalFallback.selector)
+            );
+            theCompact.claim{ gas: 90000 }(claim); // Using an amount sufficient for a withdrawal, but not a transfer
+        }
+
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), claim.allocatedAmount);
+        // Ensure the swappers tokens have been removed
+        assertEq(theCompact.balanceOf(swapper, claim.id), claim.allocatedAmount);
+        // Ensure the recipient has received the ERC6909 tokens (failing withdrawal converted to transfer)
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+    }
+
+    function test_excessiveTokenWillTransferNotWithdraw() public {
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        ExcessiveToken excessiveToken = new ExcessiveToken(swapper);
+        vm.startPrank(swapper); // mints tokens to the swapper
+        excessiveToken.approve(address(theCompact), claim.allocatedAmount);
+        vm.stopPrank();
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, address(excessiveToken), claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory split = Component({ claimant: claimantOne, amount: claim.allocatedAmount });
+
+                recipients = new Component[](1);
+                recipients[0] = split;
+            }
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Ensure benchmarker is set
+        {
+            bytes32 salt = keccak256(abi.encodePacked("test salt"));
+            theCompact.__benchmark{ value: 2 }(salt);
+        }
+
+        // Check previous token balance of the compact
+        assertEq(excessiveToken.balanceOf(address(theCompact)), claim.allocatedAmount);
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim{ gas: 150_000 }(claim);
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(excessiveToken.balanceOf(address(theCompact)), claim.allocatedAmount);
+        // Ensure the swappers tokens have been removed
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        // Ensure the recipient has received the ERC6909 tokens (failing withdrawal converted to transfer)
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), claim.allocatedAmount);
     }
 }

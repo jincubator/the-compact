@@ -1479,4 +1479,229 @@ contract MultichainClaimTest is Setup {
             assertEq(block.chainid, notarizedChainId);
         }
     }
+
+    function test_revert_ChainIndexOutOfRange() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Initialize multichain claim
+        MultichainClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = params.deadline;
+        claim.witnessTypestring = "";
+
+        // Set up chain IDs
+        uint256 anotherChainId = 7171717;
+        uint256 thirdChainId = 41414141;
+
+        // Register allocator and make deposits
+        uint256 id;
+        uint256 anotherId;
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            id = _makeDeposit(swapper, 1e18, lockTag);
+            anotherId = _makeDeposit(swapper, address(token), 1e18, lockTag);
+
+            claim.id = id;
+            claim.allocatedAmount = 1e18;
+        }
+
+        // Create ids and amounts arrays
+        uint256[2][] memory idsAndAmountsOne;
+        uint256[2][] memory idsAndAmountsTwo;
+        {
+            idsAndAmountsOne = new uint256[2][](1);
+            idsAndAmountsOne[0] = [id, 1e18];
+
+            idsAndAmountsTwo = new uint256[2][](1);
+            idsAndAmountsTwo[0] = [anotherId, 1e18];
+        }
+
+        // Create element hashes
+        bytes32[] memory elementHashes = new bytes32[](3);
+        {
+            bytes32 elementTypehash = multichainElementsTypehash;
+
+            elementHashes[0] = keccak256(
+                abi.encode(
+                    elementTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    block.chainid,
+                    _hashOfHashes(idsAndAmountsOne)
+                )
+            );
+
+            elementHashes[1] = keccak256(
+                abi.encode(
+                    elementTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    anotherChainId,
+                    _hashOfHashes(idsAndAmountsTwo)
+                )
+            );
+
+            elementHashes[2] = keccak256(
+                abi.encode(
+                    elementTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    thirdChainId,
+                    _hashOfHashes(idsAndAmountsTwo)
+                )
+            );
+        }
+
+        // Create multichain claim hash
+        bytes32 claimHash;
+        {
+            bytes32 multichainTypehash = multichainCompactTypehash;
+
+            claimHash = keccak256(
+                abi.encode(
+                    multichainTypehash,
+                    claim.sponsor,
+                    claim.nonce,
+                    claim.expires,
+                    keccak256(abi.encodePacked(elementHashes))
+                )
+            );
+        }
+
+        // Store initial domain separator
+        bytes32 initialDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(initialDomainSeparator, claimHash);
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Set up additional chains
+        {
+            bytes32[] memory additionalChains = new bytes32[](2);
+            additionalChains[0] = elementHashes[1];
+            additionalChains[1] = elementHashes[2];
+            claim.additionalChains = additionalChains;
+        }
+
+        // Create components
+        {
+            uint256 claimantOne = abi.decode(
+                abi.encodePacked(bytes12(bytes32(id)), 0x1111111111111111111111111111111111111111), (uint256)
+            );
+            uint256 claimantTwo = abi.decode(
+                abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
+            );
+
+            Component[] memory recipients;
+            {
+                Component memory componentOne = Component({ claimant: claimantOne, amount: 4e17 });
+                Component memory componentTwo = Component({ claimant: claimantTwo, amount: 6e17 });
+
+                recipients = new Component[](2);
+                recipients[0] = componentOne;
+                recipients[1] = componentTwo;
+            }
+
+            claim.claimants = recipients;
+        }
+
+        // Execute claim and verify - first part
+        {
+            uint256 snapshotId = vm.snapshotState();
+
+            {
+                vm.prank(0x2222222222222222222222222222222222222222);
+                bytes32 returnedClaimHash = theCompact.multichainClaim(claim);
+                vm.snapshotGasLastCall("multichainClaim");
+                assertEq(returnedClaimHash, claimHash);
+
+                assertEq(address(theCompact).balance, 1e18);
+                assertEq(0x1111111111111111111111111111111111111111.balance, 0);
+                assertEq(0x3333333333333333333333333333333333333333.balance, 0);
+                assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, id), 4e17);
+                assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, id), 6e17);
+            }
+
+            vm.revertToAndDelete(snapshotId);
+        }
+
+        // Change to "new chain" and execute exogenous claim
+        {
+            // Save current chain ID and switch to another
+            uint256 notarizedChainId = abi.decode(abi.encode(block.chainid), (uint256));
+            vm.chainId(anotherChainId);
+            assertEq(block.chainid, anotherChainId);
+
+            // Get new domain separator
+            bytes32 anotherDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+            assert(initialDomainSeparator != anotherDomainSeparator);
+
+            // Create exogenous allocator signature
+            bytes memory exogenousAllocatorData;
+            {
+                bytes32 digest = _createDigest(anotherDomainSeparator, claimHash);
+
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                exogenousAllocatorData = abi.encodePacked(r, vs);
+            }
+
+            // Set up exogenous claim
+            ExogenousMultichainClaim memory anotherClaim;
+            {
+                bytes32[] memory additionalChains = new bytes32[](2);
+                additionalChains[0] = elementHashes[0];
+                additionalChains[1] = elementHashes[2];
+
+                anotherClaim.allocatorData = exogenousAllocatorData;
+                anotherClaim.sponsorSignature = claim.sponsorSignature;
+                anotherClaim.sponsor = claim.sponsor;
+                anotherClaim.nonce = claim.nonce;
+                anotherClaim.expires = claim.expires;
+                anotherClaim.witness = bytes32(0); // empty witness
+                anotherClaim.witnessTypestring = ""; // empty witness typestring
+                anotherClaim.additionalChains = additionalChains;
+                anotherClaim.chainIndex = 2; // index out of range
+                anotherClaim.notarizedChainId = notarizedChainId; // Changed from exogenousChainId to notarizedChainId
+                anotherClaim.id = anotherId;
+                anotherClaim.allocatedAmount = 1e18;
+                anotherClaim.claimants = claim.claimants;
+            }
+
+            // Execute exogenous claim
+            {
+                vm.prank(0x2222222222222222222222222222222222222222);
+                vm.expectRevert(abi.encodeWithSelector(ITheCompact.ChainIndexOutOfRange.selector));
+                theCompact.exogenousClaim(anotherClaim);
+            }
+
+            // Change back to original chain
+            vm.chainId(notarizedChainId);
+            assertEq(block.chainid, notarizedChainId);
+        }
+    }
 }

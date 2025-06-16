@@ -61,6 +61,7 @@ contract TransferBenchmarker {
             // balance check prior to making the transfer will warm the account.
             // Ensure callvalue is exactly 2 wei and the target balance is zero.
             if or(xor(callvalue(), 2), balance(target)) {
+                // revert InvalidBenchmark()
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
@@ -112,6 +113,7 @@ contract TransferBenchmarker {
                     or(iszero(coldAccountAccessCost), xor(balanceOne, balanceTwo))
                 )
             ) {
+                // revert InvalidBenchmark()
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
@@ -141,6 +143,7 @@ contract TransferBenchmarker {
 
                 // Ensure it is not set to the current block number.
                 if eq(sentinel, number()) {
+                    // revert InvalidBenchmark()
                     mstore(0, 0x9f608b8a)
                     revert(0x1c, 4)
                 }
@@ -175,6 +178,7 @@ contract TransferBenchmarker {
                 // Ensure that the cost of the first call exceeded that of the second, indicating that the account was not warm.
                 // Use the balances to ensure the checks are not removed during optimization
                 if or(iszero(gt(firstCallCost, secondCallCost)), xor(balanceOne, balanceTwo)) {
+                    // revert InvalidBenchmark()
                     mstore(0, 0x9f608b8a)
                     revert(0x1c, 4)
                 }
@@ -203,6 +207,8 @@ contract TransferBenchmarker {
                     transferCallStatus
                 )
             ) {
+                // As the token is deployed by the contract itself, this should never happen except if this benchmark is called uint256.max times and has drained the balance.
+                // revert InvalidBenchmark()
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
@@ -218,6 +224,8 @@ contract TransferBenchmarker {
             mstore(0, 0x89afcb44)
             mstore(0x20, target)
             if iszero(call(gas(), token, 0, 0x1c, 0x24, codesize(), 0)) {
+                // As the token is deployed by the contract itself, this should never happen.
+                // revert InvalidBenchmark()
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }
