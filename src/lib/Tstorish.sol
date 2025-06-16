@@ -25,9 +25,9 @@ contract Tstorish {
      * f3          | RETURN           |                    | [0..0x20): 0x3d5c |
      * ------------------------------------------------------------------------+
      */
-    uint80 constant _TLOAD_TEST_PAYLOAD = 0x6002_601e_613d5c_3d_52_f3;
-    uint8 constant _TLOAD_TEST_PAYLOAD_LENGTH = 0x0a;
-    uint8 constant _TLOAD_TEST_PAYLOAD_OFFSET = 0x16;
+    uint80 private constant _TLOAD_TEST_PAYLOAD = 0x6002_601e_613d5c_3d_52_f3;
+    uint8 private constant _TLOAD_TEST_PAYLOAD_LENGTH = 0x0a;
+    uint8 private constant _TLOAD_TEST_PAYLOAD_OFFSET = 0x16;
 
     // Declare an immutable variable to store the tstore test contract address.
     address private immutable _tloadTestContract;
