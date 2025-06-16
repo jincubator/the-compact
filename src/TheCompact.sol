@@ -21,7 +21,7 @@ import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
  * @title The Compact
  * @custom:version 1
  * @author 0age (0age.eth)
- * @custom:coauthor Mark Gretzke (markgretzke.eth)
+ * @custom:coauthor mgretzke (mgretzke.eth)
  * @custom:coauthor ccashwell (ccashwell.eth)
  * @custom:coauthor reednaa (reednaa.eth)
  * @custom:coauthor zeroknots (zeroknots.eth)
