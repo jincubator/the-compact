@@ -759,7 +759,7 @@ library HashLib {
     }
 
     /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
+     * @notice Private view function for deriving the EIP-712 message hash for
      * a specific element on a multichain claim with or without a witness.
      * @param claim                     Pointer to the claim location in calldata.
      * @param elementTypehash           The element typehash.
@@ -789,7 +789,7 @@ library HashLib {
     }
 
     /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
+     * @notice Private view function for deriving the EIP-712 message hash for
      * a batch transfer or withdrawal once a commitments hash is available.
      * @param transfer        An AllocatedBatchTransfer struct containing the transfer details.
      * @param commitmentsHash A hash of the commitments array.
@@ -820,6 +820,14 @@ library HashLib {
         }
     }
 
+    /**
+     * @notice Private pure function for allocating a memory region used to derive both
+     * individual commitment hashes (including placing the typehash in memory) as well
+     * as an aggregate commitments hash.
+     * @param totalLocks The total number of locks used to derive the commitments hash.
+     * @return ptr       A pointer to the region where inputs are prepared for each hash.
+     * @return hashesPtr A pointer to the region where each derived hash will be prepared.
+     */
     function _allocateCommitmentsHashingMemory(uint256 totalLocks)
         private
         pure
