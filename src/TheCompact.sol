@@ -21,9 +21,13 @@ import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
  * @title The Compact
  * @custom:version 1
  * @author 0age (0age.eth)
+ * @custom:coauthor Mark Gretzke (markgretzke.eth)
+ * @custom:coauthor ccashwell (ccashwell.eth)
+ * @custom:coauthor reednaa (reednaa.eth)
+ * @custom:coauthor zeroknots (zeroknots.eth)
+ * @custom:security-contact security@uniswap.org
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  *         formation and mediation of reusable "resource locks."
- *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function depositNative(bytes12 lockTag, address recipient) external payable returns (uint256) {
