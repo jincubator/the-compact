@@ -11,6 +11,8 @@ import { AllocatedBatchTransfer } from "../../src/types/BatchClaims.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
 
 import { QualifiedAllocator } from "../../src/examples/allocator/QualifiedAllocator.sol";
+import { AlwaysRevertingAllocator } from "../../src/test/AlwaysRevertingAllocator.sol";
+import { AlwaysDenyingAllocator } from "../../src/test/AlwaysDenyingAllocator.sol";
 
 import { Setup } from "./Setup.sol";
 
@@ -299,6 +301,140 @@ contract AllocatedTransferTest is Setup {
 
         vm.prank(swapper);
         vm.expectRevert(abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, allocatorId));
+        theCompact.allocatedTransfer(transfer);
+    }
+
+    function test_revert_allocatorReverts() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+
+        // Register allocator and create lock tag
+        uint256 id;
+        address alwaysRevertingAllocator;
+        {
+            alwaysRevertingAllocator = address(new AlwaysRevertingAllocator());
+
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(alwaysRevertingAllocator);
+
+            // Make deposit
+            id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+        }
+
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 claimHash =
+                _createClaimHash(compactTypehash, swapper, swapper, params.nonce, params.deadline, id, params.amount);
+
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
+
+        // Prepare recipients
+        Component[] memory recipients;
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
+
+            Component memory componentOne = Component({ claimant: claimantOne, amount: params.amount });
+
+            recipients = new Component[](1);
+            recipients[0] = componentOne;
+        }
+
+        // Create and execute transfer
+        AllocatedTransfer memory transfer = AllocatedTransfer({
+            nonce: params.nonce,
+            expires: params.deadline,
+            allocatorData: allocatorData,
+            id: id,
+            recipients: recipients
+        });
+
+        vm.prank(swapper);
+        vm.expectRevert(
+            abi.encodeWithSelector(AlwaysRevertingAllocator.AlwaysReverting.selector), alwaysRevertingAllocator
+        );
+        theCompact.allocatedTransfer(transfer);
+    }
+
+    function test_revert_allocatorDenies() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+
+        // Register allocator and create lock tag
+        uint256 id;
+        address alwaysDenyingAllocator;
+        {
+            alwaysDenyingAllocator = address(new AlwaysDenyingAllocator());
+
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(alwaysDenyingAllocator);
+
+            // Make deposit
+            id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+        }
+
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 claimHash =
+                _createClaimHash(compactTypehash, swapper, swapper, params.nonce, params.deadline, id, params.amount);
+
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
+
+        // Prepare recipients
+        Component[] memory recipients;
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
+
+            Component memory componentOne = Component({ claimant: claimantOne, amount: params.amount });
+
+            recipients = new Component[](1);
+            recipients[0] = componentOne;
+        }
+
+        // Create and execute transfer
+        AllocatedTransfer memory transfer = AllocatedTransfer({
+            nonce: params.nonce,
+            expires: params.deadline,
+            allocatorData: allocatorData,
+            id: id,
+            recipients: recipients
+        });
+
+        vm.prank(swapper);
+        vm.expectRevert(
+            abi.encodeWithSelector(ITheCompact.InvalidAllocation.selector, alwaysDenyingAllocator), address(theCompact)
+        );
         theCompact.allocatedTransfer(transfer);
     }
 }
