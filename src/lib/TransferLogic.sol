@@ -113,7 +113,7 @@ contract TransferLogic is ConstructorLogic {
         );
 
         // Perform the batch transfers or withdrawals.
-        transfer.performBatchTransfer();
+        transfer.processBatchTransfer();
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();

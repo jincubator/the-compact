@@ -27,7 +27,7 @@ contract ComponentLibTester {
         pure
         returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId)
     {
-        return ComponentLib._buildIdsAndAmounts(claims, sponsorDomainSeparator);
+        return ComponentLib._buildIdsAndAmountsWithConsistentAllocatorIdCheck(claims, sponsorDomainSeparator);
     }
 
     function verifyAndProcessComponents(

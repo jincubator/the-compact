@@ -197,7 +197,7 @@ library EmissaryLib {
      */
     function extractSameLockTag(uint256[2][] memory idsAndAmounts) internal pure returns (bytes12 lockTag) {
         // Store the first lockTag for the first id. Note that idsAndAmounts is known to be non-zero
-        // length at this point, as it gets checked in _buildIdsAndAmounts in ComponentLib.
+        // length at this point, as it gets checked in _buildIdsAndAmountsWithConsistentAllocatorIdCheck in ComponentLib.
         lockTag = idsAndAmounts[0][0].toLockTag();
 
         // Initialize an error buffer.
