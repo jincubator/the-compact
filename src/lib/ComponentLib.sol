@@ -65,7 +65,7 @@ library ComponentLib {
      * resource locks.
      * @param transfer  An AllocatedBatchTransfer struct containing batch transfer details.
      */
-    function performBatchTransfer(AllocatedBatchTransfer calldata transfer) internal {
+    function processBatchTransfer(AllocatedBatchTransfer calldata transfer) internal {
         // Navigate to the batch components array in calldata.
         ComponentsById[] calldata transfers = transfer.transfers;
 
@@ -179,7 +179,7 @@ library ComponentLib {
 
         // Parse into idsAndAmounts & extract first allocatorId.
         (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) =
-            _buildIdsAndAmounts(claims, sponsorDomainSeparator);
+            _buildIdsAndAmountsWithConsistentAllocatorIdCheck(claims, sponsorDomainSeparator);
 
         // Validate the claim and extract the sponsor address.
         address sponsor = validation(
@@ -215,11 +215,10 @@ library ComponentLib {
      * @return idsAndAmounts         Array of [id, allocatedAmount] pairs for each claim component.
      * @return firstAllocatorId      The allocator ID extracted from the first claim component.
      */
-    function _buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
-        internal
-        pure
-        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId)
-    {
+    function _buildIdsAndAmountsWithConsistentAllocatorIdCheck(
+        BatchClaimComponent[] calldata claims,
+        bytes32 sponsorDomainSeparator
+    ) internal pure returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId) {
         uint256 totalClaims = claims.length;
         if (totalClaims == 0) {
             revert NoIdsAndAmountsProvided();
