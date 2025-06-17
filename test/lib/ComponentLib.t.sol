@@ -82,7 +82,7 @@ contract ComponentLibTest is Test {
         Component[] memory recipients = new Component[](2);
         recipients[0] = Component({ claimant: _makeClaimant(CLAIMANT_1), amount: type(uint256).max });
         recipients[1] = Component({ claimant: _makeClaimant(CLAIMANT_2), amount: 1 });
-        vm.expectRevert(ComponentLib.Overflow.selector);
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
         tester.aggregateComponents(recipients);
     }
 
@@ -104,7 +104,7 @@ contract ComponentLibTest is Test {
 
         // if we did overflow, aggregate function should revert
         if (expectOverflow) {
-            vm.expectRevert(ComponentLib.Overflow.selector);
+            vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));`
             tester.aggregateComponents(limitedRecipients);
         } else {
             assertEq(tester.aggregateComponents(limitedRecipients), expectedSum, "Fuzz Aggregate failed");
