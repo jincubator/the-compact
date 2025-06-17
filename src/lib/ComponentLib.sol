@@ -42,7 +42,6 @@ library ComponentLib {
     using RegistrationLib for address;
     using FixedPointMathLib for uint256;
 
-    error Overflow();
     error NoIdsAndAmountsProvided();
 
     /**
@@ -331,7 +330,12 @@ library ComponentLib {
         }
 
         if (errorBuffer.asBool()) {
-            revert Overflow();
+            assembly ("memory-safe") {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
         }
     }
 
