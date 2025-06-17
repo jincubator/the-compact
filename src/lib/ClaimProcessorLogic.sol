@@ -40,7 +40,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         bytes32 typehash;
-        (claimHash, typehash) = claimPayload.toMessageHashes();
+        (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
         ClaimProcessorLib.processSimpleClaim.usingClaim()(claimHash, claimPayload, typehash, _domainSeparator());
 
         // Clear the reentrancy guard.
@@ -53,7 +53,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         bytes32 typehash;
-        (claimHash, typehash) = claimPayload.toMessageHashes();
+        (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
         ClaimProcessorLib.processSimpleBatchClaim.usingBatchClaim()(
             claimHash, claimPayload, typehash, _domainSeparator()
         );
@@ -68,7 +68,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         bytes32 typehash;
-        (claimHash, typehash) = claimPayload.toMessageHashes();
+        (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
         ClaimProcessorLib.processSimpleClaim.usingMultichainClaim()(
             claimHash, claimPayload, typehash, _domainSeparator()
         );
@@ -86,7 +86,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         bytes32 typehash;
-        (claimHash, typehash) = claimPayload.toMessageHashes();
+        (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
         ClaimProcessorLib.processSimpleBatchClaim.usingBatchMultichainClaim()(
             claimHash, claimPayload, typehash, _domainSeparator()
         );
@@ -104,7 +104,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         bytes32 typehash;
-        (claimHash, typehash) = claimPayload.toMessageHashes();
+        (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
         ClaimProcessorLib.processClaimWithSponsorDomain.usingExogenousMultichainClaim()(
             claimHash,
             claimPayload,
@@ -126,7 +126,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         _setReentrancyGuard();
 
         bytes32 typehash;
-        (claimHash, typehash) = claimPayload.toMessageHashes();
+        (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
         ClaimProcessorLib.processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
             claimHash,
             claimPayload,

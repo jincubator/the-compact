@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
-import { AllocatedTransfer } from "../types/Claims.sol";
+import { AllocatedBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
+import { AllocatedTransfer, Claim } from "../types/Claims.sol";
 import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
@@ -195,11 +195,11 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a claim with or without a witness.
-     * @param claimPointer               Pointer to the claim location in calldata.
-     * @return messageHash        The EIP-712 compliant message hash.
-     * @return typehash           The EIP-712 typehash.
+     * @param claimPointer Pointer to the claim location in calldata.
+     * @return messageHash The EIP-712 compliant message hash.
+     * @return typehash    The EIP-712 typehash.
      */
-    function toClaimHash(uint256 claimPointer) internal view returns (bytes32 messageHash, bytes32 typehash) {
+    function toClaimHash(Claim calldata claimPointer) internal view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
             for { } 1 { } {
                 // Retrieve the free memory pointer; memory will be left dirtied.
@@ -284,12 +284,12 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch claim with or without a witness.
-     * @param claimPointer    Pointer to the claim location in calldata.
+     * @param claimPointer    Pointer to the batch claim location in calldata.
      * @param commitmentsHash The EIP-712 hash of the Lock[] commitments array.
      * @return messageHash    The EIP-712 compliant message hash.
      * @return typehash       The EIP-712 typehash.
      */
-    function toBatchClaimHash(uint256 claimPointer, uint256 commitmentsHash)
+    function toBatchClaimHash(BatchClaim calldata claimPointer, uint256 commitmentsHash)
         internal
         view
         returns (bytes32 messageHash, bytes32 typehash)

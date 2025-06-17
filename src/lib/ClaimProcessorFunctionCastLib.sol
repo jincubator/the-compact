@@ -18,7 +18,6 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
  * function. Note that from the perspective of the function being modified, the
  * original type is still in force; great care should be taken to preserve offsets
  * and general structure between the two structs.
- * @dev Note that some of these function casts may no longer be in use.
  */
 library ClaimProcessorFunctionCastLib {
     /**

@@ -46,6 +46,8 @@ library ClaimHashLib {
         function(uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32, bytes32);
     using EfficiencyLib for uint256;
     using HashLib for uint256;
+    using HashLib for Claim;
+    using HashLib for BatchClaim;
     using HashLib for BatchClaimComponent[];
     using HashLib for AllocatedTransfer;
     using HashLib for AllocatedBatchTransfer;
@@ -59,49 +61,53 @@ library ClaimHashLib {
         return transfer.toBatchTransferMessageHash();
     }
 
-    ///// CATEGORY 2: Claim with witness message & type hashes /////
-    function toMessageHashes(Claim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toClaimHash.usingClaim()(claim);
+    ///// CATEGORY 2: Claim hashes & type hashes /////
+    function toClaimHashAndTypehash(Claim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+        return claim.toClaimHash();
     }
 
-    function toMessageHashes(BatchClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toBatchClaimHash.usingBatchClaim()(claim, claim.claims.toCommitmentsHash());
-    }
-
-    function toMessageHashes(MultichainClaim calldata claim)
+    function toClaimHashAndTypehash(BatchClaim calldata claim)
         internal
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toMultichainClaimWithWitnessMessageHash(claim);
+        return claim.toBatchClaimHash(claim.claims.toCommitmentsHash());
     }
 
-    function toMessageHashes(BatchMultichainClaim calldata claim)
+    function toClaimHashAndTypehash(MultichainClaim calldata claim)
         internal
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toBatchMultichainClaimWithWitnessMessageHash(claim);
+        return _toMultichainClaimHashAndTypehash(claim);
     }
 
-    function toMessageHashes(ExogenousMultichainClaim calldata claim)
+    function toClaimHashAndTypehash(BatchMultichainClaim calldata claim)
         internal
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toExogenousMultichainClaimWithWitnessMessageHash(claim);
+        return _toBatchMultichainClaimHashAndTypehash(claim);
     }
 
-    function toMessageHashes(ExogenousBatchMultichainClaim calldata claim)
+    function toClaimHashAndTypehash(ExogenousMultichainClaim calldata claim)
         internal
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toExogenousBatchMultichainClaimWithWitnessMessageHash(claim);
+        return _toExogenousMultichainClaimHashAndTypehash(claim);
+    }
+
+    function toClaimHashAndTypehash(ExogenousBatchMultichainClaim calldata claim)
+        internal
+        view
+        returns (bytes32 claimHash, bytes32 typehash)
+    {
+        return _toExogenousBatchMultichainClaimHashAndTypehash(claim);
     }
 
     ///// Private helper functions /////
-    function _toGenericMultichainClaimWithWitnessMessageHash(
+    function _toGenericMultichainClaimHashAndTypehash(
         uint256 claim,
         uint256 additionalInput,
         function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
@@ -110,7 +116,7 @@ library ClaimHashLib {
         return (hashFn(claim, 0xa0, allocationTypehash, typehash, additionalInput), typehash);
     }
 
-    function _toGenericBatchMultichainClaimWithWitnessMessageHash(
+    function _toGenericBatchMultichainClaimHashAndTypehash(
         uint256 claim,
         uint256 additionalInput,
         function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
@@ -119,46 +125,46 @@ library ClaimHashLib {
         return (hashFn(claim, 0x60, allocationTypehash, typehash, additionalInput), typehash);
     }
 
-    function _toMultichainClaimWithWitnessMessageHash(MultichainClaim calldata claim)
+    function _toMultichainClaimHashAndTypehash(MultichainClaim calldata claim)
         private
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toGenericMultichainClaimWithWitnessMessageHash.usingMultichainClaimWithWitness()(
+        return _toGenericMultichainClaimHashAndTypehash.usingMultichainClaim()(
             claim,
-            HashLib.toCommitmentsHashFromSingleLock.usingMultichainClaimWithWitness()(claim),
+            HashLib.toCommitmentsHashFromSingleLock.usingMultichainClaim()(claim),
             HashLib.toMultichainClaimMessageHash
         );
     }
 
-    function _toExogenousMultichainClaimWithWitnessMessageHash(ExogenousMultichainClaim calldata claim)
+    function _toExogenousMultichainClaimHashAndTypehash(ExogenousMultichainClaim calldata claim)
         private
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousMultichainClaimWithWitness()(
+        return _toGenericMultichainClaimHashAndTypehash.usingExogenousMultichainClaim()(
             claim,
-            HashLib.toCommitmentsHashFromSingleLock.usingExogenousMultichainClaimWithWitness()(claim),
+            HashLib.toCommitmentsHashFromSingleLock.usingExogenousMultichainClaim()(claim),
             HashLib.toExogenousMultichainClaimMessageHash
         );
     }
 
-    function _toBatchMultichainClaimWithWitnessMessageHash(BatchMultichainClaim calldata claim)
+    function _toBatchMultichainClaimHashAndTypehash(BatchMultichainClaim calldata claim)
         private
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toGenericBatchMultichainClaimWithWitnessMessageHash.usingBatchMultichainClaim()(
+        return _toGenericBatchMultichainClaimHashAndTypehash.usingBatchMultichainClaim()(
             claim, claim.claims.toCommitmentsHash(), HashLib.toMultichainClaimMessageHash
         );
     }
 
-    function _toExogenousBatchMultichainClaimWithWitnessMessageHash(ExogenousBatchMultichainClaim calldata claim)
+    function _toExogenousBatchMultichainClaimHashAndTypehash(ExogenousBatchMultichainClaim calldata claim)
         private
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return _toGenericBatchMultichainClaimWithWitnessMessageHash.usingExogenousBatchMultichainClaim()(
+        return _toGenericBatchMultichainClaimHashAndTypehash.usingExogenousBatchMultichainClaim()(
             claim, claim.claims.toCommitmentsHash(), HashLib.toExogenousMultichainClaimMessageHash
         );
     }

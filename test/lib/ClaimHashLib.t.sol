@@ -58,7 +58,7 @@ contract ClaimHashLibTester {
     }
 
     function callToMessageHashes(Claim calldata claim) external view returns (bytes32 claimHash, bytes32 typehash) {
-        return ClaimHashLib.toMessageHashes(claim);
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
     function callToMessageHashes(BatchClaim calldata claim)
@@ -66,7 +66,7 @@ contract ClaimHashLibTester {
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return ClaimHashLib.toMessageHashes(claim);
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
     function callToMessageHashes(MultichainClaim calldata claim)
@@ -74,7 +74,7 @@ contract ClaimHashLibTester {
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return ClaimHashLib.toMessageHashes(claim);
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
     function callToMessageHashes(BatchMultichainClaim calldata claim)
@@ -82,7 +82,7 @@ contract ClaimHashLibTester {
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return ClaimHashLib.toMessageHashes(claim);
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
     function callToMessageHashes(ExogenousMultichainClaim calldata claim)
@@ -90,7 +90,7 @@ contract ClaimHashLibTester {
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return ClaimHashLib.toMessageHashes(claim);
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
     function callToMessageHashes(ExogenousBatchMultichainClaim calldata claim)
@@ -98,7 +98,7 @@ contract ClaimHashLibTester {
         view
         returns (bytes32 claimHash, bytes32 typehash)
     {
-        return ClaimHashLib.toMessageHashes(claim);
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
     function callToIdsAndAmountsHash(BatchClaimComponent[] calldata claims) external pure returns (uint256) {

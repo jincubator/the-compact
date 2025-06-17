@@ -201,7 +201,7 @@ Registration can be done by the sponsor or a third party (if they provide the sp
 
 The current registration status for a given claim can be queried via the `ITheCompact.isRegistered` function:
 ```solidity
-bool isRegistered = theCompact.isRegistered(sponsor, claimhash, typehash);
+bool isRegistered = theCompact.isRegistered(sponsor, claimHash, typehash);
 ```
 
 ### Claimant Processing & Structure
