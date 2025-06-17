@@ -92,18 +92,6 @@ library EfficiencyLib {
     }
 
     /**
-     * @notice Internal pure function that checks if a bytes12 value is zero. Only
-     * safe to use if the value is known to not have any dirty lower bits set.
-     * @param value The value to check.
-     * @return isNull Whether the value is zero.
-     */
-    function isZero(bytes12 value) internal pure returns (bool isNull) {
-        assembly ("memory-safe") {
-            isNull := iszero(value)
-        }
-    }
-
-    /**
      * @notice Internal pure function that converts a boolean to a uint256.
      * @param a  The boolean to convert.
      * @return b The resulting uint256.

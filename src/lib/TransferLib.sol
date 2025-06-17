@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { TransferBenchmarkLib } from "./TransferBenchmarkLib.sol";
 
@@ -13,8 +12,6 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
  * low-level shared logic for processing transfers, withdrawals and deposits.
  */
 library TransferLib {
-    using EfficiencyLib for bool;
-    using EfficiencyLib for bytes12;
     using TransferLib for address;
     using IdLib for uint256;
     using SafeTransferLib for address;
@@ -119,7 +116,7 @@ library TransferLib {
             assembly ("memory-safe") {
                 mstore(0x14, to) // Store the `to` argument.
                 mstore(0x34, amount) // Store the `amount` argument.
-                mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
+                mstore(0x00, shl(96, 0xa9059cbb)) // `transfer(address,uint256)`.
 
                 // Perform the transfer using half of available gas & examine the call for failure.
                 withdrawalSucceeded :=
@@ -258,7 +255,7 @@ library TransferLib {
         // Extract the recipient address referenced by the claimant.
         address recipient = claimant.toAddress();
 
-        if (claimantLockTag.isZero()) {
+        if (claimantLockTag == bytes12(0)) {
             // Case 1: Zero lock tag - perform a standard withdrawal operation
             // to the recipient address referenced by the claimant.
             from.withdraw(recipient, id, amount, false);
