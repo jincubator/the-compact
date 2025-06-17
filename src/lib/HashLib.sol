@@ -27,8 +27,7 @@ import {
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SEVEN,
-    ELEMENT_TYPEHASH,
-    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH
+    ELEMENT_TYPEHASH
 } from "../types/EIP712Types.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
@@ -42,7 +41,6 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
  */
 library HashLib {
     using EfficiencyLib for bool;
-    using EfficiencyLib for uint256;
     using HashLib for uint256[2][];
 
     /**
