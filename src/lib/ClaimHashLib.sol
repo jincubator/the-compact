@@ -54,11 +54,11 @@ library ClaimHashLib {
 
     ///// CATEGORY 1: Transfer claim hashes /////
     function toClaimHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        return transfer.toTransferMessageHash();
+        return transfer.toTransferClaimHash();
     }
 
     function toClaimHash(AllocatedBatchTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        return transfer.toBatchTransferMessageHash();
+        return transfer.toBatchTransferClaimHash();
     }
 
     ///// CATEGORY 2: Claim hashes & type hashes /////
@@ -131,9 +131,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericMultichainClaimHashAndTypehash.usingMultichainClaim()(
-            claim,
-            HashLib.toCommitmentsHashFromSingleLock.usingMultichainClaim()(claim),
-            HashLib.toMultichainClaimMessageHash
+            claim, HashLib.toCommitmentsHashFromSingleLock.usingMultichainClaim()(claim), HashLib.toMultichainClaimHash
         );
     }
 
@@ -145,7 +143,7 @@ library ClaimHashLib {
         return _toGenericMultichainClaimHashAndTypehash.usingExogenousMultichainClaim()(
             claim,
             HashLib.toCommitmentsHashFromSingleLock.usingExogenousMultichainClaim()(claim),
-            HashLib.toExogenousMultichainClaimMessageHash
+            HashLib.toExogenousMultichainClaimHash
         );
     }
 
@@ -155,7 +153,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericBatchMultichainClaimHashAndTypehash.usingBatchMultichainClaim()(
-            claim, claim.claims.toCommitmentsHash(), HashLib.toMultichainClaimMessageHash
+            claim, claim.claims.toCommitmentsHash(), HashLib.toMultichainClaimHash
         );
     }
 
@@ -165,7 +163,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericBatchMultichainClaimHashAndTypehash.usingExogenousBatchMultichainClaim()(
-            claim, claim.claims.toCommitmentsHash(), HashLib.toExogenousMultichainClaimMessageHash
+            claim, claim.claims.toCommitmentsHash(), HashLib.toExogenousMultichainClaimHash
         );
     }
 }

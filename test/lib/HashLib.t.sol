@@ -581,7 +581,7 @@ contract HashLibTester {
         view
         returns (bytes32 messageHash)
     {
-        return transfer.toTransferMessageHash();
+        return transfer.toTransferClaimHash();
     }
 
     function callToBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer)
@@ -589,7 +589,7 @@ contract HashLibTester {
         view
         returns (bytes32 messageHash)
     {
-        return transfer.toBatchTransferMessageHash();
+        return transfer.toBatchTransferClaimHash();
     }
 
     function callToIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)

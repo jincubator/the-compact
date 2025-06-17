@@ -179,13 +179,13 @@ contract TransferLogic is ConstructorLogic {
     /**
      * @notice Private function that checks expiration, verifies the allocator's signature,
      * and emits a claim event.
-     * @param messageHash     The EIP-712 hash of the transfer message.
+     * @param claimHash       The EIP-712 hash of the compact associated with the transfer.
      * @param allocator       The address of the allocator.
      * @param transferPayload The AllocatedTransfer struct containing signature and expiry.
      * @param idsAndAmounts   An array with IDs and aggregate transfer amounts.
      */
     function _notExpiredAndAuthorizedByAllocator(
-        bytes32 messageHash,
+        bytes32 claimHash,
         address allocator,
         AllocatedTransfer calldata transferPayload,
         uint256[2][] memory idsAndAmounts
@@ -197,7 +197,7 @@ contract TransferLogic is ConstructorLogic {
         expires.later();
 
         allocator.callAuthorizeClaim(
-            messageHash,
+            claimHash,
             msg.sender, // sponsor
             nonce,
             expires,
@@ -206,7 +206,7 @@ contract TransferLogic is ConstructorLogic {
         );
 
         // Emit Claim event.
-        msg.sender.emitClaim(messageHash, allocator, nonce);
+        msg.sender.emitClaim(claimHash, allocator, nonce);
     }
 
     /**

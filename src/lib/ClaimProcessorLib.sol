@@ -42,17 +42,17 @@ library ClaimProcessorLib {
      * through direct registration or a provided signature or EIP-1271 call) and the (potentially
      * qualified) allocator authorization. Finally, emits a Claim event.
      * @dev caller of this function MUST implement reentrancy guard.
-     * @param messageHash              The EIP-712 hash of the claim message.
-     * @param allocatorId              The unique identifier for the allocator mediating the claim.
-     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param domainSeparator          The local domain separator.
-     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
-     * @param idsAndAmounts            The claimable resource lock IDs and amounts.
-     * @param typehash                 The EIP-712 typehash used for the claim message.
-     * @return sponsor                 The extracted address of the claim sponsor.
+     * @param claimHash              The EIP-712 hash of the compact for which the claim is being validated.
+     * @param allocatorId            The unique identifier for the allocator mediating the claim.
+     * @param calldataPointer        Pointer to the location of the associated struct in calldata.
+     * @param domainSeparator        The local domain separator.
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param idsAndAmounts          The claimable resource lock IDs and amounts.
+     * @param typehash               The EIP-712 typehash used for the claim message.
+     * @return sponsor               The extracted address of the claim sponsor.
      */
     function validate(
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint96 allocatorId,
         uint256 calldataPointer,
         bytes32 domainSeparator,
@@ -82,13 +82,13 @@ library ClaimProcessorLib {
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
 
         // Validate that the sponsor has authorized the claim.
-        _validateSponsor(sponsor, messageHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts);
+        _validateSponsor(sponsor, claimHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts);
 
         // Validate that the allocator has authorized the claim.
-        _validateAllocator(allocator, sponsor, messageHash, calldataPointer, idsAndAmounts, nonce, expires);
+        _validateAllocator(allocator, sponsor, claimHash, calldataPointer, idsAndAmounts, nonce, expires);
 
         // Emit claim event.
-        sponsor.emitClaim(messageHash, allocator, nonce);
+        sponsor.emitClaim(claimHash, allocator, nonce);
     }
 
     /**
@@ -96,15 +96,15 @@ library ClaimProcessorLib {
      * signatures. Extracts claim parameters from calldata, validates the claim,
      * and executes operations for multiple recipients. Uses the zero sponsor
      * domain separator.
-     * @param messageHash      The EIP-712 hash of the claim message.
-     * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param typehash         The EIP-712 typehash used for the claim message.
-     * @param domainSeparator  The local domain separator.
+     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
+     * @param calldataPointer Pointer to the location of the associated struct in calldata.
+     * @param typehash        The EIP-712 typehash used for the claim message.
+     * @param domainSeparator The local domain separator.
      */
-    function processSimpleClaim(bytes32 messageHash, uint256 calldataPointer, bytes32 typehash, bytes32 domainSeparator)
+    function processSimpleClaim(bytes32 claimHash, uint256 calldataPointer, bytes32 typehash, bytes32 domainSeparator)
         internal
     {
-        messageHash.processClaimWithComponents(calldataPointer, 0, typehash, domainSeparator, validate);
+        claimHash.processClaimWithComponents(calldataPointer, 0, typehash, domainSeparator, validate);
     }
 
     /**
@@ -112,18 +112,18 @@ library ClaimProcessorLib {
      * signatures. Extracts batch claim parameters from calldata, validates the claim,
      * and executes operations for multiple resource locks to multiple recipients. Uses the
      * message hash itself as the qualification message and a zero sponsor domain separator.
-     * @param messageHash      The EIP-712 hash of the claim message.
-     * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param typehash         The EIP-712 typehash used for the claim message.
-     * @param domainSeparator  The local domain separator.
+     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
+     * @param calldataPointer Pointer to the location of the associated struct in calldata.
+     * @param typehash        The EIP-712 typehash used for the claim message.
+     * @param domainSeparator The local domain separator.
      */
     function processSimpleBatchClaim(
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithBatchComponents(calldataPointer, 0, typehash, domainSeparator, validate);
+        claimHash.processClaimWithBatchComponents(calldataPointer, 0, typehash, domainSeparator, validate);
     }
 
     /**
@@ -131,20 +131,20 @@ library ClaimProcessorLib {
      * Extracts claim parameters from calldata, validates the claim using the provided
      * sponsor domain, and executes operations for multiple recipients. Uses the message
      * hash itself as the qualification message.
-     * @param messageHash      The EIP-712 hash of the claim message.
-     * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param sponsorDomain    The domain separator for the sponsor's signature.
-     * @param typehash         The EIP-712 typehash used for the claim message.
-     * @param domainSeparator  The local domain separator.
+     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
+     * @param calldataPointer Pointer to the location of the associated struct in calldata.
+     * @param sponsorDomain   The domain separator for the sponsor's signature.
+     * @param typehash        The EIP-712 typehash used for the claim message.
+     * @param domainSeparator The local domain separator.
      */
     function processClaimWithSponsorDomain(
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
+        claimHash.processClaimWithComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
     }
 
     /**
@@ -153,20 +153,20 @@ library ClaimProcessorLib {
      * using the provided sponsor domain, and executes operations for multiple resource
      * locks to multiple recipients. Uses the message hash itself as the qualification
      * message.
-     * @param messageHash      The EIP-712 hash of the claim message.
-     * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param sponsorDomain    The domain separator for the sponsor's signature.
-     * @param typehash         The EIP-712 typehash used for the claim message.
-     * @param domainSeparator  The local domain separator.
+     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
+     * @param calldataPointer Pointer to the location of the associated struct in calldata.
+     * @param sponsorDomain   The domain separator for the sponsor's signature.
+     * @param typehash        The EIP-712 typehash used for the claim message.
+     * @param domainSeparator The local domain separator.
      */
     function processBatchClaimWithSponsorDomain(
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithBatchComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
+        claimHash.processClaimWithBatchComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
     }
 
     /**
@@ -174,7 +174,7 @@ library ClaimProcessorLib {
      * @dev Extracts the sponsor signature from calldata and validates authorization through
      * ECDSA, direct registration, EIP1271, or emissary.
      * @param sponsor                The address of the sponsor of the claimed compact.
-     * @param messageHash            The EIP-712 message hash of the claim.
+     * @param claimHash              The EIP-712 hash of the compact where authorization is being checked.
      * @param calldataPointer        Pointer to the location of the associated struct in calldata.
      * @param sponsorDomainSeparator The domain separator for the sponsor's signature.
      * @param typehash               The EIP-712 typehash used for the claim message.
@@ -182,7 +182,7 @@ library ClaimProcessorLib {
      */
     function _validateSponsor(
         address sponsor,
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
@@ -197,7 +197,7 @@ library ClaimProcessorLib {
         }
 
         // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
-        messageHash.validateSponsorAndConsumeRegistration(
+        claimHash.validateSponsorAndConsumeRegistration(
             sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash
         );
     }
@@ -207,7 +207,7 @@ library ClaimProcessorLib {
      * @dev Extracts allocator data from calldata and validates allocator authorization through the allocator interface.
      * @param allocator       The address of the allocator mediating the claim.
      * @param sponsor         The address of the sponsor of the claimed compact.
-     * @param messageHash     The EIP-712 message hash of the claim.
+     * @param claimHash       The EIP-712 hash of the compact where authorization is being checked.
      * @param calldataPointer Pointer to the location of the associated struct in calldata.
      * @param idsAndAmounts   The claimable resource lock IDs and amounts.
      * @param nonce           The nonce used for the claim.
@@ -216,7 +216,7 @@ library ClaimProcessorLib {
     function _validateAllocator(
         address allocator,
         address sponsor,
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         uint256[2][] memory idsAndAmounts,
         uint256 nonce,
@@ -231,7 +231,7 @@ library ClaimProcessorLib {
         }
 
         _validateAllocatorUsingExtractedData(
-            allocator, sponsor, messageHash, allocatorData, idsAndAmounts, nonce, expires
+            allocator, sponsor, claimHash, allocatorData, idsAndAmounts, nonce, expires
         );
     }
 
@@ -240,7 +240,7 @@ library ClaimProcessorLib {
      * @dev Validates allocator authorization through the allocator interface using provided allocator data.
      * @param allocator     The address of the allocator mediating the claim.
      * @param sponsor       The address of the sponsor of the claimed compact.
-     * @param messageHash   The EIP-712 message hash of the claim.
+     * @param claimHash     The EIP-712 hash of the compact where authorization is being checked.
      * @param allocatorData The allocator-specific data for claim authorization.
      * @param idsAndAmounts The claimable resource lock IDs and amounts.
      * @param nonce         The nonce used for the claim.
@@ -249,13 +249,13 @@ library ClaimProcessorLib {
     function _validateAllocatorUsingExtractedData(
         address allocator,
         address sponsor,
-        bytes32 messageHash,
+        bytes32 claimHash,
         bytes calldata allocatorData,
         uint256[2][] memory idsAndAmounts,
         uint256 nonce,
         uint256 expires
     ) private {
         // Validate allocator authorization through the allocator interface.
-        allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
+        allocator.callAuthorizeClaim(claimHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
     }
 }
