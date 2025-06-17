@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/uniswap/the-compact/branch/v1/graph/badge.svg?token=BPcWGQYU53)](https://codecov.io/gh/uniswap/the-compact/tree/v1)
 [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](./README.md)
 
-> :warning: This is an early-stage contract under active development; it has not yet been properly tested, reviewed, or audited. Use at your own risk.
+> 🕵 The Compact V1 has undergone two independent security reviews (by [OpenZeppelin](https://openzeppelin.com) and [Spearbit Cantina](https://cantina.xyz)), and this codebase includes fixes from audit findings. Full audit reports will be published shortly.
 
 ## Table of Contents
 1. [Summary](#summary)
@@ -123,10 +123,11 @@ There are three main EIP-712 payload types a sponsor can sign:
         address sponsor;    // The account to source the tokens from.
         uint256 nonce;      // A parameter to enforce replay protection, scoped to allocator.
         uint256 expires;    // The time at which the claim expires.
-        uint256 id;         // The token ID of the ERC6909 token to allocate.
-        uint256 amount;     // The amount of ERC6909 tokens to allocate.
+        bytes12 lockTag;    // A tag representing the allocator, reset period, and scope.
+        address token;      // The locked token, or address(0) for native tokens.
+        uint256 amount;     // The amount of ERC6909 tokens to commit from the lock.
         // (Optional) Witness data may follow:
-        Mandate mandate;
+        // Mandate mandate;
     }
     ```
 
@@ -138,9 +139,15 @@ There are three main EIP-712 payload types a sponsor can sign:
         address sponsor;            // The account to source the tokens from.
         uint256 nonce;              // A parameter to enforce replay protection, scoped to allocator.
         uint256 expires;            // The time at which the claim expires.
-        uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
+        Lock[] commitments;         // The committed locks with lock tags, tokens, & amounts.
         // (Optional) Witness data may follow:
         // Mandate mandate;
+    }
+
+    struct Lock {
+        bytes12 lockTag;    // A tag representing the allocator, reset period, and scope.
+        address token;      // The locked token, or address(0) for native tokens.
+        uint256 amount;     // The maximum committed amount of tokens.
     }
     ```
 
@@ -151,16 +158,16 @@ There are three main EIP-712 payload types a sponsor can sign:
         address sponsor;     // The account to source the tokens from.
         uint256 nonce;       // A parameter to enforce replay protection, scoped to allocator.
         uint256 expires;     // The time at which the claim expires.
-        Element[] elements;  // Arbiter, chainId, ids & amounts, and mandate for each chain.
+        Element[] elements;  // Arbiter, chainId, commitments, and mandate for each chain.
     }
 
     // Defined in src/types/EIP712Types.sol
     struct Element {
         address arbiter;            // The account tasked with verifying and submitting the claim.
         uint256 chainId;            // The chainId where the tokens are located.
-        uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
+        Lock[] commitments;         // The committed locks with lock tags, tokens, & amounts.
         // Witness data MUST follow (mandatory for multichain compacts):
-        // Mandate mandate;
+        Mandate mandate;
     }
     ```
 The `Mandate` struct within these payloads is for [Witness Structure](#witness-structure). The EIP-712 typehash for these structures is constructed dynamically; empty `Mandate` structs result in a typestring without witness data. Witness data is optional _except_ in a `MultichainCompact`; a multichain compact's elements **must** include a witness.
@@ -168,8 +175,19 @@ The `Mandate` struct within these payloads is for [Witness Structure](#witness-s
 **Permit2 Integration Payloads:**
 The Compact also supports integration with Permit2 for gasless deposits, using additional EIP-712 structures for witness data within Permit2 messages:
 -   `CompactDeposit(bytes12 lockTag,address recipient)`: For basic Permit2 deposits.
--   `Activation(uint256 id,Compact compact)Compact(...)Mandate(...)`: Combines deposits with single compact registration.
--   `BatchActivation(uint256[] ids,Compact compact)Compact(...)Mandate(...)`: Combines deposits with batch compact registration.
+-   `Activation(address activator,uint256 id,Compact compact)Compact(...)Mandate(...)`: Combines deposits with single compact registration.
+-   `BatchActivation(address activator,uint256[] ids,Compact compact)Compact(...)Mandate(...)`: Combines deposits with batch compact registration.
+
+**CompactCategory Enum:**
+The Compact introduces a `CompactCategory` enum to distinguish between different types of compacts when using Permit2 integration:
+```solidity
+// Defined in src/types/CompactCategory.sol
+enum CompactCategory {
+    Compact,
+    BatchCompact,
+    MultichainCompact
+}
+```
 
 ### Witness Structure
 The witness mechanism (`Mandate` struct) allows extending compacts with additional data for specifying conditions or parameters for a claim. The Compact protocol itself doesn't interpret the `Mandate`'s content; this is the responsibility of the arbiter. However, The Compact uses the hash of the witness data and its reconstructed EIP-712 typestring to derive the final claim hash for validation.
@@ -324,6 +342,27 @@ $ forge test -v
 $ forge coverage
 ```
 
+## Development and Testing
+
+**Testing Requirements:**
+-   **Foundry**: The project uses Foundry for testing and development. Install via the official installer.
+-   **Dependencies**: Run `forge install` to install all required dependencies including Permit2, Solady, and other libraries.
+-   **Gas Snapshots**: Tests include gas snapshots to track performance. Run `forge test -v` to see detailed gas usage.
+-   **Coverage**: Generate coverage reports with `forge coverage` to ensure comprehensive testing.
+
+**Key Test Categories:**
+-   **Unit Tests**: Located in `test/unit/` covering individual components and logic.
+-   **Integration Tests**: Located in `test/integration/` covering end-to-end workflows.
+-   **Benchmark Tests**: Test the benchmarking functionality for withdrawal cost measurement.
+-   **Permit2 Tests**: Comprehensive tests for Permit2 integration including witness data handling.
+
+**Development Notes:**
+-   The contract uses Solady's ERC6909 implementation for gas efficiency.
+-   All external functions include comprehensive NatSpec documentation.
+-   The codebase follows strict gas optimization patterns with extensive use of assembly.
+-   The protocol uses custom errors for better gas efficiency and clearer debugging.
+-   Extensive integration with Permit2 enables gasless transactions with flexible support for custom witness data.
+
 ## Usage (Flows by Actor)
 
 The Compact V1 facilitates interactions between several key actors. Here's how typical participants might use the system. See the full interface definitions in [`src/interfaces/`](./src/interfaces/) and detailed explanations in [Key Concepts](#key-concepts).
@@ -397,6 +436,8 @@ Allocators are crucial infrastructure for ensuring resource lock integrity.
 **1. Registration:**
     - Register via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L561) to get an `allocatorId`. This is a required step that must be performed before the allocator may be assigned to a resource lock. Anyone can register an allocator if one of three conditions is met: the caller is the allocator address being registered; the allocator address contains code; or a proof is supplied representing valid create2 deployment parameters.
 
+**Create2 Proof Format**: When registering an allocator that doesn't yet exist but will be deployed via create2, provide an 85-byte proof containing: `0xff ++ factory ++ salt ++ initcode hash`. This allows pre-registration of deterministic addresses.
+
 **2. Implement `IAllocator` Interface:**
     - Deploy a contract implementing [`IAllocator`](./src/interfaces/IAllocator.sol).
     - `attest`: Called during ERC6909 transfers. Must verify safety and return `IAllocator.attest.selector`.
@@ -421,7 +462,62 @@ The Compact provides several view functions defined in the [`ITheCompact`](./src
 -   [`DOMAIN_SEPARATOR`](./src/interfaces/ITheCompact.sol#L659): Returns the EIP-712 domain separator for the contract.
 -   [`name`](./src/interfaces/ITheCompact.sol#L665): Returns the contract name ("TheCompact").
 
-All standard ERC6909 ([EIP-6909](https://eips.ethereum.org/EIPS/eip-6909)) and ERC165 ([EIP-165](https://eips.ethereum.org/EIPS/eip-165)) functions are also supported, as well as [Extslod](./src/lib/Extsload.sol) to allow arbitrary sload/tload by slot. 
+**ERC6909 Metadata Functions:**
+The Compact also implements standard ERC6909 metadata functions for resource lock tokens:
+-   `name(uint256 id)`: Returns the name for a specific resource lock token ID.
+-   `symbol(uint256 id)`: Returns the symbol for a specific resource lock token ID.
+-   `decimals(uint256 id)`: Returns the decimals for a specific resource lock token ID.
+-   `tokenURI(uint256 id)`: Returns the ERC6909 Uniform Resource Identifier (URI) for a specific resource lock token ID.
+
+All standard ERC6909 ([EIP-6909](https://eips.ethereum.org/EIPS/eip-6909)) and ERC165 ([EIP-165](https://eips.ethereum.org/EIPS/eip-165)) functions are also supported, as well as [Extsload](./src/lib/Extsload.sol) to allow arbitrary sload/tload by slot.
+
+## Error Handling
+The Compact defines several custom errors to provide clear feedback when operations fail:
+
+**Deposit and Registration Errors:**
+-   `InvalidToken(address token)`: Thrown when an invalid token address is provided.
+-   `InvalidBatchDepositStructure()`: Thrown when batch deposit structure is invalid.
+-   `InvalidDepositTokenOrdering()`: Thrown when tokens in batch deposits are not properly ordered.
+-   `InvalidDepositBalanceChange()`: Thrown when the actual balance change doesn't match expectations.
+-   `InvalidLockTag()`: Thrown when an invalid lock tag is provided.
+
+**Allocation and Authorization Errors:**
+-   `InvalidAllocation(address allocator)`: Thrown when an invalid allocator is used.
+-   `InvalidBatchAllocation()`: Thrown when batch allocation is invalid.
+-   `InvalidRegistrationProof(address allocator)`: Thrown when allocator registration proof is invalid.
+-   `InvalidScope(uint256 id)`: Thrown when an invalid scope is used for a resource lock.
+-   `AllocatedAmountExceeded(uint256 allocatedAmount, uint256 providedAmount)`: Thrown when allocated amount is exceeded.
+
+**Signature and Verification Errors:**
+-   `InvalidSignature()`: Thrown when signature verification fails.
+-   `Expired(uint256 expiration)`: Thrown when a compact has expired.
+
+**Withdrawal Errors:**
+-   `PrematureWithdrawal(uint256 id)`: Thrown when attempting withdrawal before reset period.
+-   `ForcedWithdrawalFailed()`: Thrown when forced withdrawal fails.
+-   `ForcedWithdrawalAlreadyDisabled(address account, uint256 id)`: Thrown when forced withdrawal is already disabled.
+
+**Emissary Errors:**
+-   `InvalidEmissaryAssignment()`: Thrown when emissary assignment is invalid.
+-   `EmissaryAssignmentUnavailable(uint256 assignableAt)`: Thrown when emissary assignment is not yet available.
+
+**System Errors:**
+-   `UnallocatedTransfer(address operator, address from, address to, uint256 id, uint256 amount)`: Thrown when attempting unallocated transfer.
+-   `Permit2CallFailed()`: Thrown when Permit2 call fails.
+-   `ReentrantCall(address existingCaller)`: Thrown when reentrant call is detected.
+-   `InconsistentAllocators()`: Thrown when allocators are inconsistent across batch operations.
+-   `ChainIndexOutOfRange()`: Thrown when chain index is out of range in multichain operations.
+-   `InvalidNonce(address account, uint256 nonce)`: Thrown when nonce is invalid or already consumed.
+-   `InvalidCompactCategory()`: Thrown when an invalid compact category is provided in Permit2 operations.
+
+**Benchmarking Errors:**
+-   `InvalidBenchmark()`: Thrown when benchmarking parameters are invalid.
+-   `InsufficientStipendForWithdrawalFallback()`: Thrown when insufficient gas stipend for withdrawal fallback.
+
+**Additional Notes:**
+-   The `__benchmark` function requires exactly 2 wei to be sent with the call. This is used to benchmark withdrawal costs for determining fallback stipends. The benchmarking process measures cold account access and typical ERC20/native transfers. These can be queried via `getRequiredWithdrawalFallbackStipends()`.
+-   Batch deposit functions require tokens to be ordered by address (ascending) for gas efficiency and to prevent processing the same token multiple times.
+-   The protocol handles dynamic typestring construction for witness data. It is critical that user-supplied witnesses are [properly structured](#witness-structure).
 
 ## Core Interfaces Overview
 
@@ -436,7 +532,13 @@ The core interface for The Compact protocol. It provides functions for:
 -   **Forced Withdrawals:** `enableForcedWithdrawal`, `disableForcedWithdrawal`, `forcedWithdrawal`.
 -   **Emissary Management:** `assignEmissary`, `scheduleEmissaryAssignment`.
 -   **Allocator Management:** `__registerAllocator`, `consume` (for allocators to consume nonces).
+-   **Benchmarking:** `__benchmark` for measuring withdrawal costs (requires exactly 2 wei).
 -   **View Functions:** As listed in the [View Functions](#view-functions) section.
+
+**Important Notes:**
+-   The `__benchmark` function requires exactly 2 wei to be sent with the call. This is used to benchmark withdrawal costs for determining fallback stipends.
+-   All Permit2 deposit-and-register functions require a `CompactCategory` parameter to specify the type of compact being registered.
+-   Batch deposit functions require tokens to be ordered by address (ascending) for gas efficiency.
 
 ### ITheCompactClaims
 [`src/interfaces/ITheCompactClaims.sol`](./src/interfaces/ITheCompactClaims.sol)
