@@ -104,7 +104,7 @@ contract ComponentLibTest is Test {
 
         // if we did overflow, aggregate function should revert
         if (expectOverflow) {
-            vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));`
+            vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
             tester.aggregateComponents(limitedRecipients);
         } else {
             assertEq(tester.aggregateComponents(limitedRecipients), expectedSum, "Fuzz Aggregate failed");
