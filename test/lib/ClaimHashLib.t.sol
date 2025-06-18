@@ -57,11 +57,7 @@ contract ClaimHashLibTester {
         return ClaimHashLib.toClaimHash(transfer);
     }
 
-    function callToMessageHashes(Claim calldata claim) external view returns (bytes32 claimHash, bytes32 typehash) {
-        return ClaimHashLib.toClaimHashAndTypehash(claim);
-    }
-
-    function callToMessageHashes(BatchClaim calldata claim)
+    function callToClaimHashAndTypehash(Claim calldata claim)
         external
         view
         returns (bytes32 claimHash, bytes32 typehash)
@@ -69,7 +65,7 @@ contract ClaimHashLibTester {
         return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
-    function callToMessageHashes(MultichainClaim calldata claim)
+    function callToClaimHashAndTypehash(BatchClaim calldata claim)
         external
         view
         returns (bytes32 claimHash, bytes32 typehash)
@@ -77,7 +73,7 @@ contract ClaimHashLibTester {
         return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
-    function callToMessageHashes(BatchMultichainClaim calldata claim)
+    function callToClaimHashAndTypehash(MultichainClaim calldata claim)
         external
         view
         returns (bytes32 claimHash, bytes32 typehash)
@@ -85,7 +81,7 @@ contract ClaimHashLibTester {
         return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
-    function callToMessageHashes(ExogenousMultichainClaim calldata claim)
+    function callToClaimHashAndTypehash(BatchMultichainClaim calldata claim)
         external
         view
         returns (bytes32 claimHash, bytes32 typehash)
@@ -93,7 +89,7 @@ contract ClaimHashLibTester {
         return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
-    function callToMessageHashes(ExogenousBatchMultichainClaim calldata claim)
+    function callToClaimHashAndTypehash(ExogenousMultichainClaim calldata claim)
         external
         view
         returns (bytes32 claimHash, bytes32 typehash)
@@ -101,11 +97,19 @@ contract ClaimHashLibTester {
         return ClaimHashLib.toClaimHashAndTypehash(claim);
     }
 
-    function callToIdsAndAmountsHash(BatchClaimComponent[] calldata claims) external pure returns (uint256) {
+    function callToClaimHashAndTypehash(ExogenousBatchMultichainClaim calldata claim)
+        external
+        view
+        returns (bytes32 claimHash, bytes32 typehash)
+    {
+        return ClaimHashLib.toClaimHashAndTypehash(claim);
+    }
+
+    function callToCommitmentsHash(BatchClaimComponent[] calldata claims) external pure returns (uint256) {
         return claims.toCommitmentsHash();
     }
 
-    function callToIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts) external pure returns (bytes32) {
+    function callToCommitmentsHash(uint256[2][] calldata idsAndAmounts) external pure returns (bytes32) {
         return idsAndAmounts.toCommitmentsHash(new uint256[](0));
     }
 }
@@ -201,7 +205,7 @@ contract ClaimHashLibTest is Setup {
         );
     }
 
-    function testToMessageHashes_Claim() public view {
+    function testToClaimHashes_Claim() public view {
         Component[] memory claimants = new Component[](1);
         claimants[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
 
@@ -218,7 +222,7 @@ contract ClaimHashLibTest is Setup {
             claimants: claimants
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(claim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(claim);
 
         bytes32 expectedTypehash = keccak256(
             abi.encodePacked(
@@ -249,7 +253,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function testToMessageHashes_BatchClaim() public view {
+    function testToClaimHashes_BatchClaim() public view {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](2);
 
         Component[] memory portions1 = new Component[](1);
@@ -271,7 +275,7 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         bytes32 expectedTypehash = keccak256(
             abi.encodePacked(
@@ -308,7 +312,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function testToMessageHashes_MultichainClaim() public view {
+    function testToClaimHashes_MultichainClaim() public view {
         Component[] memory claimants = new Component[](1);
         claimants[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
 
@@ -329,7 +333,7 @@ contract ClaimHashLibTest is Setup {
             claimants: claimants
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(claim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(claim);
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
@@ -355,7 +359,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function testToMessageHashes_BatchMultichainClaim() public view {
+    function testToClaimHashes_BatchMultichainClaim() public view {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         Component[] memory portions = new Component[](1);
         portions[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
@@ -380,12 +384,12 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 thisChainElementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
@@ -400,7 +404,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function testToMessageHashes_ExogenousMultichainClaim() public view {
+    function testToClaimHashes_ExogenousMultichainClaim() public view {
         Component[] memory claimants = new Component[](1);
         claimants[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
 
@@ -423,7 +427,7 @@ contract ClaimHashLibTest is Setup {
             claimants: claimants
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(claim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(claim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
@@ -450,7 +454,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value");
     }
 
-    function testToMessageHashes_ExogenousBatchMultichainClaim() public view {
+    function testToClaimHashes_ExogenousBatchMultichainClaim() public view {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         Component[] memory portions = new Component[](1);
         portions[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
@@ -473,12 +477,12 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash);
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 elementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
@@ -515,12 +519,12 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (cast batch multi-chain)");
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 thisChainElementHash = keccak256(
             abi.encode(expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness)
@@ -563,7 +567,7 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(
@@ -572,7 +576,7 @@ contract ClaimHashLibTest is Setup {
             "Typehash should match expected value (cast exo batch multi-chain index 1)"
         );
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 elementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
@@ -589,7 +593,7 @@ contract ClaimHashLibTest is Setup {
         );
     }
 
-    function testToMessageHashes_MultichainClaim_MultipleChains() public view {
+    function testToClaimHashes_MultichainClaim_MultipleChains() public view {
         Component[] memory claimants = new Component[](1);
         claimants[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
 
@@ -614,7 +618,7 @@ contract ClaimHashLibTest is Setup {
             claimants: claimants
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(claim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(claim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (multi-chain)");
@@ -641,7 +645,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value (multi-chain)");
     }
 
-    function testToMessageHashes_BatchMultichainClaim_MultipleChains() public view {
+    function testToClaimHashes_BatchMultichainClaim_MultipleChains() public view {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         Component[] memory portions = new Component[](1);
         portions[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
@@ -666,12 +670,12 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (batch multi-chain)");
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 thisChainElementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
@@ -686,7 +690,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value (batch multi-chain)");
     }
 
-    function testToMessageHashes_ExogenousMultichainClaim_MultipleChains_Index1() public view {
+    function testToClaimHashes_ExogenousMultichainClaim_MultipleChains_Index1() public view {
         Component[] memory claimants = new Component[](1);
         claimants[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
 
@@ -713,7 +717,7 @@ contract ClaimHashLibTest is Setup {
             claimants: claimants
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(claim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(claim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (exo multi-chain index 1)");
@@ -740,7 +744,7 @@ contract ClaimHashLibTest is Setup {
         assertEq(actualClaimHash, expectedClaimHash, "Claim hash should match expected value (exo multi-chain index 1)");
     }
 
-    function testToMessageHashes_ExogenousBatchMultichainClaim_MultipleChains_Index1() public view {
+    function testToClaimHashes_ExogenousBatchMultichainClaim_MultipleChains_Index1() public view {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         Component[] memory portions = new Component[](1);
         portions[0] = Component({ claimant: CLAIMANT.asUint256(), amount: 100 });
@@ -767,7 +771,7 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(
@@ -776,7 +780,7 @@ contract ClaimHashLibTest is Setup {
             "Typehash should match expected value (cast exo batch multi-chain index 1)"
         );
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 elementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
@@ -818,12 +822,12 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(actualTypehash, expectedTypehash, "Typehash should match expected value (cast batch multi-chain)");
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 thisChainElementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
@@ -865,7 +869,7 @@ contract ClaimHashLibTest is Setup {
             claims: claims
         });
 
-        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToMessageHashes(batchClaim);
+        (bytes32 actualClaimHash, bytes32 actualTypehash) = tester.callToClaimHashAndTypehash(batchClaim);
 
         (bytes32 expectedElementTypehash, bytes32 expectedTypehash) = _computeMultichainTypehashes("Witness");
         assertEq(
@@ -874,7 +878,7 @@ contract ClaimHashLibTest is Setup {
             "Typehash should match expected value (cast exo batch multi-chain index 1)"
         );
 
-        uint256 idsAndAmountsHash = tester.callToIdsAndAmountsHash(claims);
+        uint256 idsAndAmountsHash = tester.callToCommitmentsHash(claims);
 
         bytes32 elementHash = _computeElementHash(
             expectedElementTypehash, address(this), block.chainid, idsAndAmountsHash, batchClaim.witness
