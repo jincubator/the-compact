@@ -2,7 +2,6 @@
 pragma solidity ^0.8.27;
 
 import { Scope } from "../types/Scope.sol";
-import { ResetPeriod } from "../types/ResetPeriod.sol";
 
 import { IdLib } from "./IdLib.sol";
 import { ConsumerLib } from "./ConsumerLib.sol";
@@ -11,7 +10,6 @@ import { DomainLib } from "./DomainLib.sol";
 import { EmissaryLib } from "./EmissaryLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 
-import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
 /**
@@ -30,8 +28,6 @@ library ValidityLib {
     using EmissaryLib for bytes32;
     using EmissaryLib for uint256[2][];
     using SignatureCheckerLib for address;
-
-    error NoIdsAndAmountsProvided();
 
     /**
      * @notice Internal function that retrieves an allocator's address from their ID and
@@ -90,12 +86,14 @@ library ValidityLib {
         }
 
         // Finally, check EIP1271 using the digest and signature.
-        if (!expectedSigner.isValidERC1271SignatureNowCalldata(digest, signature)) {
-            assembly ("memory-safe") {
-                // revert InvalidSignature();
-                mstore(0, 0x8baa579f)
-                revert(0x1c, 0x04)
-            }
+        if (expectedSigner.isValidERC1271SignatureNowCalldata(digest, signature)) {
+            return;
+        }
+
+        assembly ("memory-safe") {
+            // revert InvalidSignature();
+            mstore(0, 0x8baa579f)
+            revert(0x1c, 0x04)
         }
     }
 
