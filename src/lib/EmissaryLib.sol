@@ -68,9 +68,9 @@ library EmissaryLib {
         uint256 assignableAt = config.assignableAt;
         address currentEmissary = config.emissary;
 
-        // Ensure assigment has been properly scheduled if an emissary is currently set.
-        // Note that assigment can occur immediately if no emissary is set. Emissaries that
-        // do not have a scheduled assigment will have an assignableAt of type(uint96).max
+        // Ensure assignment has been properly scheduled if an emissary is currently set.
+        // Note that assignment can occur immediately if no emissary is set. Emissaries that
+        // do not have a scheduled assignment will have an assignableAt of type(uint96).max
         // which will prohibit assignment as the timestamp cannot exceed that value.
         assembly ("memory-safe") {
             if and(iszero(iszero(currentEmissary)), gt(assignableAt, timestamp())) {
