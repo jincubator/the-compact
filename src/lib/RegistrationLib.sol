@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-
-import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { IdLib } from "./IdLib.sol";
-
 /**
  * @title RegistrationLib
  * @notice Library contract implementing logic for registering compact claim hashes
@@ -14,8 +9,6 @@ import { IdLib } from "./IdLib.sol";
  */
 library RegistrationLib {
     using RegistrationLib for address;
-    using EfficiencyLib for uint256;
-    using IdLib for ResetPeriod;
 
     // keccak256(bytes("CompactRegistered(address,bytes32,bytes32)")).
     uint256 private constant _COMPACT_REGISTERED_SIGNATURE =
