@@ -54,7 +54,7 @@ contract ComponentLibTester {
             }
         }
 
-        if (errorBuffer.asBool()) {
+        if (errorBuffer != 0) {
             assembly ("memory-safe") {
                 // Revert Panic(0x11) (arithmetic overflow)
                 mstore(0, 0x4e487b71)

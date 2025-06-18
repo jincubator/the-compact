@@ -57,17 +57,6 @@ library EfficiencyLib {
     }
 
     /**
-     * @notice Internal pure function that converts a uint256 to a boolean.
-     * @param a  The uint256 to convert.
-     * @return b The resulting boolean.
-     */
-    function asBool(uint256 a) internal pure returns (bool b) {
-        assembly ("memory-safe") {
-            b := iszero(iszero(a))
-        }
-    }
-
-    /**
      * @notice Internal pure function that sanitizes an address by clearing the
      * upper 96 bits. Used for ensuring consistent address handling.
      * @param accountValue The value to sanitize.

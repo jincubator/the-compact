@@ -37,16 +37,6 @@ contract EfficiencyLibTest is Test {
         assertFalse(false.or(false), "false || false should be false");
     }
 
-    function testAsBool() public pure {
-        assertTrue(uint256(1).asBool(), "1 should be true");
-        assertFalse(uint256(0).asBool(), "0 should be false");
-    }
-
-    function testFuzzAsBool(uint256 val) public pure {
-        bool expected = val != 0;
-        assertEq(val.asBool(), expected, "Fuzz test for asBool failed");
-    }
-
     function testAsSanitizedAddress() public pure {
         uint256 val = uint256(uint160(address(0x123)));
         address expected = address(uint160(val));
