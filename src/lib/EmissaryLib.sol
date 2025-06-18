@@ -29,13 +29,9 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
  */
 library EmissaryLib {
     using IdLib for bytes12;
-    using IdLib for address;
     using IdLib for uint256;
     using IdLib for ResetPeriod;
-    using IdLib for uint96;
-    using EfficiencyLib for bytes12;
     using EfficiencyLib for bool;
-    using EfficiencyLib for uint256;
 
     // Sentinel value of type(uint96).max representing an emissary without a scheduled assignment.
     uint96 private constant NOT_SCHEDULED = 0xffffffffffffffffffffffff;
