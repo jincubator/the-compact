@@ -19,7 +19,6 @@ import { TransferLib } from "./TransferLib.sol";
 contract WithdrawalLogic is ConstructorLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
-    using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
     using EfficiencyLib for address;
     using EventLib for uint256;
