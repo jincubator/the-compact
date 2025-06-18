@@ -55,16 +55,13 @@ library ComponentLib {
 
         // Retrieve the total number of components.
         uint256 totalIds = transfers.length;
+        // Iterate over each component in calldata.
+        for (uint256 i = 0; i < totalIds; ++i) {
+            // Navigate to location of the component in calldata.
+            ComponentsById calldata component = transfers[i];
 
-        unchecked {
-            // Iterate over each component in calldata.
-            for (uint256 i = 0; i < totalIds; ++i) {
-                // Navigate to location of the component in calldata.
-                ComponentsById calldata component = transfers[i];
-
-                // Process transfer for each component in the set.
-                _processTransferComponents(component.portions, component.id);
-            }
+            // Process transfer for each component in the set.
+            _processTransferComponents(component.portions, component.id);
         }
     }
 
@@ -176,16 +173,14 @@ library ComponentLib {
             idsAndAmounts
         );
 
-        unchecked {
-            // Process each claim component.
-            for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-                BatchClaimComponent calldata claimComponent = claims[i];
+        // Process each claim component.
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            BatchClaimComponent calldata claimComponent = claims[i];
 
-                // Process each component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessComponents(
-                    sponsor, claimComponent.id, claimComponent.allocatedAmount
-                );
-            }
+            // Process each component, verifying total amount and executing operations.
+            claimComponent.portions.verifyAndProcessComponents(
+                sponsor, claimComponent.id, claimComponent.allocatedAmount
+            );
         }
     }
 
@@ -220,27 +215,24 @@ library ComponentLib {
         // Initialize error tracking variable.
         uint256 errorBuffer = id.scopeNotMultichain(sponsorDomainSeparator).asUint256();
 
-        unchecked {
-            // Register each additional element & accumulate potential errors.
-            for (uint256 i = 1; i < totalClaims; ++i) {
-                claimComponent = claims[i];
-                id = claimComponent.id;
+        // Register each additional element & accumulate potential errors.
+        for (uint256 i = 1; i < totalClaims; ++i) {
+            claimComponent = claims[i];
+            id = claimComponent.id;
 
-                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
-                    id.scopeNotMultichain(sponsorDomainSeparator)
-                ).asUint256();
+            errorBuffer |=
+                (id.toAllocatorId() != firstAllocatorId).or(id.scopeNotMultichain(sponsorDomainSeparator)).asUint256();
 
-                // Include the id and amount in idsAndAmounts.
-                idsAndAmounts[i] = [id, claimComponent.allocatedAmount];
-            }
+            // Include the id and amount in idsAndAmounts.
+            idsAndAmounts[i] = [id, claimComponent.allocatedAmount];
+        }
 
-            // Revert if any errors occurred.
-            assembly ("memory-safe") {
-                if errorBuffer {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
+        // Revert if any errors occurred.
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
             }
         }
     }
@@ -332,15 +324,13 @@ library ComponentLib {
         // Retrieve the total number of components.
         uint256 totalComponents = recipients.length;
 
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalComponents; ++i) {
-                // Navigate to location of the component in calldata.
-                Component calldata component = recipients[i];
+        // Iterate over each additional component in calldata.
+        for (uint256 i = 0; i < totalComponents; ++i) {
+            // Navigate to location of the component in calldata.
+            Component calldata component = recipients[i];
 
-                // Perform the transfer or withdrawal for the portion.
-                msg.sender.performOperation(id, component.claimant, component.amount);
-            }
+            // Perform the transfer or withdrawal for the portion.
+            msg.sender.performOperation(id, component.claimant, component.amount);
         }
     }
 }

@@ -53,18 +53,16 @@ library RegistrationLib {
      * @return                         Whether all claim hashes were successfully registered.
      */
     function registerBatchAsCaller(bytes32[2][] calldata claimHashesAndTypehashes) internal returns (bool) {
-        unchecked {
-            // Retrieve the total number of claim hashes and typehashes to register.
-            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
+        // Retrieve the total number of claim hashes and typehashes to register.
+        uint256 totalClaimHashes = claimHashesAndTypehashes.length;
 
-            // Iterate over each pair of claim hashes and typehashes.
-            for (uint256 i = 0; i < totalClaimHashes; ++i) {
-                // Retrieve the claim hash and typehash from calldata.
-                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
+        // Iterate over each pair of claim hashes and typehashes.
+        for (uint256 i = 0; i < totalClaimHashes; ++i) {
+            // Retrieve the claim hash and typehash from calldata.
+            bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
 
-                // Register the compact as the caller.
-                msg.sender.registerCompact(claimHashAndTypehash[0], claimHashAndTypehash[1]);
-            }
+            // Register the compact as the caller.
+            msg.sender.registerCompact(claimHashAndTypehash[0], claimHashAndTypehash[1]);
         }
 
         return true;

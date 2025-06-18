@@ -207,11 +207,9 @@ library EmissaryLib {
         uint256 idsAndAmountsLength = idsAndAmounts.length;
 
         // Iterate over remaining array elements.
-        unchecked {
-            for (uint256 i = 1; i < idsAndAmountsLength; ++i) {
-                // Set the error buffer if lockTag does not match initial lockTag.
-                errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
-            }
+        for (uint256 i = 1; i < idsAndAmountsLength; ++i) {
+            // Set the error buffer if lockTag does not match initial lockTag.
+            errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
         }
 
         // Ensure that no lockTag values differ.

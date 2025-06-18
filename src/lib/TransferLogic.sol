@@ -93,15 +93,13 @@ contract TransferLogic is ConstructorLogic {
         uint256 totalIds = transfers.length;
         uint256[2][] memory idsAndAmounts = new uint256[2][](totalIds);
 
-        unchecked {
-            // Iterate over each component in calldata.
-            for (uint256 i = 0; i < totalIds; ++i) {
-                // Navigate to location of the component in calldata.
-                ComponentsById calldata component = transfers[i];
+        // Iterate over each component in calldata.
+        for (uint256 i = 0; i < totalIds; ++i) {
+            // Navigate to location of the component in calldata.
+            ComponentsById calldata component = transfers[i];
 
-                // Process transfer for each component in the set.
-                idsAndAmounts[i] = [component.id, component.portions.aggregate()];
-            }
+            // Process transfer for each component in the set.
+            idsAndAmounts[i] = [component.id, component.portions.aggregate()];
         }
 
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
@@ -242,12 +240,10 @@ contract TransferLogic is ConstructorLogic {
         // Retrieve the allocator address and consume the nonce.
         allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
 
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 1; i < totalComponents; ++i) {
-                // Retrieve ID and mark error if derived allocatorId differs from initial one.
-                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
-            }
+        // Iterate over each additional component in calldata.
+        for (uint256 i = 1; i < totalComponents; ++i) {
+            // Retrieve ID and mark error if derived allocatorId differs from initial one.
+            errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
         }
 
         // Revert if an error was encountered.
