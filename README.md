@@ -22,23 +22,24 @@
     - [Claimant Processing & Structure](#claimant-processing--structure)
     - [Forced Withdrawals](#forced-withdrawals)
     - [Signature Verification](#signature-verification)
-3. [Key Events](#key-events)
-4. [Key Data Structures](#key-data-structures)
-5. [Setup](#setup)
-6. [Usage (Flows by Actor)](#usage-flows-by-actor)
+3. [Trust Assumptions](#trust-assumptions)
+4. [Key Events](#key-events)
+5. [Key Data Structures](#key-data-structures)
+6. [Setup](#setup)
+7. [Usage (Flows by Actor)](#usage-flows-by-actor)
     - [Sponsors (Depositors)](#sponsors-depositors)
     - [Arbiters & Claimants (e.g. Fillers)](#arbiters--claimants-eg-fillers)
     - [Relayers](#relayers)
     - [Allocators (Infrastructure)](#allocators-infrastructure)
-7. [View Functions](#view-functions)
-8. [Core Interfaces Overview](#core-interfaces-overview)
+8. [View Functions](#view-functions)
+9. [Core Interfaces Overview](#core-interfaces-overview)
     - [ITheCompact](#ithecompact)
     - [ITheCompactClaims](#ithecompactclaims)
     - [IAllocator (Interface)](#iallocator-interface)
     - [IEmissary (Interface)](#iemissary-interface)
-9. [Contract Layout](#contract-layout)
-10. [Credits](#credits)
-11. [License](#license)
+10. [Contract Layout](#contract-layout)
+11. [Credits](#credits)
+12. [License](#license)
 
 
 ## Summary
@@ -83,11 +84,8 @@ Each resource lock is mediated by an **allocator**. Their primary responsibiliti
 3.  **Authorizing Claims:** Validating claims against resource locks (via `IAllocator.authorizeClaim`).
 4.  **Nonce Management:** Ensuring nonces are not reused for claims and (optionally) consuming nonces directly on The Compact using [`consume`](./src/interfaces/ITheCompact.sol#L550).
 
-Allocators must be registered with The Compact via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L561) before they can be assigned to locks. They must implement the [`IAllocator`](./src/interfaces/IAllocator.sol) interface.
+Allocators must be registered with The Compact via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L561) before they can be assigned to locks. They must implement the [`IAllocator`](./src/interfaces/IAllocator.sol) interface and operate under specific [trust assumptions](#trust-assumptions).
 
-The trust assumptions around allocators are important:
--   Claimants must trust that the allocator is sound and will not allow resource locks to become underfunded.
--   Sponsors must trust that the allocator will not unduly censor valid requests against fully funded locks. However, the sponsor can always initiate a forced withdrawal if the allocator fails to authorize the sponsor's requests. The allocator cannot steal or otherwise unilaterally move anyone's funds.
 
 ### Arbiters
 Arbiters are responsible for verifying and submitting claims. When a sponsor creates a compact, they designate an arbiter who will:
@@ -95,11 +93,7 @@ Arbiters are responsible for verifying and submitting claims. When a sponsor cre
 2.  Process the claim by calling the appropriate function on The Compact (from [`ITheCompactClaims`](./src/interfaces/ITheCompactClaims.sol)).
 3.  Specify which claimants are entitled to the committed resources and in what form each claimant's portion will be issued (i.e., direct transfer, withdrawal, or conversion) as part of the claim payload.
 
-The trust assumptions around arbiters are also important:
--   Sponsors must trust that the arbiter will not process claims where conditions weren't met.
--   Claimants must trust that the arbiter will not fail to process claims where conditions *were* met.
-
-Often, the entity fulfilling an off-chain condition (like a filler or solver) might interface directly with the arbiter.
+Often, the entity fulfilling an off-chain condition (like a filler or solver) might interface directly with the arbiter. The [trust assumptions](#trust-assumptions) around arbiters are critical to understand.
 
 ### Emissaries
 Emissaries provide a fallback verification mechanism for sponsors when authorizing claims. This is particularly useful for:
@@ -257,6 +251,19 @@ When a claim is submitted for a non-registered compact (i.e., one relying on a s
 4.  **Emissary `verifyClaim`:** If EIP-1271 fails or isn't applicable, and an emissary is assigned for the sponsor and `lockTag`, call the emissary's [`verifyClaim`](./src/interfaces/IEmissary.sol#L13) function.
 
 Sponsors cannot unilaterally cancel a signed compact; only allocators can effectively do so by consuming the nonce. This is vital to upholding the equivocation guarantees for claimants.
+
+## Trust Assumptions
+
+The Compact protocol operates under a specific trust model where different actors have varying levels of trust requirements:
+
+**Sponsor Trust Requirements:**
+- **Allocators**: Sponsors must trust that allocators will not unduly censor valid requests against fully funded locks. However, sponsors retain the ability to initiate forced withdrawals if allocators become unresponsive.
+- **Arbiters**: Sponsors must trust that arbiters will not process claims where the specified conditions were not met. Arbiters have significant power in determining claim validity.
+- **Emissaries**: Sponsors must trust that emissaries (if assigned) will not authorize claims maliciously, as emissaries can act as fallback signers when other verification methods fail. Emissaries effectively have the same authorization power as the sponsor for claim verification.
+
+**Claimant Trust Requirements:**
+- **Allocators**: Claimants must trust that allocators are sound and will not allow resource locks to become underfunded through double-spending or other allocation failures.
+- **Arbiters**: Claimants must trust that arbiters will not fail to process claims where conditions were properly met.
 
 ## Key Events
 The Compact emits several events to signal important state changes:
