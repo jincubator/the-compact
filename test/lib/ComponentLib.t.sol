@@ -38,6 +38,31 @@ contract ComponentLibTester {
     ) external {
         claimants.verifyAndProcessComponents(sponsor, id, allocatedAmount);
     }
+
+    function oldAggregateComponents(Component[] calldata recipients) external pure returns (uint256 sum) {
+        // Retrieve the total number of components.
+        uint256 totalComponents = recipients.length;
+
+        uint256 amount;
+        uint256 errorBuffer;
+        unchecked {
+            // Iterate over each additional component in calldata.
+            for (uint256 i = 0; i < totalComponents; ++i) {
+                amount = recipients[i].amount;
+                sum += amount;
+                errorBuffer |= (sum < amount).asUint256();
+            }
+        }
+
+        if (errorBuffer.asBool()) {
+            assembly ("memory-safe") {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
 }
 
 contract ComponentLibTest is Test {
@@ -111,20 +136,20 @@ contract ComponentLibTest is Test {
         }
     }
 
-    function _buildTestClaim(uint256 id, uint256 amount, Component[] memory portions)
-        internal
-        pure
-        returns (BatchClaimComponent memory)
-    {
-        return BatchClaimComponent({ id: id, allocatedAmount: amount, portions: portions });
-    }
+    // @dev Alternative fuzz without length limits and against the old version.
+    function testFuzzAggregateAgainstOldVersion(Component[] memory recipients) public {
+        (bool expectOverflow, uint256 expectedSum) = _aggregate(recipients);
+        if (expectOverflow) {
+            vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+            tester.aggregateComponents(recipients);
 
-    function _buildTestId(address allocator, address token, Scope scope, ResetPeriod period)
-        internal
-        pure
-        returns (uint256)
-    {
-        return IdLib.toId(token, allocator, period, scope);
+            vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+            tester.oldAggregateComponents(recipients);
+        } else {
+            uint256 currentVersionResult = tester.aggregateComponents(recipients);
+            assertEq(currentVersionResult, tester.oldAggregateComponents(recipients));
+            assertEq(currentVersionResult, expectedSum);
+        }
     }
 
     function testBuildIdsAndAmounts_Single() public view {
@@ -230,6 +255,22 @@ contract ComponentLibTest is Test {
         tester.verifyAndProcessComponents(recipients, address(this), id, allocatedAmount);
     }
 
+    function _buildTestClaim(uint256 id, uint256 amount, Component[] memory portions)
+        internal
+        pure
+        returns (BatchClaimComponent memory)
+    {
+        return BatchClaimComponent({ id: id, allocatedAmount: amount, portions: portions });
+    }
+
+    function _buildTestId(address allocator, address token, Scope scope, ResetPeriod period)
+        internal
+        pure
+        returns (uint256)
+    {
+        return IdLib.toId(token, allocator, period, scope);
+    }
+
     function _makeClaimant(address _recipient) internal view returns (uint256) {
         return abi.decode(abi.encodePacked(lockTag, _recipient), (uint256));
     }
@@ -238,5 +279,16 @@ contract ComponentLibTest is Test {
         id = allocator.register();
         tag = id.toLockTag(Scope.Multichain, ResetPeriod.OneDay);
         return (id, tag);
+    }
+
+    function _aggregate(Component[] memory recipients) private pure returns (bool expectOverflow, uint256 sum) {
+        uint256 len = recipients.length;
+        for (uint256 i; i < len; i++) {
+            uint256 currentAmount = recipients[i].amount;
+            unchecked {
+                sum += currentAmount;
+                if (sum < currentAmount) return (true, 0);
+            }
+        }
     }
 }

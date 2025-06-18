@@ -315,22 +315,19 @@ library ComponentLib {
      * @return sum Total amount across all components.
      */
     function aggregate(Component[] calldata recipients) internal pure returns (uint256 sum) {
-        // Retrieve the total number of components.
-        uint256 totalComponents = recipients.length;
+        assembly ("memory-safe") {
+            let errorBuffer := 0
 
-        uint256 amount;
-        uint256 errorBuffer;
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalComponents; ++i) {
-                amount = recipients[i].amount;
-                sum += amount;
-                errorBuffer |= (sum < amount).asUint256();
+            let end := add(shl(6, recipients.length), recipients.offset) // Each component has 2 elements, each element 32 bytes
+            let dataOffset := add(recipients.offset, 0x20) // Point to first amount
+
+            for { } lt(dataOffset, end) { dataOffset := add(dataOffset, 0x40) } {
+                let amount := calldataload(dataOffset)
+                sum := add(amount, sum)
+                errorBuffer := or(errorBuffer, lt(sum, amount))
             }
-        }
 
-        if (errorBuffer.asBool()) {
-            assembly ("memory-safe") {
+            if errorBuffer {
                 // Revert Panic(0x11) (arithmetic overflow)
                 mstore(0, 0x4e487b71)
                 mstore(0x20, 0x11)
