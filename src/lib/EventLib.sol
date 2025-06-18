@@ -31,7 +31,7 @@ library EventLib {
             //  - topic2: sponsor address (sanitized)
             //  - topic3: allocator address (sanitized)
             //  - topic4: caller address
-            //  - data: messageHash, nonce
+            //  - data: claimHash, nonce
             mstore(0, claimHash)
             mstore(0x20, nonce)
             log4(

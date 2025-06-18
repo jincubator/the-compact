@@ -6,13 +6,12 @@ import { AllocatedTransfer } from "../types/Claims.sol";
 
 /**
  * @title TransferFunctionCastLib
- * @notice Library contract implementing function casts used in TransferLogic as well as
- * in HashLib. The input function operates on a function that takes some argument that
- * differs from what is currently available. The output function modifies one or more
- * argument types so that they match the arguments that are being used to call the
- * function. Note that from the perspective of the function being modified, the original
- * type is still in force; great care should be taken to preserve offsets and general
- * structure between the two structs.
+ * @notice Library contract implementing function casts used in TransferLogic. The input
+ * function operates on a function that takes some argument that differs from what is
+ * currently available. The output function modifies one or more argument types so that
+ * they match the arguments that are being used to call the function. Note that from the
+ * perspective of the function being modified, the original type is still in force; great
+ * care should be taken to preserve offsets and general structure between the two structs.
  */
 library TransferFunctionCastLib {
     /**
