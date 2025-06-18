@@ -3,19 +3,12 @@ pragma solidity ^0.8.27;
 
 import { AllocatedTransfer } from "../types/Claims.sol";
 import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-
 import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { EventLib } from "./EventLib.sol";
-import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { TransferLib } from "./TransferLib.sol";
-
-import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 
 /**
  * @title ComponentLib
@@ -30,16 +23,9 @@ library ComponentLib {
     using TransferLib for address;
     using ComponentLib for Component[];
     using EfficiencyLib for bool;
-    using EfficiencyLib for ResetPeriod;
-    using EventLib for address;
-    using HashLib for uint256;
     using IdLib for uint256;
-    using IdLib for ResetPeriod;
     using ValidityLib for uint256;
-    using ValidityLib for uint96;
     using ValidityLib for bytes32;
-    using RegistrationLib for address;
-    using FixedPointMathLib for uint256;
 
     error NoIdsAndAmountsProvided();
 
