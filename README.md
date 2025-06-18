@@ -269,11 +269,11 @@ The Compact protocol operates under a specific trust model where different actor
 The Compact emits several events to signal important state changes:
 
 -   `Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash, uint256 nonce)`: Emitted when a claim is successfully processed via [`ITheCompactClaims`](./src/interfaces/ITheCompactClaims.sol) functions. ([`ITheCompact.sol#L35`](./src/interfaces/ITheCompact.sol#L35))
--   `NonceConsumedDirectly(address indexed allocator, uint256 nonce)`: Emitted when an allocator directly consumes a nonce via [`consume`](./src/interfaces/ITheCompact.sol#L550). ([`ITheCompact.sol#L44`](./src/interfaces/ITheCompact.sol#L44))
+-   `NonceConsumedDirectly(address indexed allocator, uint256 nonce)`: Emitted when an allocator directly consumes a nonce via [`consume`](./src/interfaces/ITheCompact.sol#L567). ([`ITheCompact.sol#L44`](./src/interfaces/ITheCompact.sol#L44))
 -   `ForcedWithdrawalStatusUpdated(address indexed account, uint256 indexed id, bool activating, uint256 withdrawableAt)`: Emitted when `enableForcedWithdrawal` or `disableForcedWithdrawal` is called. ([`ITheCompact.sol#L53`](./src/interfaces/ITheCompact.sol#L53))
 -   `CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash)`: Emitted when a compact is registered via `register`, `registerMultiple`, or combined deposit-and-register functions. ([`ITheCompact.sol#L63`](./src/interfaces/ITheCompact.sol#L63))
--   `AllocatorRegistered(uint96 allocatorId, address allocator)`: Emitted when a new allocator is registered via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L561). ([`ITheCompact.sol#L70`](./src/interfaces/ITheCompact.sol#L70))
--   `EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address emissary)`: Emitted when a sponsor assigns or changes an emissary via [`assignEmissary`](./src/interfaces/ITheCompact.sol#L532). ([`EmissaryLib.sol#L46`](./src/lib/EmissaryLib.sol#L46))
+-   `AllocatorRegistered(uint96 allocatorId, address allocator)`: Emitted when a new allocator is registered via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L578). ([`ITheCompact.sol#L88`](./src/interfaces/ITheCompact.sol#L88))
+-   `EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address emissary)`: Emitted when a sponsor assigns or changes an emissary via [`assignEmissary`](./src/interfaces/ITheCompact.sol#L549). ([`EmissaryLib.sol#L71`](./src/interfaces/ITheCompact.sol#L71))
 
 Standard `ERC6909.Transfer` events are also emitted for mints, burns, and transfers of resource lock tokens.
 
@@ -382,10 +382,10 @@ Sponsors own the underlying assets and create resource locks to make them availa
     - A sponsor starts by depositing assets (native tokens or ERC20s) into The Compact. This action creates ERC6909 tokens representing ownership of the resource lock.
     - During deposit, the sponsor defines the lock's properties: the **allocator** (who must be registered first, see [Allocators (Infrastructure)](#allocators-infrastructure) and [Key Concepts: Allocators](#allocators)), the **scope** (single-chain or multichain), and the **reset period** (for forced withdrawals and emissary replacements). These are packed into a `bytes12 lockTag`. A resource lock's ID is a combination of its lock tag and the underlying token's address.
     - Deposit methods (see [`ITheCompact.sol`](./src/interfaces/ITheCompact.sol)):
-        - Native tokens: [`depositNative`](./src/interfaces/ITheCompact.sol#L81)
-        - ERC20 tokens (requires direct approval): [`depositERC20`](./src/interfaces/ITheCompact.sol#L97)
-        - Batch deposits (native + ERC20): [`batchDeposit`](./src/interfaces/ITheCompact.sol#L114)
-        - Via Permit2 (optionally gasless): [`depositERC20ViaPermit2`](./src/interfaces/ITheCompact.sol#L131), [`batchDepositViaPermit2`](./src/interfaces/ITheCompact.sol#L157)
+        - Native tokens: [`depositNative`](./src/interfaces/ITheCompact.sol#L99)
+        - ERC20 tokens (requires direct approval): [`depositERC20`](./src/interfaces/ITheCompact.sol#L115)
+        - Batch deposits (native + ERC20): [`batchDeposit`](./src/interfaces/ITheCompact.sol#L132)
+        - Via Permit2 (optionally gasless): [`depositERC20ViaPermit2`](./src/interfaces/ITheCompact.sol#L149), [`batchDepositViaPermit2`](./src/interfaces/ITheCompact.sol#L175)
     - See [Key Concepts: Resource Locks](#resource-locks) for details on token handling.
 
 **2. Create a Compact:**
@@ -396,13 +396,13 @@ Sponsors own the underlying assets and create resource locks to make them availa
 **3. (Optional) Transfer Resource Lock Ownership:**
     - Sponsors can transfer their ERC6909 tokens, provided they have authorization from the allocator.
     - Standard ERC6909 transfers require allocator [`attest`](./src/interfaces/IAllocator.sol#L14).
-    - Alternatively, use [`allocatedTransfer`](./src/interfaces/ITheCompact.sol#L177) or [`allocatedBatchTransfer`](./src/interfaces/ITheCompact.sol#L193) with explicit `allocatorData`.
+    - Alternatively, use [`allocatedTransfer`](./src/interfaces/ITheCompact.sol#L195) or [`allocatedBatchTransfer`](./src/interfaces/ITheCompact.sol#L211) with explicit `allocatorData`.
 
 **4. (Optional) Assign an Emissary:**
-    - Designate an [`IEmissary`](./src/interfaces/IEmissary.sol) using [`assignEmissary`](./src/interfaces/ITheCompact.sol#L532) as a fallback authorizer. See [Key Concepts: Emissaries](#emissaries).
+    - Designate an [`IEmissary`](./src/interfaces/IEmissary.sol) using [`assignEmissary`](./src/interfaces/ITheCompact.sol#L549) as a fallback authorizer. See [Key Concepts: Emissaries](#emissaries).
 
 **5. (Optional) Initiate Forced Withdrawal:**
-    - If an allocator is unresponsive, use [`enableForcedWithdrawal`](./src/interfaces/ITheCompact.sol#L500), wait `resetPeriod`, then [`forcedWithdrawal`](./src/interfaces/ITheCompact.sol#L521). See [Key Concepts: Forced Withdrawals](#forced-withdrawals).
+    - If an allocator is unresponsive, use [`enableForcedWithdrawal`](./src/interfaces/ITheCompact.sol#L517), wait `resetPeriod`, then [`forcedWithdrawal`](./src/interfaces/ITheCompact.sol#L538). See [Key Concepts: Forced Withdrawals](#forced-withdrawals).
 
 ### Arbiters & Claimants (e.g. Fillers)
 
@@ -428,10 +428,10 @@ Arbiters verify conditions and process claims. Claimants are the recipients.
 Relayers can perform certain interactions on behalf of sponsors and/or claimants.
 
 **1. Relaying Permit2 Interactions:**
-    - Submit user-signed Permit2 messages for deposits/registrations (e.g., [`depositERC20ViaPermit2`](./src/interfaces/ITheCompact.sol#L131), [`depositERC20AndRegisterViaPermit2`](./src/interfaces/ITheCompact.sol#L451), or the batch variants). For the register variants, this role is called the `Activator` and the registration is authorized by the sponsor as part of the Permit2 witness data.
+    - Submit user-signed Permit2 messages for deposits/registrations (e.g., [`depositERC20ViaPermit2`](./src/interfaces/ITheCompact.sol#L149), [`depositERC20AndRegisterViaPermit2`](./src/interfaces/ITheCompact.sol#L468), or the batch variants). For the register variants, this role is called the `Activator` and the registration is authorized by the sponsor as part of the Permit2 witness data.
 
 **2. Relaying Registrations-for-Sponsor:**
-    - Submit sponsor-signed registration details using `registerFor` functions (e.g., [`registerFor`](./src/interfaces/ITheCompact.sol#L229)).
+    - Submit sponsor-signed registration details using `registerFor` functions (e.g., [`registerFor`](./src/interfaces/ITheCompact.sol#L245)).
 
 **3. Relaying Claims:**
     - Submit authorized claims on behalf of a claimant using the standard `claim` functions. This would generally be performed by the arbiter of the claim being relayed.
@@ -441,7 +441,7 @@ Relayers can perform certain interactions on behalf of sponsors and/or claimants
 Allocators are crucial infrastructure for ensuring resource lock integrity.
 
 **1. Registration:**
-    - Register via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L561) to get an `allocatorId`. This is a required step that must be performed before the allocator may be assigned to a resource lock. Anyone can register an allocator if one of three conditions is met: the caller is the allocator address being registered; the allocator address contains code; or a proof is supplied representing valid create2 deployment parameters.
+    - Register via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L578) to get an `allocatorId`. This is a required step that must be performed before the allocator may be assigned to a resource lock. Anyone can register an allocator if one of three conditions is met: the caller is the allocator address being registered; the allocator address contains code; or a proof is supplied representing valid create2 deployment parameters.
 
 **Create2 Proof Format**: When registering an allocator that doesn't yet exist but will be deployed via create2, provide an 85-byte proof containing: `0xff ++ factory ++ salt ++ initcode hash`. This allows pre-registration of deterministic addresses.
 
@@ -460,14 +460,14 @@ Allocators are crucial infrastructure for ensuring resource lock integrity.
 
 ## View Functions
 The Compact provides several view functions defined in the [`ITheCompact`](./src/interfaces/ITheCompact.sol) interface for querying state:
--   [`getLockDetails`](./src/interfaces/ITheCompact.sol#L582): Retrieves details (token, allocator, reset period, scope, lockTag) for a resource lock ID.
--   [`isRegistered`](./src/interfaces/ITheCompact.sol#L598): Checks if a compact is currently registered (true or false).
--   [`getForcedWithdrawalStatus`](./src/interfaces/ITheCompact.sol#L613): Checks the current forced withdrawal status (Disabled, Pending, Enabled) for an account and lock ID.
--   [`getEmissaryStatus`](./src/interfaces/ITheCompact.sol#L628): Gets the current emissary status (Disabled, Scheduled, Enabled) for a sponsor and lock tag.
--   [`hasConsumedAllocatorNonce`](./src/interfaces/ITheCompact.sol#L640): Checks if an allocator has consumed a specific nonce.
--   [`getRequiredWithdrawalFallbackStipends`](./src/interfaces/ITheCompact.sol#L650): Returns gas stipends needed for withdrawal fallbacks.
--   [`DOMAIN_SEPARATOR`](./src/interfaces/ITheCompact.sol#L659): Returns the EIP-712 domain separator for the contract.
--   [`name`](./src/interfaces/ITheCompact.sol#L665): Returns the contract name ("TheCompact").
+-   [`getLockDetails`](./src/interfaces/ITheCompact.sol#L599): Retrieves details (token, allocator, reset period, scope, lockTag) for a resource lock ID.
+-   [`isRegistered`](./src/interfaces/ITheCompact.sol#L614): Checks if a compact is currently registered (true or false).
+-   [`getForcedWithdrawalStatus`](./src/interfaces/ITheCompact.sol#L626): Checks the current forced withdrawal status (Disabled, Pending, Enabled) for an account and lock ID.
+-   [`getEmissaryStatus`](./src/interfaces/ITheCompact.sol#L641): Gets the current emissary status (Disabled, Scheduled, Enabled) for a sponsor and lock tag.
+-   [`hasConsumedAllocatorNonce`](./src/interfaces/ITheCompact.sol#L653): Checks if an allocator has consumed a specific nonce.
+-   [`getRequiredWithdrawalFallbackStipends`](./src/interfaces/ITheCompact.sol#L663): Returns gas stipends needed for withdrawal fallbacks.
+-   [`DOMAIN_SEPARATOR`](./src/interfaces/ITheCompact.sol#L672): Returns the EIP-712 domain separator for the contract.
+-   [`name`](./src/interfaces/ITheCompact.sol#L678): Returns the contract name ("TheCompact").
 
 **ERC6909 Metadata Functions:**
 The Compact also implements standard ERC6909 metadata functions for resource lock tokens:
