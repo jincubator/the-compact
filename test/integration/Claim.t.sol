@@ -17,6 +17,7 @@ import { TransferBenchmarker } from "../../src/lib/TransferBenchmarker.sol";
 
 import { AlwaysDenyingAllocator } from "../../src/test/AlwaysDenyingAllocator.sol";
 import { AlwaysRevertingAllocator } from "../../src/test/AlwaysRevertingAllocator.sol";
+import { AlwaysOkayERC1271 } from "../../src/test/AlwaysOkayERC1271.sol";
 import { Setup } from "./Setup.sol";
 
 import {
@@ -1113,6 +1114,214 @@ contract ClaimTest is Setup {
         assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
         assertEq(theCompact.balanceOf(recipientOne, convertedId), amountOne);
         assertEq(theCompact.balanceOf(recipientTwo, convertedId), amountTwo);
+    }
+
+    function test_claimWithERC1271() public {
+        // Deploy AlwaysOkayERC1271
+        address alwaysOkayERC1271 = address(new AlwaysOkayERC1271());
+
+        // Supply funds
+        vm.deal(alwaysOkayERC1271, 1e18);
+
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = alwaysOkayERC1271;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(alwaysOkayERC1271, claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            bytes32 r;
+            bytes32 vs;
+
+            // Create empty sponsor signature
+            {
+                claim.sponsorSignature = "";
+            }
+
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+                recipients = new Component[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("claimAndWithdrawWithERC1271");
+
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, 0);
+        assertEq(recipientOne.balance, amountOne);
+        assertEq(recipientTwo.balance, amountTwo);
+        assertEq(theCompact.balanceOf(alwaysOkayERC1271, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
+    }
+
+    function test_claimWith65ByteECDSASignature() public {
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            uint8 v;
+            bytes32 r;
+            bytes32 s;
+
+            // Create sponsor signature
+            {
+                (v, r, s) = vm.sign(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, s, v);
+            }
+
+            // Create allocator signature
+            {
+                (v, r, s) = vm.sign(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, s, v);
+            }
+        }
+
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+
+            Component[] memory recipients;
+            {
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+
+                recipients = new Component[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("claimAndWithdraw");
+
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, 0);
+        assertEq(recipientOne.balance, amountOne);
+        assertEq(recipientTwo.balance, amountTwo);
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
     }
 
     function test_withdrawalConvertedToTransfer() public {
