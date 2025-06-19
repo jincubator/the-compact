@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { AllocatorLib } from "./AllocatorLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
-import { IdLib } from "./IdLib.sol";
-import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { DomainLib } from "./DomainLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
@@ -19,14 +16,9 @@ import { ConstructorLogic } from "./ConstructorLogic.sol";
  * been registered.
  */
 contract RegistrationLogic is ConstructorLogic {
-    using AllocatorLib for uint256[2][];
     using RegistrationLib for address;
-    using RegistrationLib for bytes32;
     using RegistrationLib for bytes32[2][];
-    using ValidityLib for address;
     using ValidityLib for bytes32;
-    using IdLib for address;
-    using EfficiencyLib for uint256;
     using DomainLib for uint256;
     using EfficiencyLib for address;
 
