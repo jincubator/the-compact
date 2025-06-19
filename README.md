@@ -264,7 +264,7 @@ The Compact protocol operates under a specific trust model where different actor
 **Claimant Trust Requirements:**
 - **Allocators**: Claimants must trust that allocators are sound and will not allow resource locks to become underfunded through double-spending or other allocation failures.
 - **Arbiters**: Claimants must trust that arbiters will not fail to process claims where conditions were properly met.
-
+- **Emissaries**: Claimants must trust that emissaries (if assigned) will faithfully authorize valid claims if the sponsor is able to equivocate, or update their account to revoke their authorization on a previously authorized compact (as is the case with EIP-7702 sponsors and many smart contracts implementing EIP-1271). Therefore, claimants should require the use of one of a small set of known, "canonical" emissaries that enforce delays before allowing key rotation.
 ## Key Events
 The Compact emits several events to signal important state changes:
 
