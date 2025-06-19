@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { MetadataRenderer } from "../../src/lib/MetadataRenderer.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
@@ -166,7 +166,6 @@ contract MetadataRendererTest is Test {
         // NOTE: Tstorish is deployed first, metadata renderer second
         metadataRenderer = MetadataRenderer(address(theCompact).compute(2));
 
-        console.log(address(metadataRenderer));
         mockToken =
             new MockERC20{ salt: bytes32(uint256(0xdeadbeef)) }(MOCK_TOKEN_NAME, MOCK_TOKEN_SYMBOL, MOCK_TOKEN_DECIMALS);
         mockAllocator = address(new MockAllocator());
@@ -467,5 +466,12 @@ contract MetadataRendererTest is Test {
             }
         }
         assertTrue(foundAttribute, string.concat("Attribute ", traitTypeToFind, " not found"));
+    }
+
+    function test_revert_invalidMetadataRendererResponse() public {
+        vm.etch(address(metadataRenderer), hex"5f5ffd"); // push0 push0 revert
+
+        vm.expectRevert(bytes(""), address(metadataRenderer));
+        theCompact.name(nativeErc6909Id);
     }
 }

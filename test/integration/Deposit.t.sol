@@ -728,4 +728,50 @@ contract DepositTest is Setup {
         vm.expectRevert(abi.encodeWithSelector(IdLib.NoAllocatorRegistered.selector, allocatorId), address(theCompact));
         theCompact.depositNative{ value: amount }(lockTag, address(0));
     }
+
+    function test_revert_depositOverflow() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 5e17;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        uint256 id = _makeDeposit(swapper, address(token), amount, lockTag);
+
+        bytes8 _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
+        bytes32 slot = keccak256(abi.encodePacked(id, swapper, bytes4(""), _ERC6909_MASTER_SLOT_SEED));
+
+        // Check the current value at the slot
+        uint256 valueAtSlot = uint256(vm.load(address(theCompact), slot));
+        assertEq(valueAtSlot, amount);
+
+        // Set the slot value to uint256.max
+        vm.store(address(theCompact), slot, bytes32(type(uint256).max));
+
+        vm.startPrank(swapper);
+        token.approve(address(theCompact), amount);
+        vm.expectRevert(abi.encodeWithSignature("BalanceOverflow()"), address(theCompact));
+        theCompact.depositERC20(address(token), lockTag, amount, swapper);
+        vm.stopPrank();
+    }
+
+    function test_revert_depositERC20ZeroAddress() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+
+        vm.prank(swapper);
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidToken.selector, address(0)), address(theCompact));
+        theCompact.depositERC20(address(0), lockTag, amount, swapper);
+    }
 }

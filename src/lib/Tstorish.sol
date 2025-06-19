@@ -235,11 +235,12 @@ contract Tstorish {
     }
 
     /**
-     * @dev Private view function to determine if TSTORE/TLOAD are supported by
+     * @dev Internal view function to determine if TSTORE/TLOAD are supported by
      *      the current EVM implementation by attempting to call the test
      *      contract, which utilizes TLOAD as part of its fallback logic.
+     *      Marked as virtual to facilitate overriding as part of tests.
      */
-    function _testTload(address tloadTestContract) private view returns (bool ok) {
+    function _testTload(address tloadTestContract) internal view virtual returns (bool ok) {
         // Call the test contract, which will perform a TLOAD test. If the call
         // does not revert, then TLOAD/TSTORE is supported. Do not forward all
         // available gas, as all forwarded gas will be consumed on revert.

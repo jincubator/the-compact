@@ -437,4 +437,72 @@ contract AllocatedTransferTest is Setup {
         );
         theCompact.allocatedTransfer(transfer);
     }
+
+    function test_revert_tokenTransferOverflows() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Recipient information
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+
+        // Register allocator and create lock tag
+        uint256 id;
+        {
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+
+            // Make deposit
+            id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+        }
+
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 claimHash =
+                _createClaimHash(compactTypehash, swapper, swapper, params.nonce, params.deadline, id, params.amount);
+
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
+
+        // Prepare recipients
+        Component[] memory recipients;
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
+
+            Component memory componentOne = Component({ claimant: claimantOne, amount: params.amount });
+
+            recipients = new Component[](1);
+            recipients[0] = componentOne;
+        }
+
+        // Create and execute transfer
+        AllocatedTransfer memory transfer = AllocatedTransfer({
+            nonce: params.nonce,
+            expires: params.deadline,
+            allocatorData: allocatorData,
+            id: id,
+            recipients: recipients
+        });
+
+        bytes8 _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
+        bytes32 slotRecipient = keccak256(abi.encodePacked(id, recipientOne, bytes4(""), _ERC6909_MASTER_SLOT_SEED));
+
+        vm.assertTrue(params.amount > 0);
+        vm.store(address(theCompact), slotRecipient, bytes32(type(uint256).max - params.amount + 1));
+
+        vm.prank(swapper);
+        vm.expectRevert(abi.encodeWithSignature("BalanceOverflow()"), address(theCompact));
+        theCompact.allocatedTransfer(transfer);
+    }
 }
