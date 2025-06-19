@@ -267,22 +267,6 @@ library IdLib {
     }
 
     /**
-     * @notice Internal pure function for extracting the allocator ID from a resource
-     * lock ID. The allocator ID is a 92-bit value, with the first 4 bits representing
-     * the compact flag and the last 88 bits matching the last 88 bits of the underlying
-     * allocator, but is represented by a uint96 as solidity only supports uint values
-     * for multiples of 8 bits.
-     * @param id           The resource lock ID to extract from.
-     * @return allocatorId The allocator ID (bits 160-251).
-     */
-    function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
-        assembly ("memory-safe") {
-            // Extract bits 5-96.
-            allocatorId := shr(164, shl(4, id))
-        }
-    }
-
-    /**
      * @notice Internal pure function for converting a reset period to its duration in
      * seconds. There are eight distinct reset periods ranging from one second to
      * thirty days. Specific periods include some additional padding:
@@ -341,6 +325,22 @@ library IdLib {
 
             // Look up final value in the sequence.
             compactFlag := and(shr(and(sub(72, and(y, 127)), not(3)), 0xfedcba9876543210000), 15)
+        }
+    }
+
+    /**
+     * @notice Internal pure function for extracting the allocator ID from a resource
+     * lock ID. The allocator ID is a 92-bit value, with the first 4 bits representing
+     * the compact flag and the last 88 bits matching the last 88 bits of the underlying
+     * allocator, but is represented by a uint96 as solidity only supports uint values
+     * for multiples of 8 bits.
+     * @param id           The resource lock ID to extract from.
+     * @return allocatorId The allocator ID (bits 160-251).
+     */
+    function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
+        assembly ("memory-safe") {
+            // Extract bits 5-96.
+            allocatorId := shr(164, shl(4, id))
         }
     }
 
