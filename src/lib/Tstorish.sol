@@ -7,6 +7,14 @@ contract Tstorish {
     using EfficiencyLib for bool;
     using EfficiencyLib for address;
 
+    // Declare an immutable function type variable for the _setTstorish function
+    // based on chain support for tstore at time of deployment.
+    function(uint256,uint256) internal immutable _setTstorish;
+
+    // Declare an immutable function type variable for the _getTstorish function
+    // based on chain support for tstore at time of deployment.
+    function(uint256) view returns (uint256) internal immutable _getTstorish;
+
     // Declare a storage variable indicating when TSTORE support will be
     // activated assuming it was not already active at initial deployment.
     uint256 private _tstoreSupportActiveAt;
@@ -34,18 +42,6 @@ contract Tstorish {
 
     // Declare an immutable variable to store the initial TSTORE support status.
     bool private immutable _tstoreInitialSupport;
-
-    // Declare an immutable function type variable for the _setTstorish function
-    // based on chain support for tstore at time of deployment.
-    function(uint256,uint256) internal immutable _setTstorish;
-
-    // Declare an immutable function type variable for the _getTstorish function
-    // based on chain support for tstore at time of deployment.
-    function(uint256) view returns (uint256) internal immutable _getTstorish;
-
-    // Declare an immutable function type variable for the _clearTstorish function
-    // based on chain support for tstore at time of deployment.
-    function(uint256) internal immutable _clearTstorish;
 
     // Declare a few custom revert error types.
     error TStoreAlreadyActivated();
@@ -75,14 +71,12 @@ contract Tstorish {
             // tstore/tload directly without support checks.
             _setTstorish = _setTstore;
             _getTstorish = _getTstore;
-            _clearTstorish = _clearTstore;
         } else {
             // If TSTORE is not supported, set functions to their versions that
             // fallback to sstore/sload until _tstoreSupportActiveAt is set to
             // a block number before the current block number.
             _setTstorish = _setTstorishWithSstoreFallback;
             _getTstorish = _getTstorishWithSloadFallback;
-            _clearTstorish = _clearTstorishWithSstoreFallback;
         }
 
         _tstoreInitialSupport = tstoreInitialSupport;
@@ -117,6 +111,37 @@ contract Tstorish {
         // Mark TSTORE as activated as of the next block.
         unchecked {
             _tstoreSupportActiveAt = block.number + 1;
+        }
+    }
+
+    /**
+     * @dev Internal view function to determine if TSTORE/TLOAD are supported by
+     *      the current EVM implementation by attempting to call the test
+     *      contract, which utilizes TLOAD as part of its fallback logic.
+     *      Marked as virtual to facilitate overriding as part of tests.
+     */
+    function _testTload(address tloadTestContract) internal view virtual returns (bool ok) {
+        // Call the test contract, which will perform a TLOAD test. If the call
+        // does not revert, then TLOAD/TSTORE is supported. Do not forward all
+        // available gas, as all forwarded gas will be consumed on revert.
+        // Note that this assumes that the contract was successfully deployed.
+        assembly ("memory-safe") {
+            ok := staticcall(div(gas(), 10), tloadTestContract, 0, 0, 0, 0)
+        }
+    }
+
+    /**
+     * @dev Private function to deploy a test contract that utilizes TLOAD as
+     *      part of its fallback logic.
+     */
+    function _prepareTloadTest() private returns (address contractAddress) {
+        // Utilize assembly to deploy a contract testing TLOAD support.
+        assembly ("memory-safe") {
+            // Write the contract deployment code payload to scratch space.
+            mstore(0, _TLOAD_TEST_PAYLOAD)
+
+            // Deploy the contract.
+            contractAddress := create(0, _TLOAD_TEST_PAYLOAD_OFFSET, _TLOAD_TEST_PAYLOAD_LENGTH)
         }
     }
 
@@ -185,68 +210,6 @@ contract Tstorish {
             assembly ("memory-safe") {
                 value := tload(storageSlot)
             }
-        }
-    }
-
-    /**
-     * @dev Private function to clear a TSTORISH value. Assigned to _clearTstorish internal
-     *      function variable at construction if chain has tstore support.
-     *
-     * @param storageSlot The slot to clear the TSTORISH value for.
-     */
-    function _clearTstore(uint256 storageSlot) private {
-        assembly ("memory-safe") {
-            tstore(storageSlot, 0)
-        }
-    }
-
-    /**
-     * @dev Private function to clear a TSTORISH value with sstore fallback.
-     *      Assigned to _clearTstorish internal function variable at construction
-     *      if chain does not have tstore support.
-     *
-     * @param storageSlot The slot to clear the TSTORISH value for.
-     */
-    function _clearTstorishWithSstoreFallback(uint256 storageSlot) private {
-        if (_useSstoreFallback()) {
-            assembly ("memory-safe") {
-                sstore(storageSlot, 0)
-            }
-        } else {
-            assembly ("memory-safe") {
-                tstore(storageSlot, 0)
-            }
-        }
-    }
-
-    /**
-     * @dev Private function to deploy a test contract that utilizes TLOAD as
-     *      part of its fallback logic.
-     */
-    function _prepareTloadTest() private returns (address contractAddress) {
-        // Utilize assembly to deploy a contract testing TLOAD support.
-        assembly ("memory-safe") {
-            // Write the contract deployment code payload to scratch space.
-            mstore(0, _TLOAD_TEST_PAYLOAD)
-
-            // Deploy the contract.
-            contractAddress := create(0, _TLOAD_TEST_PAYLOAD_OFFSET, _TLOAD_TEST_PAYLOAD_LENGTH)
-        }
-    }
-
-    /**
-     * @dev Internal view function to determine if TSTORE/TLOAD are supported by
-     *      the current EVM implementation by attempting to call the test
-     *      contract, which utilizes TLOAD as part of its fallback logic.
-     *      Marked as virtual to facilitate overriding as part of tests.
-     */
-    function _testTload(address tloadTestContract) internal view virtual returns (bool ok) {
-        // Call the test contract, which will perform a TLOAD test. If the call
-        // does not revert, then TLOAD/TSTORE is supported. Do not forward all
-        // available gas, as all forwarded gas will be consumed on revert.
-        // Note that this assumes that the contract was successfully deployed.
-        assembly ("memory-safe") {
-            ok := staticcall(div(gas(), 10), tloadTestContract, 0, 0, 0, 0)
         }
     }
 
