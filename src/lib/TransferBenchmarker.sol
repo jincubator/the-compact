@@ -187,7 +187,7 @@ contract TransferBenchmarker {
             // Place `transfer(address,uint256)` calldata into memory before `thirdStart` to ensure accurate gas measurement
             mstore(0x14, target) // Store target `to` argument in memory.
             mstore(0x34, 1) // Store an `amount` argument of 1 in memory.
-            mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
+            mstore(0x00, shl(96, 0xa9059cbb)) // `transfer(address,uint256)`.
 
             // Get gas before third call.
             let thirdStart := gas()
