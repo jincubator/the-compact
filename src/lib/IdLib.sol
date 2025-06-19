@@ -18,9 +18,7 @@ library IdLib {
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
-    using IdLib for ResetPeriod;
     using EfficiencyLib for bool;
-    using EfficiencyLib for uint8;
     using EfficiencyLib for uint96;
     using EfficiencyLib for bytes12;
     using EfficiencyLib for uint256;
@@ -269,22 +267,6 @@ library IdLib {
     }
 
     /**
-     * @notice Internal pure function for extracting the allocator ID from a resource
-     * lock ID. The allocator ID is a 92-bit value, with the first 4 bits representing
-     * the compact flag and the last 88 bits matching the last 88 bits of the underlying
-     * allocator, but is represented by a uint96 as solidity only supports uint values
-     * for multiples of 8 bits.
-     * @param id           The resource lock ID to extract from.
-     * @return allocatorId The allocator ID (bits 160-251).
-     */
-    function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
-        assembly ("memory-safe") {
-            // Extract bits 5-96.
-            allocatorId := shr(164, shl(4, id))
-        }
-    }
-
-    /**
      * @notice Internal pure function for converting a reset period to its duration in
      * seconds. There are eight distinct reset periods ranging from one second to
      * thirty days. Specific periods include some additional padding:
@@ -347,6 +329,22 @@ library IdLib {
     }
 
     /**
+     * @notice Internal pure function for extracting the allocator ID from a resource
+     * lock ID. The allocator ID is a 92-bit value, with the first 4 bits representing
+     * the compact flag and the last 88 bits matching the last 88 bits of the underlying
+     * allocator, but is represented by a uint96 as solidity only supports uint values
+     * for multiples of 8 bits.
+     * @param id           The resource lock ID to extract from.
+     * @return allocatorId The allocator ID (bits 160-251).
+     */
+    function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
+        assembly ("memory-safe") {
+            // Extract bits 5-96.
+            allocatorId := shr(164, shl(4, id))
+        }
+    }
+
+    /**
      * @notice Internal pure function for computing an allocator's ID from their address.
      * Combines the compact flag (4 bits) with the last 88 bits of the address.
      * @param allocator    The address to compute the ID for.
@@ -383,30 +381,5 @@ library IdLib {
      */
     function hasRegisteredAllocatorId(bytes12 lockTag) internal view {
         lockTag.toAllocatorId().mustHaveARegisteredAllocator();
-    }
-
-    /**
-     * @notice Internal pure function for deriving a resource lock ID from a Lock struct.
-     * The ID consists of:
-     *  - Bit 255: scope
-     *  - Bits 252-254: reset period
-     *  - Bits 160-251: allocator ID (first 4 bits are compact flag, next 88 from allocator address)
-     *  - Bits 0-159: token address
-     * @dev Note that this will return an ID even if the allocator is unregistered.
-     * @param token        The address of the underlying token (or address(0) for native tokens).
-     * @param allocator    The address of the allocator mediating the resource lock.
-     * @param resetPeriod  The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
-     * @param scope        The scope of the resource lock (multichain or single chain).
-     * @return id          The derived resource lock ID.
-     */
-    function toId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-        internal
-        pure
-        returns (uint256 id)
-    {
-        id = (
-            (scope.asUint256() << 255) | (resetPeriod.asUint256() << 252)
-                | (allocator.toAllocatorId().asUint256() << 160) | token.asUint256()
-        );
     }
 }

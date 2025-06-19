@@ -80,7 +80,7 @@ contract AllocatorLogic {
      * @return allocatorId A unique identifier assigned to the registered allocator.
      */
     function _registerAllocator(address allocator, bytes calldata proof) internal returns (uint96 allocatorId) {
-        // Santitize the allocator address out of an abundance of caution.
+        // Sanitize the allocator address out of an abundance of caution.
         allocator = uint256(uint160(allocator)).asSanitizedAddress();
 
         // Ensure that the allocator in question can be registered.

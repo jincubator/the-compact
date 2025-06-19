@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-
-import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { IdLib } from "./IdLib.sol";
-
 /**
  * @title RegistrationLib
  * @notice Library contract implementing logic for registering compact claim hashes
@@ -14,8 +9,6 @@ import { IdLib } from "./IdLib.sol";
  */
 library RegistrationLib {
     using RegistrationLib for address;
-    using EfficiencyLib for uint256;
-    using IdLib for ResetPeriod;
 
     // keccak256(bytes("CompactRegistered(address,bytes32,bytes32)")).
     uint256 private constant _COMPACT_REGISTERED_SIGNATURE =
@@ -53,18 +46,16 @@ library RegistrationLib {
      * @return                         Whether all claim hashes were successfully registered.
      */
     function registerBatchAsCaller(bytes32[2][] calldata claimHashesAndTypehashes) internal returns (bool) {
-        unchecked {
-            // Retrieve the total number of claim hashes and typehashes to register.
-            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
+        // Retrieve the total number of claim hashes and typehashes to register.
+        uint256 totalClaimHashes = claimHashesAndTypehashes.length;
 
-            // Iterate over each pair of claim hashes and typehashes.
-            for (uint256 i = 0; i < totalClaimHashes; ++i) {
-                // Retrieve the claim hash and typehash from calldata.
-                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
+        // Iterate over each pair of claim hashes and typehashes.
+        for (uint256 i = 0; i < totalClaimHashes; ++i) {
+            // Retrieve the claim hash and typehash from calldata.
+            bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
 
-                // Register the compact as the caller.
-                msg.sender.registerCompact(claimHashAndTypehash[0], claimHashAndTypehash[1]);
-            }
+            // Register the compact as the caller.
+            msg.sender.registerCompact(claimHashAndTypehash[0], claimHashAndTypehash[1]);
         }
 
         return true;

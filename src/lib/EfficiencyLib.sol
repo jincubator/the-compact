@@ -57,17 +57,6 @@ library EfficiencyLib {
     }
 
     /**
-     * @notice Internal pure function that converts a uint256 to a boolean.
-     * @param a  The uint256 to convert.
-     * @return b The resulting boolean.
-     */
-    function asBool(uint256 a) internal pure returns (bool b) {
-        assembly ("memory-safe") {
-            b := iszero(iszero(a))
-        }
-    }
-
-    /**
      * @notice Internal pure function that sanitizes an address by clearing the
      * upper 96 bits. Used for ensuring consistent address handling.
      * @param accountValue The value to sanitize.
@@ -88,18 +77,6 @@ library EfficiencyLib {
     function isNullAddress(address account) internal pure returns (bool isNull) {
         assembly ("memory-safe") {
             isNull := iszero(shl(96, account))
-        }
-    }
-
-    /**
-     * @notice Internal pure function that checks if a bytes12 value is zero. Only
-     * safe to use if the value is known to not have any dirty lower bits set.
-     * @param value The value to check.
-     * @return isNull Whether the value is zero.
-     */
-    function isZero(bytes12 value) internal pure returns (bool isNull) {
-        assembly ("memory-safe") {
-            isNull := iszero(value)
         }
     }
 

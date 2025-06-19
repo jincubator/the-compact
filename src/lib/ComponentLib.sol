@@ -3,19 +3,12 @@ pragma solidity ^0.8.27;
 
 import { AllocatedTransfer } from "../types/Claims.sol";
 import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-
 import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { EventLib } from "./EventLib.sol";
-import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { TransferLib } from "./TransferLib.sol";
-
-import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 
 /**
  * @title ComponentLib
@@ -30,19 +23,10 @@ library ComponentLib {
     using TransferLib for address;
     using ComponentLib for Component[];
     using EfficiencyLib for bool;
-    using EfficiencyLib for ResetPeriod;
-    using EfficiencyLib for uint256;
-    using EventLib for address;
-    using HashLib for uint256;
     using IdLib for uint256;
-    using IdLib for ResetPeriod;
     using ValidityLib for uint256;
-    using ValidityLib for uint96;
     using ValidityLib for bytes32;
-    using RegistrationLib for address;
-    using FixedPointMathLib for uint256;
 
-    error Overflow();
     error NoIdsAndAmountsProvided();
 
     /**
@@ -71,16 +55,13 @@ library ComponentLib {
 
         // Retrieve the total number of components.
         uint256 totalIds = transfers.length;
+        // Iterate over each component in calldata.
+        for (uint256 i = 0; i < totalIds; ++i) {
+            // Navigate to location of the component in calldata.
+            ComponentsById calldata component = transfers[i];
 
-        unchecked {
-            // Iterate over each component in calldata.
-            for (uint256 i = 0; i < totalIds; ++i) {
-                // Navigate to location of the component in calldata.
-                ComponentsById calldata component = transfers[i];
-
-                // Process transfer for each component in the set.
-                _processTransferComponents(component.portions, component.id);
-            }
+            // Process transfer for each component in the set.
+            _processTransferComponents(component.portions, component.id);
         }
     }
 
@@ -192,16 +173,14 @@ library ComponentLib {
             idsAndAmounts
         );
 
-        unchecked {
-            // Process each claim component.
-            for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-                BatchClaimComponent calldata claimComponent = claims[i];
+        // Process each claim component.
+        for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+            BatchClaimComponent calldata claimComponent = claims[i];
 
-                // Process each component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessComponents(
-                    sponsor, claimComponent.id, claimComponent.allocatedAmount
-                );
-            }
+            // Process each component, verifying total amount and executing operations.
+            claimComponent.portions.verifyAndProcessComponents(
+                sponsor, claimComponent.id, claimComponent.allocatedAmount
+            );
         }
     }
 
@@ -236,27 +215,24 @@ library ComponentLib {
         // Initialize error tracking variable.
         uint256 errorBuffer = id.scopeNotMultichain(sponsorDomainSeparator).asUint256();
 
-        unchecked {
-            // Register each additional element & accumulate potential errors.
-            for (uint256 i = 1; i < totalClaims; ++i) {
-                claimComponent = claims[i];
-                id = claimComponent.id;
+        // Register each additional element & accumulate potential errors.
+        for (uint256 i = 1; i < totalClaims; ++i) {
+            claimComponent = claims[i];
+            id = claimComponent.id;
 
-                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
-                    id.scopeNotMultichain(sponsorDomainSeparator)
-                ).asUint256();
+            errorBuffer |=
+                (id.toAllocatorId() != firstAllocatorId).or(id.scopeNotMultichain(sponsorDomainSeparator)).asUint256();
 
-                // Include the id and amount in idsAndAmounts.
-                idsAndAmounts[i] = [id, claimComponent.allocatedAmount];
-            }
+            // Include the id and amount in idsAndAmounts.
+            idsAndAmounts[i] = [id, claimComponent.allocatedAmount];
+        }
 
-            // Revert if any errors occurred.
-            assembly ("memory-safe") {
-                if errorBuffer {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
+        // Revert if any errors occurred.
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
             }
         }
     }
@@ -316,22 +292,24 @@ library ComponentLib {
      * @return sum Total amount across all components.
      */
     function aggregate(Component[] calldata recipients) internal pure returns (uint256 sum) {
-        // Retrieve the total number of components.
-        uint256 totalComponents = recipients.length;
+        assembly ("memory-safe") {
+            let errorBuffer := 0
 
-        uint256 amount;
-        uint256 errorBuffer;
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalComponents; ++i) {
-                amount = recipients[i].amount;
-                sum += amount;
-                errorBuffer |= (sum < amount).asUint256();
+            let end := add(shl(6, recipients.length), recipients.offset) // Each component has 2 elements, each element 32 bytes
+            let dataOffset := add(recipients.offset, 0x20) // Point to first amount
+
+            for { } lt(dataOffset, end) { dataOffset := add(dataOffset, 0x40) } {
+                let amount := calldataload(dataOffset)
+                sum := add(amount, sum)
+                errorBuffer := or(errorBuffer, lt(sum, amount))
             }
-        }
 
-        if (errorBuffer.asBool()) {
-            revert Overflow();
+            if errorBuffer {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
         }
     }
 
@@ -346,15 +324,13 @@ library ComponentLib {
         // Retrieve the total number of components.
         uint256 totalComponents = recipients.length;
 
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalComponents; ++i) {
-                // Navigate to location of the component in calldata.
-                Component calldata component = recipients[i];
+        // Iterate over each additional component in calldata.
+        for (uint256 i = 0; i < totalComponents; ++i) {
+            // Navigate to location of the component in calldata.
+            Component calldata component = recipients[i];
 
-                // Perform the transfer or withdrawal for the portion.
-                msg.sender.performOperation(id, component.claimant, component.amount);
-            }
+            // Perform the transfer or withdrawal for the portion.
+            msg.sender.performOperation(id, component.claimant, component.amount);
         }
     }
 }

@@ -287,44 +287,6 @@ contract IdLibTest is Test {
         assertEq(ResetPeriod.ThirtyDays.toSeconds(), 30 days, "ThirtyDays");
     }
 
-    function testToId_FromLock() public {
-        address allocator = makeAddr("probably safe allocator");
-        address token = makeAddr("probably safe token");
-        Scope scope = Scope.Multichain;
-        ResetPeriod resetPeriod = ResetPeriod.OneDay;
-
-        uint96 lockAllocatorId = allocator.toAllocatorId(); // Uses compact flag internally
-        bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, scope, resetPeriod);
-        uint256 expectedId = uint256(bytes32(lockTag)) | uint256(uint160(token));
-
-        assertEq(IdLib.toId(token, allocator, resetPeriod, scope), expectedId, "toId from Lock failed");
-    }
-
-    function testFuzzToId_FromLock(address allocator, address token, uint8 scope, uint8 resetPeriod) public pure {
-        Scope actualScope = Scope(uint8(scope) % 2);
-        ResetPeriod actualResetPeriod = ResetPeriod(uint8(resetPeriod) % 8);
-
-        uint96 lockAllocatorId = allocator.toAllocatorId();
-        bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, actualScope, actualResetPeriod);
-
-        uint256 actualId = IdLib.toId(token, allocator, actualResetPeriod, actualScope);
-        assertEq(actualId, uint256(bytes32(lockTag)) | uint256(uint160(token)));
-
-        uint8 compactFlag;
-        assembly ("memory-safe") {
-            // extract 5th, 6th, 7th & 8th uppermost bits
-            compactFlag := and(shr(248, actualId), 15)
-        }
-
-        // Cross-check extractors
-        assertEq(actualId.toAddress(), token, "Extracted token mismatch");
-        assertEq(uint8(actualId.toResetPeriod()), uint8(actualResetPeriod), "Extracted reset period mismatch");
-        assertEq(uint8(actualId.toScope()), uint8(actualScope), "Extracted scope mismatch");
-        assertEq(actualId.toAllocatorId(), lockAllocatorId, "Extracted allocatorId mismatch");
-        assertEq(compactFlag, allocator.toCompactFlag(), "Extracted compact flag mismatch");
-        assertEq(actualId.toLockTag(), lockTag, "Extracted lockTag mismatch");
-    }
-
     function testRegister() public {
         // Default allocator already registered in setUp
         uint96 defaultAllocatorId = allocatorAddress.toAllocatorId();

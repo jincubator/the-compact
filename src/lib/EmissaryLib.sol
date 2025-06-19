@@ -29,13 +29,9 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
  */
 library EmissaryLib {
     using IdLib for bytes12;
-    using IdLib for address;
     using IdLib for uint256;
     using IdLib for ResetPeriod;
-    using IdLib for uint96;
-    using EfficiencyLib for bytes12;
     using EfficiencyLib for bool;
-    using EfficiencyLib for uint256;
 
     // Sentinel value of type(uint96).max representing an emissary without a scheduled assignment.
     uint96 private constant NOT_SCHEDULED = 0xffffffffffffffffffffffff;
@@ -68,9 +64,9 @@ library EmissaryLib {
         uint256 assignableAt = config.assignableAt;
         address currentEmissary = config.emissary;
 
-        // Ensure assigment has been properly scheduled if an emissary is currently set.
-        // Note that assigment can occur immediately if no emissary is set. Emissaries that
-        // do not have a scheduled assigment will have an assignableAt of type(uint96).max
+        // Ensure assignment has been properly scheduled if an emissary is currently set.
+        // Note that assignment can occur immediately if no emissary is set. Emissaries that
+        // do not have a scheduled assignment will have an assignableAt of type(uint96).max
         // which will prohibit assignment as the timestamp cannot exceed that value.
         assembly ("memory-safe") {
             if and(iszero(iszero(currentEmissary)), gt(assignableAt, timestamp())) {
@@ -207,11 +203,9 @@ library EmissaryLib {
         uint256 idsAndAmountsLength = idsAndAmounts.length;
 
         // Iterate over remaining array elements.
-        unchecked {
-            for (uint256 i = 1; i < idsAndAmountsLength; ++i) {
-                // Set the error buffer if lockTag does not match initial lockTag.
-                errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
-            }
+        for (uint256 i = 1; i < idsAndAmountsLength; ++i) {
+            // Set the error buffer if lockTag does not match initial lockTag.
+            errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
         }
 
         // Ensure that no lockTag values differ.

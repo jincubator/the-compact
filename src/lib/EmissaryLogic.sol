@@ -36,7 +36,7 @@ contract EmissaryLogic {
     /**
      * @notice Initiates the timelock process for changing an emissary
      * @param lockTag The lock tag to schedule emissary assignment for.
-     * @return emissaryAssignmentAvailableAt The time at which assigment can be performed.
+     * @return emissaryAssignmentAvailableAt The time at which assignment can be performed.
      * @dev This function starts the timelock period that must pass before
      *      a new emissary can be set. The timelock is specific to the caller (msg.sender).
      *      After calling this function, the caller must wait for the timelock period to expire

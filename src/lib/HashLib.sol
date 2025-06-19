@@ -27,11 +27,10 @@ import {
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SEVEN,
-    ELEMENT_TYPEHASH,
-    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH
+    ELEMENT_TYPEHASH
 } from "../types/EIP712Types.sol";
 
-import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { ComponentLib } from "./ComponentLib.sol";
 
 /**
  * @title HashLib
@@ -41,8 +40,7 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
  * the allocator.
  */
 library HashLib {
-    using EfficiencyLib for bool;
-    using EfficiencyLib for uint256;
+    using ComponentLib for Component[];
     using HashLib for uint256[2][];
 
     /**
@@ -52,38 +50,10 @@ library HashLib {
      * @return claimHash The EIP-712 compliant message hash.
      */
     function toTransferClaimHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        // Declare variables for tracking, total amount, current amount, and errors.
-        uint256 amount = 0;
-        uint256 currentAmount;
-        uint256 errorBuffer;
-
-        // Navigate to the components array in calldata.
-        Component[] calldata recipients = transfer.recipients;
-
-        // Retrieve the length of the array.
-        uint256 totalRecipients = recipients.length;
-
-        unchecked {
-            // Iterate over each component.
-            for (uint256 i = 0; i < totalRecipients; ++i) {
-                // Retrieve the current amount of the component.
-                currentAmount = recipients[i].amount;
-
-                // Add current amount to total amount and check for overflow.
-                amount += currentAmount;
-                errorBuffer |= (amount < currentAmount).asUint256();
-            }
-        }
+        // Declare variable for total amount
+        uint256 totalAmount = transfer.recipients.aggregate();
 
         assembly ("memory-safe") {
-            // Revert if an arithmetic overflow was detected.
-            if errorBuffer {
-                // Revert Panic(0x11) (arithmetic overflow)
-                mstore(0, 0x4e487b71)
-                mstore(0x20, 0x11)
-                revert(0x1c, 0x24)
-            }
-
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
 
@@ -99,7 +69,7 @@ library HashLib {
             mstore(add(m, 0xac), 0) // empty word between lockTag & token
 
             // Prepare final component of message data: aggregate amount.
-            mstore(add(m, 0xe0), amount)
+            mstore(add(m, 0xe0), totalAmount)
 
             // Derive the message hash from the prepared data.
             claimHash := keccak256(m, 0x100)
@@ -122,9 +92,6 @@ library HashLib {
         // Allocate working memory for hashing operations.
         (uint256 ptr, uint256 hashesPtr) = _allocateCommitmentsHashingMemory(totalLocks);
 
-        // Declare a buffer for arithmetic errors.
-        uint256 errorBuffer;
-
         unchecked {
             // Cache lock-specific data start memory pointer location.
             uint256 lockDataStart = ptr + 0x20;
@@ -137,27 +104,8 @@ library HashLib {
                 // Retrieve the id from the current transfer component.
                 uint256 id = transferComponent.id;
 
-                // Declare a variable for the aggregate amount.
-                uint256 amount = 0;
-
-                // Declare a variable for the current amount.
-                uint256 singleAmount;
-
-                // Navigate to the portions array in the current transfer component.
-                Component[] calldata portions = transferComponent.portions;
-
-                // Retrieve the length of the portions array.
-                uint256 portionsLength = portions.length;
-
-                // Iterate over each portion.
-                for (uint256 j = 0; j < portionsLength; ++j) {
-                    // Retrieve the current amount of the portion.
-                    singleAmount = portions[j].amount;
-
-                    // Add current amount to aggregate amount and check for overflow.
-                    amount += singleAmount;
-                    errorBuffer |= (amount < singleAmount).asUint256();
-                }
+                // Declare a variable for the total amount.
+                uint256 totalAmount = transferComponent.portions.aggregate();
 
                 assembly ("memory-safe") {
                     // Copy data on aggregate committed locks from derived values.
@@ -165,7 +113,7 @@ library HashLib {
                     mstore(lockDataStart, id) // lockTag
                     mstore(add(lockDataStart, 0x20), id) // token
                     mstore(add(lockDataStart, 0x0c), 0) // empty word between lockTag & token
-                    mstore(add(lockDataStart, 0x40), amount)
+                    mstore(add(lockDataStart, 0x40), totalAmount)
 
                     // Hash the prepared elements and store at current position.
                     mstore(add(hashesPtr, shl(5, i)), keccak256(ptr, 0x80))
@@ -176,14 +124,6 @@ library HashLib {
         // Declare a variable for the commitments hash.
         uint256 commitmentsHash;
         assembly ("memory-safe") {
-            // Revert if an arithmetic overflow was detected.
-            if errorBuffer {
-                // Revert Panic(0x11) (arithmetic overflow)
-                mstore(0, 0x4e487b71)
-                mstore(0x20, 0x11)
-                revert(0x1c, 0x24)
-            }
-
             // Derive the commitments hash using the prepared lock hashes data.
             commitmentsHash := keccak256(hashesPtr, shl(5, totalLocks))
         }

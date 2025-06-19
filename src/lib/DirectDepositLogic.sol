@@ -104,38 +104,36 @@ contract DirectDepositLogic is DepositLogic {
         }
 
         // Iterate over remaining IDs and amounts.
-        unchecked {
-            for (uint256 i = firstUnderlyingTokenIsNative.asUint256(); i < totalIds; ++i) {
-                // Navigate to the current ID and amount pair in calldata.
-                uint256[2] calldata idAndAmount = idsAndAmounts[i];
+        for (uint256 i = firstUnderlyingTokenIsNative.asUint256(); i < totalIds; ++i) {
+            // Navigate to the current ID and amount pair in calldata.
+            uint256[2] calldata idAndAmount = idsAndAmounts[i];
 
-                // Retrieve the current ID and amount.
-                id = idAndAmount[0];
-                amount = idAndAmount[1];
+            // Retrieve the current ID and amount.
+            id = idAndAmount[0];
+            amount = idAndAmount[1];
 
-                // Derive new allocator ID from current resource lock ID.
-                newAllocatorId = id.toAllocatorId();
+            // Derive new allocator ID from current resource lock ID.
+            newAllocatorId = id.toAllocatorId();
 
-                // Determine if new allocator ID differs from current allocator ID.
-                if (newAllocatorId != currentAllocatorId) {
-                    assembly ("memory-safe") {
-                        if enforceConsistentAllocator {
-                            // revert InconsistentAllocators();
-                            mstore(0, 0xaf346306)
-                            revert(0x1c, 4)
-                        }
+            // Determine if new allocator ID differs from current allocator ID.
+            if (newAllocatorId != currentAllocatorId) {
+                assembly ("memory-safe") {
+                    if enforceConsistentAllocator {
+                        // revert InconsistentAllocators();
+                        mstore(0, 0xaf346306)
+                        revert(0x1c, 4)
                     }
-
-                    // Ensure new allocator ID is registered.
-                    newAllocatorId.mustHaveARegisteredAllocator();
-
-                    // Update current allocator ID.
-                    currentAllocatorId = newAllocatorId;
                 }
 
-                // Transfer underlying tokens in and mint ERC6909 tokens to recipient.
-                mintedAmounts[i] = _transferAndDeposit(id.toAddress(), recipient, id, amount);
+                // Ensure new allocator ID is registered.
+                newAllocatorId.mustHaveARegisteredAllocator();
+
+                // Update current allocator ID.
+                currentAllocatorId = newAllocatorId;
             }
+
+            // Transfer underlying tokens in and mint ERC6909 tokens to recipient.
+            mintedAmounts[i] = _transferAndDeposit(id.toAddress(), recipient, id, amount);
         }
 
         // Clear reentrancy guard.

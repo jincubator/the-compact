@@ -63,7 +63,7 @@ library ConsumerLib {
             let bit := shl(and(0xff, nonce), 1)
             if and(bit, bucketValue) {
                 // `InvalidNonce(address,uint256)` with padding for `account`.
-                mstore(0x0c, 0xdbc205b1000000000000000000000000)
+                mstore(0x0c, shl(96, 0xdbc205b1))
                 revert(0x1c, 0x44)
             }
 
