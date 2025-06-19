@@ -266,9 +266,12 @@ contract ComponentLibTest is Test {
     function _buildTestId(address allocator, address token, Scope scope, ResetPeriod period)
         internal
         pure
-        returns (uint256)
+        returns (uint256 id)
     {
-        return IdLib.toId(token, allocator, period, scope);
+        id = (
+            (scope.asUint256() << 255) | (period.asUint256() << 252) | (allocator.toAllocatorId().asUint256() << 160)
+                | token.asUint256()
+        );
     }
 
     function _makeClaimant(address _recipient) internal view returns (uint256) {

@@ -382,29 +382,4 @@ library IdLib {
     function hasRegisteredAllocatorId(bytes12 lockTag) internal view {
         lockTag.toAllocatorId().mustHaveARegisteredAllocator();
     }
-
-    /**
-     * @notice Internal pure function for deriving a resource lock ID from a Lock struct.
-     * The ID consists of:
-     *  - Bit 255: scope
-     *  - Bits 252-254: reset period
-     *  - Bits 160-251: allocator ID (first 4 bits are compact flag, next 88 from allocator address)
-     *  - Bits 0-159: token address
-     * @dev Note that this will return an ID even if the allocator is unregistered.
-     * @param token        The address of the underlying token (or address(0) for native tokens).
-     * @param allocator    The address of the allocator mediating the resource lock.
-     * @param resetPeriod  The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
-     * @param scope        The scope of the resource lock (multichain or single chain).
-     * @return id          The derived resource lock ID.
-     */
-    function toId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-        internal
-        pure
-        returns (uint256 id)
-    {
-        id = (
-            (scope.asUint256() << 255) | (resetPeriod.asUint256() << 252)
-                | (allocator.toAllocatorId().asUint256() << 160) | token.asUint256()
-        );
-    }
 }
