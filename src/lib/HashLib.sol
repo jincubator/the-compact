@@ -30,7 +30,6 @@ import {
     ELEMENT_TYPEHASH
 } from "../types/EIP712Types.sol";
 
-import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { ComponentLib } from "./ComponentLib.sol";
 
 /**
@@ -42,7 +41,6 @@ import { ComponentLib } from "./ComponentLib.sol";
  */
 library HashLib {
     using ComponentLib for Component[];
-    using EfficiencyLib for bool;
     using HashLib for uint256[2][];
 
     /**
