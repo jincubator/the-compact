@@ -352,7 +352,7 @@ $ forge coverage
 ## Development and Testing
 
 **Testing Requirements:**
--   **Foundry**: The project uses Foundry for testing and development. Install via the official installer.
+-   **Foundry**: The project uses Foundry for testing and development. Install via the official installer. There are also a small handful of optional hardhat tests.
 -   **Dependencies**: Run `forge install` to install all required dependencies including Permit2, Solady, and other libraries.
 -   **Gas Snapshots**: Tests include gas snapshots to track performance. Run `forge test -v` to see detailed gas usage.
 -   **Coverage**: Generate coverage reports with `forge coverage` to ensure comprehensive testing.
