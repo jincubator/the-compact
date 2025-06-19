@@ -18,9 +18,7 @@ library IdLib {
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
-    using IdLib for ResetPeriod;
     using EfficiencyLib for bool;
-    using EfficiencyLib for uint8;
     using EfficiencyLib for uint96;
     using EfficiencyLib for bytes12;
     using EfficiencyLib for uint256;
