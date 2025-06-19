@@ -70,15 +70,15 @@ library ComponentLib {
      * signatures. Extracts claim parameters from calldata, validates the claim, validates
      * the scope, and executes either releases of ERC6909 tokens or withdrawals of underlying
      * tokens to multiple recipients.
-     * @param messageHash              The EIP-712 hash of the claim message.
-     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
-     * @param typehash                 The EIP-712 typehash used for the claim message.
-     * @param domainSeparator          The local domain separator.
-     * @param validation               Function pointer to the _validate function.
+     * @param claimHash              The EIP-712 hash of the compact for which the claim is being processed.
+     * @param calldataPointer        Pointer to the location of the associated struct in calldata.
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param typehash               The EIP-712 typehash used for the claim message.
+     * @param domainSeparator        The local domain separator.
+     * @param validation             Function pointer to the _validate function.
      */
     function processClaimWithComponents(
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
@@ -111,7 +111,7 @@ library ComponentLib {
 
         // Validate the claim and extract the sponsor address.
         address sponsor = validation(
-            messageHash,
+            claimHash,
             id.toAllocatorId(),
             calldataPointer,
             domainSeparator,
@@ -133,7 +133,7 @@ library ComponentLib {
      * validates the claim, and executes operations for each resource lock. Uses optimized
      * validation of allocator consistency and scopes, with explicit validation on failure to
      * identify specific issues. Each resource lock can be split among multiple recipients.
-     * @param messageHash              The EIP-712 hash of the claim message.
+     * @param claimHash              The EIP-712 hash of the compact for which the claim is being processed.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
@@ -141,7 +141,7 @@ library ComponentLib {
      * @param validation               Function pointer to the _validate function.
      */
     function processClaimWithBatchComponents(
-        bytes32 messageHash,
+        bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
@@ -164,7 +164,7 @@ library ComponentLib {
 
         // Validate the claim and extract the sponsor address.
         address sponsor = validation(
-            messageHash,
+            claimHash,
             firstAllocatorId,
             calldataPointer,
             domainSeparator,

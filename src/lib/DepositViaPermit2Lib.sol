@@ -301,7 +301,7 @@ library DepositViaPermit2Lib {
     }
 
     /**
-     * @notice Internal pure function for deriving the activation witness hash and
+     * @notice Internal view function for deriving the activation witness hash and
      * writing it to a specified memory location. Depends on the "activator" or caller.
      * @param activationTypehash The derived activation typehash.
      * @param idOrIdsHash        Resource lock ID or uint256 representation of the hash of each ID.

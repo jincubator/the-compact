@@ -15,6 +15,11 @@ import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
  * @title The Compact — Core Interface
  * @custom:version 1
  * @author 0age (0age.eth)
+ * @custom:coauthor mgretzke (mgretzke.eth)
+ * @custom:coauthor ccashwell (ccashwell.eth)
+ * @custom:coauthor reednaa (reednaa.eth)
+ * @custom:coauthor zeroknots (zeroknots.eth)
+ * @custom:security-contact security@uniswap.org
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  * formation and mediation of reusable "resource locks." This interface contract specifies
  * external functions for making deposits, for performing allocated transfers and
@@ -26,11 +31,11 @@ import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
 interface ITheCompact {
     /**
      * @notice Event indicating that a claim has been processed for a given compact.
-     * @param sponsor    The account sponsoring the claimed compact.
-     * @param allocator  The account mediating the resource locks utilized by the claim.
-     * @param arbiter    The account verifying and initiating the settlement of the claim.
-     * @param claimHash  A bytes32 hash derived from the details of the claimed compact.
-     * @param nonce      The nonce (scoped to the allocator) on the claimed compact.
+     * @param sponsor   The account sponsoring the claimed compact.
+     * @param allocator The account mediating the resource locks utilized by the claim.
+     * @param arbiter   The account verifying and initiating the settlement of the claim.
+     * @param claimHash A bytes32 hash derived from the details of the claimed compact.
+     * @param nonce     The nonce (scoped to the allocator) on the claimed compact.
      */
     event Claim(
         address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash, uint256 nonce
@@ -38,8 +43,8 @@ interface ITheCompact {
 
     /**
      * @notice Event indicating that a nonce has been consumed directly.
-     * @param allocator  The account mediating the nonces.
-     * @param nonce      The nonce (scoped to the allocator) in question.
+     * @param allocator The account mediating the nonces.
+     * @param nonce     The nonce (scoped to the allocator) in question.
      */
     event NonceConsumedDirectly(address indexed allocator, uint256 nonce);
 
@@ -125,7 +130,7 @@ interface ITheCompact {
      * balances held in the resource locks, which may differ from the amounts transferred depending
      * on the implementation details of the respective tokens.  Note that supplying the null
      * address for the recipient will result in the caller being applied as the recipient.
-     * @param idsAndAmounts Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
+     * @param idsAndAmounts Array of [id, amount] pairs indicating resource locks & amounts to deposit.
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
      * @return              Whether the batch deposit was successfully completed.
      */
@@ -140,11 +145,12 @@ interface ITheCompact {
      * implementation details of the respective token. The Permit2 authorization signed by the
      * depositor must contain a CompactDeposit witness containing the allocator, the reset period,
      * the scope, and the intended recipient of the deposit.
-     * @param permit      The permit data signed by the depositor.
-     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
-     * @param recipient   The address that will receive the corresponding the ERC6909 tokens.
-     * @param signature   The Permit2 signature from the depositor authorizing the deposit.
-     * @return id         The ERC6909 token identifier of the associated resource lock.
+     * @param permit    The permit data signed by the depositor.
+     * @param depositor The account signing the permit2 authorization and depositing the tokens.
+     * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
+     * @param recipient The address that will receive the corresponding the ERC6909 tokens.
+     * @param signature The Permit2 signature from the depositor authorizing the deposit.
+     * @return id       The ERC6909 token identifier of the associated resource lock.
      */
     function depositERC20ViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
@@ -165,12 +171,12 @@ interface ITheCompact {
      * the respective tokens. The Permit2 authorization signed by the depositor must contain a
      * CompactDeposit witness containing the allocator, the reset period, the scope, and the
      * intended recipient of the deposits.
-     * @param depositor   The account signing the permit2 authorization and depositing the tokens.
-     * @param permitted   The permit data signed by the depositor.
-     * @param details     The details of the deposit.
-     * @param recipient   The address that will receive the corresponding ERC6909 tokens.
-     * @param signature   The Permit2 signature from the depositor authorizing the deposits.
-     * @return ids        Array of ERC6909 token identifiers for the associated resource locks.
+     * @param depositor The account signing the permit2 authorization and depositing the tokens.
+     * @param permitted The permit data signed by the depositor.
+     * @param details   The details of the deposit.
+     * @param recipient The address that will receive the corresponding ERC6909 tokens.
+     * @param signature The Permit2 signature from the depositor authorizing the deposits.
+     * @return ids      Array of ERC6909 token identifiers for the associated resource locks.
      */
     function batchDepositViaPermit2(
         address depositor,
@@ -190,7 +196,7 @@ interface ITheCompact {
      *  -  recipients    A Component array, each containing:
      *     -  claimant   The account that will receive tokens.
      *     -  amount     The amount of tokens the claimant will receive.
-     * @return Whether the transfer or withdrawal was successful.
+     * @return           Boolean indicating whether the transfer or withdrawal was successful.
      */
     function allocatedTransfer(AllocatedTransfer calldata transfer) external returns (bool);
 
@@ -206,7 +212,7 @@ interface ITheCompact {
      *     -  portions    A Component array, each containing:
      *        -  claimant The account that will receive tokens.
      *        -  amount   The amount of tokens the claimant will receive.
-     * @return            Whether the transfer was successful.
+     * @return            Boolean indicating whether the transfer was successful.
      */
     function allocatedBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool);
 
@@ -215,7 +221,7 @@ interface ITheCompact {
      * The registered claim hash will remain valid until the allocator consumes the nonce.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
-     * @return          Whether the claim hash was successfully registered.
+     * @return          Boolean indicating whether the claim hash was successfully registered.
      */
     function register(bytes32 claimHash, bytes32 typehash) external returns (bool);
 
@@ -224,7 +230,7 @@ interface ITheCompact {
      * typehashes in a single call. Each registered claim hash will remain valid until the allocator
      * consumes the nonce.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
-     * @return                         Whether all claim hashes were successfully registered.
+     * @return                         Boolean indicating whether all claim hashes were successfully registered.
      */
     function registerMultiple(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 
@@ -240,7 +246,7 @@ interface ITheCompact {
      * @param amount           The amount of tokens associated with the claim.
      * @param witness          Hash of the witness data.
      * @param sponsorSignature The signature from the sponsor authorizing the registration.
-     * @return claimHash       The hash of the registered compact.
+     * @return claimHash       Hash for verifying that the expected compact was registered.
      */
     function registerFor(
         bytes32 typehash,
@@ -265,7 +271,7 @@ interface ITheCompact {
      * @param idsAndAmountsHash Hash of array of [id, amount] pairs per resource lock.
      * @param witness           Hash of the witness data.
      * @param sponsorSignature  The signature from the sponsor authorizing the registration.
-     * @return claimHash        The hash of the registered compact.
+     * @return claimHash        Hash for verifying that the expected compact was registered.
      */
     function registerBatchFor(
         bytes32 typehash,
@@ -287,7 +293,7 @@ interface ITheCompact {
      * @param elementsHash     Hash of elements (arbiter, chainId, idsAndAmounts, & mandate) per chain.
      * @param notarizedChainId Chain ID of the domain used to sign the multichain compact.
      * @param sponsorSignature The signature from the sponsor authorizing the registration.
-     * @return claimHash       The hash of the registered compact.
+     * @return claimHash       Hash for verifying that the expected compact was registered.
      */
     function registerMultichainFor(
         bytes32 typehash,
@@ -318,16 +324,16 @@ interface ITheCompact {
     /**
      * @notice External payable function for depositing native tokens and simultaneously registering a
      * compact on behalf of someone else. The amount of the claim must be explicitly provided otherwise
-     * a wrong claimhash may be derived.
-     * @param recipient   The recipient of the ERC6909 token.
-     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
-     * @param arbiter     The account tasked with verifying and submitting the claim.
-     * @param nonce       A parameter to enforce replay protection, scoped to allocator.
-     * @param expires     The time at which the claim expires.
-     * @param typehash    The EIP-712 typehash associated with the registered compact.
-     * @param witness     Hash of the witness data.
-     * @return id         The ERC6909 token identifier of the associated resource lock.
-     * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
+     * a wrong claim hash may be derived.
+     * @param recipient  The recipient of the ERC6909 token.
+     * @param lockTag    The lock tag containing allocator ID, reset period, and scope.
+     * @param arbiter    The account tasked with verifying and submitting the claim.
+     * @param nonce      A parameter to enforce replay protection, scoped to allocator.
+     * @param expires    The time at which the claim expires.
+     * @param typehash   The EIP-712 typehash associated with the registered compact.
+     * @param witness    Hash of the witness data.
+     * @return id        The ERC6909 token identifier of the associated resource lock.
+     * @return claimHash Hash for verifying that the expected compact was registered.
      */
     function depositNativeAndRegisterFor(
         address recipient,
@@ -337,7 +343,7 @@ interface ITheCompact {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external payable returns (uint256 id, bytes32 claimhash);
+    ) external payable returns (uint256 id, bytes32 claimHash);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a
@@ -382,7 +388,7 @@ interface ITheCompact {
      * @param typehash          The EIP-712 typehash associated with the registered compact.
      * @param witness           Hash of the witness data.
      * @return id               The ERC6909 token identifier of the associated resource lock.
-     * @return claimhash        Hash for verifying that the expected claim was registered.
+     * @return claimHash        Hash for verifying that the expected compact was registered.
      * @return registeredAmount Final registered amount after potential transfer fees.
      */
     function depositERC20AndRegisterFor(
@@ -395,7 +401,7 @@ interface ITheCompact {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external returns (uint256 id, bytes32 claimhash, uint256 registeredAmount);
+    ) external returns (uint256 id, bytes32 claimHash, uint256 registeredAmount);
 
     /**
      * @notice External payable function for depositing multiple tokens in a single transaction
@@ -406,9 +412,9 @@ interface ITheCompact {
      * differences between starting and ending balances held in the resource locks, which may
      * differ from the amounts transferred depending on the implementation details of the
      * respective tokens. Note that resource lock ids must be supplied in alphanumeric order.
-     * @param idsAndAmounts           Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
+     * @param idsAndAmounts            Array of [id, amount] pairs indicating resource locks & amounts to deposit.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
-     * @return                        Whether the batch deposit and claim hash registration was successfully completed.
+     * @return                         Boolean indicating whether the batch deposit & claim hash registration was successful.
      */
     function batchDepositAndRegisterMultiple(
         uint256[2][] calldata idsAndAmounts,
@@ -426,14 +432,14 @@ interface ITheCompact {
      * registered with the returned registeredAmounts instead of the provided idsAndAmounts.
      * Ensure the claim is processed using either the registeredAmounts or the ERC6909 transfer events.
      * This is especially important for fee-on-transfer tokens.
-     * @param recipient         The recipient of the ERC6909 token.
-     * @param idsAndAmounts     The address of the ERC20 token to deposit.
-     * @param arbiter           The account tasked with verifying and submitting the claim.
-     * @param nonce             A parameter to enforce replay protection, scoped to allocator.
-     * @param expires           The time at which the claim expires.
-     * @param typehash          The EIP-712 typehash associated with the registered compact.
-     * @param witness           Hash of the witness data.
-     * @return claimhash        Hash of the claim. Can be used to verify the expected claim was registered.
+     * @param recipient          The recipient of the ERC6909 token.
+     * @param idsAndAmounts      Array of [id, amount] pairs indicating resource locks & amounts to deposit.
+     * @param arbiter            The account tasked with verifying and submitting the claim.
+     * @param nonce              A parameter to enforce replay protection, scoped to allocator.
+     * @param expires            The time at which the claim expires.
+     * @param typehash           The EIP-712 typehash associated with the registered compact.
+     * @param witness            Hash of the witness data.
+     * @return claimHash         Hash for verifying that the expected compact was registered.
      * @return registeredAmounts Array containing the final minted amount of each id.
      */
     function batchDepositAndRegisterFor(
@@ -444,7 +450,7 @@ interface ITheCompact {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external payable returns (bytes32 claimhash, uint256[] memory registeredAmounts);
+    ) external payable returns (bytes32 claimHash, uint256[] memory registeredAmounts);
 
     /**
      * @notice External function for depositing ERC20 tokens using Permit2 authorization and
@@ -520,7 +526,7 @@ interface ITheCompact {
      * @notice External function to disable a previously enabled forced withdrawal for a
      * resource lock.
      * @param id The ERC6909 token identifier for the resource lock.
-     * @return   Whether the forced withdrawal was successfully disabled.
+     * @return   Boolean indicating whether the forced withdrawal was successfully disabled.
      */
     function disableForcedWithdrawal(uint256 id) external returns (bool);
 
@@ -533,7 +539,7 @@ interface ITheCompact {
      * @param id        The ERC6909 token identifier for the resource lock.
      * @param recipient The account that will receive the withdrawn tokens.
      * @param amount    The amount of tokens to withdraw.
-     * @return          Whether the forced withdrawal was successfully executed.
+     * @return          Boolean indicating whether the forced withdrawal was successfully executed.
      */
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool);
 
@@ -543,8 +549,9 @@ interface ITheCompact {
      * on the provided lock tag that blocks reassignment of the emissary for the duration of that
      * reset period. The reset period ensures that once an emissary is assigned, another assignment
      * cannot be made until the reset period has elapsed.
-     * @param lockTag The lockTag the emissary will be assigned for.
-     * @return Whether the assignment was successful.
+     * @param lockTag  The lockTag the emissary will be assigned for.
+     * @param emissary The emissary to assign for the given caller and lock tag.
+     * @return         Boolean indicating whether the assignment was successful.
      */
     function assignEmissary(bytes12 lockTag, address emissary) external returns (bool);
 
@@ -553,7 +560,7 @@ interface ITheCompact {
      * the lock tag determines how long reassignment will be blocked after this assignment. This
      * allows for a delay before the next assignment can be made. Note that the reset period of the
      * current emissary (if set) will dictate when the next assignment will be allowed.
-     * @param lockTag The lockTag the emissary assignment is scheduled for.
+     * @param lockTag                        The lockTag the emissary assignment is scheduled for.
      * @return emissaryAssignmentAvailableAt The timestamp when the next assignment will be allowed.
      */
     function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256 emissaryAssignmentAvailableAt);
@@ -562,7 +569,7 @@ interface ITheCompact {
      * @notice External function for consuming allocator nonces. Only callable by a registered
      * allocator. Once consumed, any compact payloads that utilize those nonces cannot be claimed.
      * @param nonces Array of nonces to be consumed.
-     * @return       Whether all nonces were successfully consumed.
+     * @return       Boolean indicating whether all nonces were successfully consumed.
      */
     function consume(uint256[] calldata nonces) external returns (bool);
 
@@ -580,9 +587,9 @@ interface ITheCompact {
     /**
      * @notice External function to benchmark withdrawal costs to determine the required stipend
      * on the fallback for failing withdrawals when processing claims. The salt is used to derive
-     * a cold account to benchmark the native token withdrawal.
+     * a cold account to benchmark the native token withdrawal. Note that exactly 2 wei must be
+     * provided when calling this function, and that the provided wei will be irrecoverable.
      * @param salt A bytes32 value used to derive a cold account for benchmarking.
-     * @dev Must provide exactly 2 wei when calling this function.
      */
     function __benchmark(bytes32 salt) external payable;
 
@@ -609,7 +616,7 @@ interface ITheCompact {
      * @param sponsor   The account that registered the compact.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
-     * @return isActive Whether the compact registration is currently active.
+     * @return isActive Boolean indicating whether the compact registration is currently active.
      */
     function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive);
 
@@ -632,11 +639,11 @@ interface ITheCompact {
      * @notice Gets the current emissary status for an allocator. Returns the current status,
      * the timestamp when reassignment will be allowed again (based on reset period), and
      * the currently assigned emissary (if any).
-     * @param sponsor The address of the sponsor to check.
-     * @param lockTag The lockTag to check.
-     * @return status The current emissary assignment status.
+     * @param sponsor                        The address of the sponsor to check.
+     * @param lockTag                        The lockTag to check.
+     * @return status                        The current emissary assignment status.
      * @return emissaryAssignmentAvailableAt The timestamp when reassignment will be allowed.
-     * @return currentEmissary The currently assigned emissary address (or zero address if none).
+     * @return currentEmissary               The currently assigned emissary address (or zero address if none).
      */
     function getEmissaryStatus(address sponsor, bytes12 lockTag)
         external
@@ -648,7 +655,7 @@ interface ITheCompact {
      * an allocator. Once consumed, a nonce cannot be reused for claims mediated by that allocator.
      * @param nonce     The nonce to check.
      * @param allocator The account of the allocator.
-     * @return consumed Whether the nonce has been consumed.
+     * @return consumed Boolean indicating whether the nonce has been consumed.
      */
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool consumed);
 
@@ -666,7 +673,7 @@ interface ITheCompact {
         returns (uint256 nativeTokenStipend, uint256 erc20TokenStipend);
 
     /**
-     * @notice External pure function for returning the domain separator of the contract.
+     * @notice External view function for returning the domain separator of the contract.
      * @return domainSeparator A bytes32 representing the domain separator for the contract.
      */
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator);

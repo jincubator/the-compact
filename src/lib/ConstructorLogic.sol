@@ -3,14 +3,8 @@ pragma solidity ^0.8.27;
 
 import { DomainLib } from "./DomainLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { IdLib } from "./IdLib.sol";
 import { MetadataRenderer } from "./MetadataRenderer.sol";
-import {
-    TransferBenchmarkLib,
-    _NATIVE_TOKEN_BENCHMARK_SCOPE,
-    _ERC20_TOKEN_BENCHMARK_SCOPE
-} from "./TransferBenchmarkLib.sol";
-
+import { _NATIVE_TOKEN_BENCHMARK_SCOPE, _ERC20_TOKEN_BENCHMARK_SCOPE } from "./TransferBenchmarkLib.sol";
 import { TransferBenchmarker } from "./TransferBenchmarker.sol";
 
 import { Tstorish } from "./Tstorish.sol";
@@ -28,8 +22,6 @@ contract ConstructorLogic is Tstorish {
     using DomainLib for bytes32;
     using EfficiencyLib for uint256;
     using DomainLib for uint256;
-    using IdLib for uint256;
-    using TransferBenchmarkLib for uint256;
 
     // Address of the Permit2 contract, optionally used for depositing ERC20 tokens.
     address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
@@ -217,7 +209,7 @@ contract ConstructorLogic is Tstorish {
      */
     function _checkPermit2Deployment() private view returns (bool permit2Deployed) {
         assembly ("memory-safe") {
-            permit2Deployed := iszero(iszero(extcodesize(_PERMIT2)))
+            permit2Deployed := gt(extcodesize(_PERMIT2), 0)
         }
     }
 

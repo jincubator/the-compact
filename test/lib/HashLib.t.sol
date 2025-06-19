@@ -47,10 +47,10 @@ contract HashLibTest is Setup {
         return abi.decode(abi.encodePacked(lockTag, _recipient), (uint256));
     }
 
-    function testToTransferMessageHash_SingleRecipient() public {
+    function testToTransferClaimHash_SingleRecipient() public {
         uint256 id = vm.randomUint();
         bytes12 expectedLockTag = bytes12(bytes32(id));
-        address token = address(uint160(id));
+        address tokenId = address(uint160(id));
         uint256 amount = vm.randomUint();
         Component[] memory recipients = new Component[](1);
         uint256 claimant1_val = _makeClaimant(claimant1);
@@ -66,19 +66,19 @@ contract HashLibTest is Setup {
 
         bytes32 expectedHash = keccak256(
             abi.encode(
-                COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, expectedLockTag, token, amount
+                COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, expectedLockTag, tokenId, amount
             )
         );
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferClaimHash(transfer);
         assertEq(actualHash, expectedHash, "Transfer single recipient hash mismatch");
     }
 
-    function test_toTransferMessageHash_MultipleRecipients() public {
+    function test_toTransferClaimHash_MultipleRecipients() public {
         uint256 id = 9876;
         bytes12 expectedLockTag = bytes12(bytes32(id));
-        address token = address(uint160(id));
+        address tokenId = address(uint160(id));
         uint256 amount1 = 1000;
         uint256 amount2 = 500;
         uint256 totalAmount = amount1 + amount2;
@@ -97,7 +97,7 @@ contract HashLibTest is Setup {
         });
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferClaimHash(transfer);
 
         bytes32 expectedHash = keccak256(
             abi.encode(
@@ -107,7 +107,7 @@ contract HashLibTest is Setup {
                 transfer.nonce,
                 transfer.expires,
                 expectedLockTag,
-                token,
+                tokenId,
                 totalAmount
             )
         );
@@ -115,7 +115,7 @@ contract HashLibTest is Setup {
         assertEq(actualHash, expectedHash, "Transfer multiple recipients hash mismatch");
     }
 
-    function test_toTransferMessageHash_RevertOverflow() public {
+    function test_toTransferClaimHash_RevertOverflow() public {
         uint256 id = 111;
         Component[] memory recipients = new Component[](2);
         uint256 claimant1_val = _makeClaimant(claimant1);
@@ -132,10 +132,10 @@ contract HashLibTest is Setup {
         });
 
         vm.expectRevert(stdError.arithmeticError);
-        tester.callToTransferMessageHash(transfer);
+        tester.callToTransferClaimHash(transfer);
     }
 
-    function test_toBatchTransferMessageHash() public {
+    function test_toBatchTransferClaimHash() public {
         Component[] memory portions1 = new Component[](2);
         portions1[0] = Component({ claimant: _makeClaimant(claimant1), amount: 100 });
         portions1[1] = Component({ claimant: _makeClaimant(claimant2), amount: 200 });
@@ -156,14 +156,14 @@ contract HashLibTest is Setup {
             transfers: transfers
         });
 
-        bytes32 expectedHash = _calculateBatchTransferMessageHash(batchTransfer);
+        bytes32 expectedHash = _calculateBatchTransferClaimHash(batchTransfer);
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToBatchTransferMessageHash(batchTransfer);
+        bytes32 actualHash = tester.callToBatchTransferClaimHash(batchTransfer);
         assertEq(actualHash, expectedHash, "BatchTransfer hash mismatch");
     }
 
-    function test_toBatchTransferMessageHash_RevertOverflow() public {
+    function test_toBatchTransferClaimHash_RevertOverflow() public {
         // ID 1 setup (will cause overflow)
         uint256 id1 = vm.randomUint();
         Component[] memory portions1 = new Component[](2);
@@ -193,23 +193,25 @@ contract HashLibTest is Setup {
         });
 
         vm.expectRevert(stdError.arithmeticError);
-        tester.callToBatchTransferMessageHash(batchTransfer);
+        tester.callToBatchTransferClaimHash(batchTransfer);
     }
 
-    function testToFlatMessageHashWithWitness() public {
-        uint256 tokenId = vm.randomUint();
-        bytes12 expectedLockTag = bytes12(bytes32(tokenId));
-        address token = address(uint160(tokenId));
+    function testToFlatClaimHashWithWitness() public {
+        uint256 id = vm.randomUint();
+        bytes12 expectedLockTag = bytes12(bytes32(id));
+        address tokenAddress = address(uint160(id));
         uint256 amount = vm.randomUint();
         bytes32 typehash = keccak256(bytes("SomeTypehash()"));
         bytes32 witness = keccak256(bytes("witness data"));
 
         bytes32 expectedHash = keccak256(
-            abi.encode(typehash, address(this), sponsor, nonce, expiration, expectedLockTag, token, amount, witness)
+            abi.encode(
+                typehash, address(this), sponsor, nonce, expiration, expectedLockTag, tokenAddress, amount, witness
+            )
         );
 
-        bytes32 actualHash = tester.callToFlatMessageHashWithWitness(
-            sponsor, tokenId, amount, address(this), nonce, expiration, typehash, witness
+        bytes32 actualHash = tester.callToFlatClaimHashWithWitness(
+            sponsor, id, amount, address(this), nonce, expiration, typehash, witness
         );
 
         assertEq(actualHash, expectedHash, "FlatMessageWithWitness hash mismatch");
@@ -350,10 +352,10 @@ contract HashLibTest is Setup {
         assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash empty failed");
     }
 
-    function _calculateBatchTransferMessageHash(AllocatedBatchTransfer memory transfer)
+    function _calculateBatchTransferClaimHash(AllocatedBatchTransfer memory transfer)
         internal
         view
-        returns (bytes32 messageHash)
+        returns (bytes32 claimHash)
     {
         ComponentsById[] memory transfers = transfer.transfers;
         uint256[2][] memory idsAndAmounts = new uint256[2][](transfers.length);
@@ -393,7 +395,7 @@ contract HashLibTest is Setup {
         );
     }
 
-    function testFuzz_ToTransferMessageHash(
+    function testFuzz_ToTransferClaimHash(
         bytes12 _lockTag,
         address _token,
         uint256 _amount,
@@ -422,12 +424,12 @@ contract HashLibTest is Setup {
         );
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferClaimHash(transfer);
 
         assertEq(actualHash, expectedHash, "Transfer hash mismatch");
     }
 
-    function testFuzz_ToTransferMessageHash_MultipleRecipients(
+    function testFuzz_ToTransferClaimHash_MultipleRecipients(
         bytes12 _lockTag,
         address _token,
         uint256 _amount1,
@@ -465,12 +467,12 @@ contract HashLibTest is Setup {
         );
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferClaimHash(transfer);
 
         assertEq(actualHash, expectedHash, "Transfer multiple recipients hash mismatch");
     }
 
-    function testFuzz_ToFlatMessageHashWithWitness(
+    function testFuzz_ToFlatClaimHashWithWitness(
         bytes12 _lockTag,
         address _token,
         uint256 _amount,
@@ -486,7 +488,7 @@ contract HashLibTest is Setup {
 
         uint256 tokenId = uint256(bytes32(_lockTag)) | uint256(uint160(_token));
 
-        bytes32 actualHash = tester.callToFlatMessageHashWithWitness(
+        bytes32 actualHash = tester.callToFlatClaimHashWithWitness(
             sponsor, tokenId, _amount, address(this), _nonce, _expires, typehash, witness
         );
 
@@ -576,20 +578,16 @@ contract HashLibTest is Setup {
 contract HashLibTester {
     using HashLib for *;
 
-    function callToTransferMessageHash(AllocatedTransfer calldata transfer)
-        external
-        view
-        returns (bytes32 messageHash)
-    {
-        return transfer.toTransferMessageHash();
+    function callToTransferClaimHash(AllocatedTransfer calldata transfer) external view returns (bytes32 claimHash) {
+        return transfer.toTransferClaimHash();
     }
 
-    function callToBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer)
+    function callToBatchTransferClaimHash(AllocatedBatchTransfer calldata transfer)
         external
         view
-        returns (bytes32 messageHash)
+        returns (bytes32 claimHash)
     {
-        return transfer.toBatchTransferMessageHash();
+        return transfer.toBatchTransferClaimHash();
     }
 
     function callToIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)
@@ -608,7 +606,7 @@ contract HashLibTester {
         return claims.toCommitmentsHash();
     }
 
-    function callToFlatMessageHashWithWitness(
+    function callToFlatClaimHashWithWitness(
         address sponsor,
         uint256 tokenId,
         uint256 amount,
@@ -617,7 +615,7 @@ contract HashLibTester {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external pure returns (bytes32 messageHash) {
+    ) external pure returns (bytes32 claimHash) {
         return HashLib.toClaimHashFromDeposit(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
     }
 
@@ -630,7 +628,7 @@ contract HashLibTester {
         bytes32 typehash,
         bytes32 witness,
         uint256[] memory replacementAmounts
-    ) external pure returns (bytes32 messageHash) {
+    ) external pure returns (bytes32 claimHash) {
         return HashLib.toClaimHashFromBatchDeposit(
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );

@@ -110,7 +110,7 @@ library EmissaryLib {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(msg.sender, lockTag);
 
         unchecked {
-            // Extract five bit resetPeriod from lockTag, convert to seconds, & add to current time.
+            // Extract three-bit resetPeriod from lockTag, convert to seconds, & add to current time.
             assignableAt = block.timestamp + lockTag.toResetPeriod().toSeconds();
         }
 

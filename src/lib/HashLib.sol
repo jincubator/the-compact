@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
-import { AllocatedTransfer } from "../types/Claims.sol";
+import { AllocatedBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
+import { AllocatedTransfer, Claim } from "../types/Claims.sol";
 import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
@@ -48,10 +48,10 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a transfer or withdrawal.
-     * @param transfer     An AllocatedTransfer struct containing the transfer details.
-     * @return messageHash The EIP-712 compliant message hash.
+     * @param transfer   An AllocatedTransfer struct containing the transfer details.
+     * @return claimHash The EIP-712 compliant message hash.
      */
-    function toTransferMessageHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 messageHash) {
+    function toTransferClaimHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 claimHash) {
         // Declare variable for total amount
         uint256 totalAmount = transfer.recipients.aggregate();
 
@@ -74,17 +74,17 @@ library HashLib {
             mstore(add(m, 0xe0), totalAmount)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0x100)
+            claimHash := keccak256(m, 0x100)
         }
     }
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch transfer or withdrawal.
-     * @param transfer     An AllocatedBatchTransfer struct containing the transfer details.
-     * @return messageHash The EIP-712 compliant message hash.
+     * @param transfer   An AllocatedBatchTransfer struct containing the transfer details.
+     * @return           The EIP-712 compliant message hash.
      */
-    function toBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer) internal view returns (bytes32) {
+    function toBatchTransferClaimHash(AllocatedBatchTransfer calldata transfer) internal view returns (bytes32) {
         // Navigate to the transfer components array in calldata.
         ComponentsById[] calldata transfers = transfer.transfers;
 
@@ -131,17 +131,17 @@ library HashLib {
         }
 
         // Derive message hash from transfer data and commitments hash.
-        return _toBatchTransferMessageHashUsingCommitmentsHash(transfer, commitmentsHash);
+        return _toBatchTransferClaimHashUsingCommitmentsHash(transfer, commitmentsHash);
     }
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a claim with or without a witness.
-     * @param claimPointer               Pointer to the claim location in calldata.
-     * @return messageHash        The EIP-712 compliant message hash.
-     * @return typehash           The EIP-712 typehash.
+     * @param claimPointer Pointer to the claim location in calldata.
+     * @return claimHash   The EIP-712 compliant message hash.
+     * @return typehash    The EIP-712 typehash.
      */
-    function toClaimHash(uint256 claimPointer) internal view returns (bytes32 messageHash, bytes32 typehash) {
+    function toClaimHash(Claim calldata claimPointer) internal view returns (bytes32 claimHash, bytes32 typehash) {
         assembly ("memory-safe") {
             for { } 1 { } {
                 // Retrieve the free memory pointer; memory will be left dirtied.
@@ -172,7 +172,7 @@ library HashLib {
                     calldatacopy(add(m, 0xcc), add(claimPointer, 0xec), 0x34) // token + amount
 
                     // Derive the message hash from the prepared data.
-                    messageHash := keccak256(m, 0x100)
+                    claimHash := keccak256(m, 0x100)
 
                     // Set Compact typehash
                     typehash := COMPACT_TYPEHASH
@@ -217,7 +217,7 @@ library HashLib {
                 mstore(add(m, 0x100), calldataload(add(claimPointer, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
-                messageHash := keccak256(m, 0x120)
+                claimHash := keccak256(m, 0x120)
                 break
             }
         }
@@ -226,15 +226,15 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch claim with or without a witness.
-     * @param claimPointer    Pointer to the claim location in calldata.
+     * @param claimPointer    Pointer to the batch claim location in calldata.
      * @param commitmentsHash The EIP-712 hash of the Lock[] commitments array.
-     * @return messageHash    The EIP-712 compliant message hash.
+     * @return claimHash      The EIP-712 compliant message hash.
      * @return typehash       The EIP-712 typehash.
      */
-    function toBatchClaimHash(uint256 claimPointer, uint256 commitmentsHash)
+    function toBatchClaimHash(BatchClaim calldata claimPointer, uint256 commitmentsHash)
         internal
         view
-        returns (bytes32 messageHash, bytes32 typehash)
+        returns (bytes32 claimHash, bytes32 typehash)
     {
         assembly ("memory-safe") {
             for { } 1 { } {
@@ -263,7 +263,7 @@ library HashLib {
                     mstore(add(m, 0xa0), commitmentsHash)
 
                     // Derive the message hash from the prepared data.
-                    messageHash := keccak256(m, 0xc0)
+                    claimHash := keccak256(m, 0xc0)
 
                     // Set BatchCompact typehash
                     typehash := BATCH_COMPACT_TYPEHASH
@@ -305,7 +305,8 @@ library HashLib {
                 mstore(add(m, 0xc0), calldataload(add(claimPointer, 0xa0))) // witness
 
                 // Derive the message hash from the prepared data.
-                messageHash := keccak256(m, 0xe0)
+                claimHash := keccak256(m, 0xe0)
+
                 break
             }
         }
@@ -319,15 +320,15 @@ library HashLib {
      * @param elementTypehash           The element typehash.
      * @param multichainCompactTypehash The multichain compact typehash.
      * @param commitmentsHash           The EIP-712 hash of the Lock[] commitments array.
-     * @return messageHash              The EIP-712 compliant message hash.
+     * @return claimHash                The EIP-712 compliant message hash.
      */
-    function toMultichainClaimMessageHash(
+    function toMultichainClaimHash(
         uint256 claim,
         uint256 additionalOffset,
         bytes32 elementTypehash,
         bytes32 multichainCompactTypehash,
         uint256 commitmentsHash
-    ) internal view returns (bytes32 messageHash) {
+    ) internal view returns (bytes32 claimHash) {
         // Derive the element hash for the current element.
         bytes32 elementHash = _toElementHash(claim, elementTypehash, commitmentsHash);
 
@@ -359,7 +360,7 @@ library HashLib {
             calldatacopy(add(m, 0x2c), add(claim, 0x4c), 0x54)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xa0)
+            claimHash := keccak256(m, 0xa0)
         }
     }
 
@@ -371,15 +372,15 @@ library HashLib {
      * @param elementTypehash           The element typehash.
      * @param multichainCompactTypehash The multichain compact typehash.
      * @param commitmentsHash           The EIP-712 hash of the Lock[] commitments array.
-     * @return messageHash              The EIP-712 compliant message hash.
+     * @return claimHash                The EIP-712 compliant message hash.
      */
-    function toExogenousMultichainClaimMessageHash(
+    function toExogenousMultichainClaimHash(
         uint256 claim,
         uint256 additionalOffset,
         bytes32 elementTypehash,
         bytes32 multichainCompactTypehash,
         uint256 commitmentsHash
-    ) internal view returns (bytes32 messageHash) {
+    ) internal view returns (bytes32 claimHash) {
         // Derive the element hash for the current element.
         bytes32 elementHash = _toElementHash(claim, elementTypehash, commitmentsHash);
 
@@ -434,7 +435,7 @@ library HashLib {
             calldatacopy(add(m, 0x2c), add(claim, 0x4c), 0x54)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xa0)
+            claimHash := keccak256(m, 0xa0)
         }
     }
 
@@ -735,12 +736,12 @@ library HashLib {
      * a batch transfer or withdrawal once a commitments hash is available.
      * @param transfer        An AllocatedBatchTransfer struct containing the transfer details.
      * @param commitmentsHash A hash of the commitments array.
-     * @return messageHash    The EIP-712 compliant message hash.
+     * @return claimHash      The EIP-712 compliant message hash.
      */
-    function _toBatchTransferMessageHashUsingCommitmentsHash(
+    function _toBatchTransferClaimHashUsingCommitmentsHash(
         AllocatedBatchTransfer calldata transfer,
         uint256 commitmentsHash
-    ) private view returns (bytes32 messageHash) {
+    ) private view returns (bytes32 claimHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -758,7 +759,7 @@ library HashLib {
             mstore(add(m, 0xa0), commitmentsHash)
 
             // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xc0)
+            claimHash := keccak256(m, 0xc0)
         }
     }
 
