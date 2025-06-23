@@ -94,10 +94,10 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         uint256 commitmentsHash = HashLib.toCommitmentsHashFromSingleLock(claim.asRawPtr());
-        (bytes32 allocationTypehash, bytes32 claimTypehash) = claim.asRawPtr().toMultichainTypehashes();
+        (bytes32 allocationTypehash, bytes32 compactTypehash) = claim.asRawPtr().toMultichainTypehashes();
         return (
-            HashLib.toMultichainClaimHash(claim.asRawPtr(), 0xa0, allocationTypehash, claimTypehash, commitmentsHash),
-            claimTypehash
+            HashLib.toMultichainClaimHash(claim.asRawPtr(), 0xa0, allocationTypehash, compactTypehash, commitmentsHash),
+            compactTypehash
         );
     }
 
@@ -107,12 +107,12 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         uint256 commitmentsHash = HashLib.toCommitmentsHashFromSingleLock(claim.asRawPtr());
-        (bytes32 allocationTypehash, bytes32 claimTypehash) = claim.asRawPtr().toMultichainTypehashes();
+        (bytes32 allocationTypehash, bytes32 compactTypehash) = claim.asRawPtr().toMultichainTypehashes();
         return (
             HashLib.toExogenousMultichainClaimHash(
-                claim.asRawPtr(), 0xa0, allocationTypehash, claimTypehash, commitmentsHash
+                claim.asRawPtr(), 0xa0, allocationTypehash, compactTypehash, commitmentsHash
             ),
-            claimTypehash
+            compactTypehash
         );
     }
 
@@ -124,7 +124,7 @@ library ClaimHashLib {
         uint256 commitmentsHash = claim.claims.toCommitmentsHash();
         (bytes32 allocationTypehash, bytes32 compactTypehash) = claim.asRawPtr().toMultichainTypehashes();
         return (
-            HashLib.toMultichainClaimHash(claim.asRawPtr(), 0x60, allocationTypehash, typehash, commitmentsHash),
+            HashLib.toMultichainClaimHash(claim.asRawPtr(), 0x60, allocationTypehash, compactTypehash, commitmentsHash),
             compactTypehash
         );
     }
