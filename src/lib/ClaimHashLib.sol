@@ -122,10 +122,10 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         uint256 commitmentsHash = claim.claims.toCommitmentsHash();
-        (bytes32 allocationTypehash, bytes32 typehash) = claim.asRawPtr().toMultichainTypehashes();
+        (bytes32 allocationTypehash, bytes32 compactTypehash) = claim.asRawPtr().toMultichainTypehashes();
         return (
             HashLib.toMultichainClaimHash(claim.asRawPtr(), 0x60, allocationTypehash, typehash, commitmentsHash),
-            typehash
+            compactTypehash
         );
     }
 
@@ -135,12 +135,12 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         uint256 commitmentsHash = claim.claims.toCommitmentsHash();
-        (bytes32 allocationTypehash, bytes32 typehash) = claim.asRawPtr().toMultichainTypehashes();
+        (bytes32 allocationTypehash, bytes32 compactTypehash) = claim.asRawPtr().toMultichainTypehashes();
         return (
             HashLib.toExogenousMultichainClaimHash(
-                claim.asRawPtr(), 0x60, allocationTypehash, typehash, commitmentsHash
+                claim.asRawPtr(), 0x60, allocationTypehash, compactTypehash, commitmentsHash
             ),
-            typehash
+            compactTypehash
         );
     }
 }
