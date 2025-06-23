@@ -23,3 +23,13 @@ struct Claim {
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     Component[] claimants; // The claim recipients and amounts; specified by the arbiter.
 }
+
+using ClaimsLib for Claim global;
+
+library ClaimsLib {
+    function asRawPtr(Claim calldata claim) internal pure returns (uint256 rawClaimPtr) {
+        assembly {
+            rawClaimPtr := claim
+        }
+    }
+}

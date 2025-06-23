@@ -6,6 +6,7 @@ import { BatchClaim } from "../types/BatchClaims.sol";
 import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
 import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
 
+import { ComponentLib } from "./ComponentLib.sol";
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
 import { ClaimProcessorFunctionCastLib } from "./ClaimProcessorFunctionCastLib.sol";
@@ -22,6 +23,7 @@ import { ConstructorLogic } from "./ConstructorLogic.sol";
  * much of this functionality will break. Proceed with caution when making any changes.
  */
 contract ClaimProcessorLogic is ConstructorLogic {
+    using ComponentLib for bytes32;
     using ClaimHashLib for Claim;
     using ClaimHashLib for BatchClaim;
     using ClaimHashLib for MultichainClaim;
@@ -39,7 +41,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
-        ClaimProcessorLib.processSimpleClaim.usingClaim()(claimHash, claimPayload, typehash, _domainSeparator());
+        claimHash.processClaimWithComponents(claimPayload.asRawPtr(), 0, typehash, _domainSeparator());
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -67,9 +69,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
-        ClaimProcessorLib.processSimpleClaim.usingMultichainClaim()(
-            claimHash, claimPayload, typehash, _domainSeparator()
-        );
+        claimHash.processClaimWithComponents(claimPayload.asRawPtr(), 0, typehash, _domainSeparator());
 
         // Clear the reentrancy guard.
         _clearReentrancyGuard();
@@ -103,9 +103,8 @@ contract ClaimProcessorLogic is ConstructorLogic {
 
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toClaimHashAndTypehash();
-        ClaimProcessorLib.processClaimWithSponsorDomain.usingExogenousMultichainClaim()(
-            claimHash,
-            claimPayload,
+        claimHash.processClaimWithComponents(
+            claimPayload.asRawPtr(),
             claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
             typehash,
             _domainSeparator()

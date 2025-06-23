@@ -92,22 +92,6 @@ library ClaimProcessorLib {
     }
 
     /**
-     * @notice Internal function for processing simple claims with local domain
-     * signatures. Extracts claim parameters from calldata, validates the claim,
-     * and executes operations for multiple recipients. Uses the zero sponsor
-     * domain separator.
-     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
-     * @param calldataPointer Pointer to the location of the associated struct in calldata.
-     * @param typehash        The EIP-712 typehash used for the claim message.
-     * @param domainSeparator The local domain separator.
-     */
-    function processSimpleClaim(bytes32 claimHash, uint256 calldataPointer, bytes32 typehash, bytes32 domainSeparator)
-        internal
-    {
-        claimHash.processClaimWithComponents(calldataPointer, 0, typehash, domainSeparator, validate);
-    }
-
-    /**
      * @notice Internal function for processing simple batch claims with local domain
      * signatures. Extracts batch claim parameters from calldata, validates the claim,
      * and executes operations for multiple resource locks to multiple recipients. Uses the
@@ -124,27 +108,6 @@ library ClaimProcessorLib {
         bytes32 domainSeparator
     ) internal {
         claimHash.processClaimWithBatchComponents(calldataPointer, 0, typehash, domainSeparator, validate);
-    }
-
-    /**
-     * @notice Internal function for processing claims with sponsor domain signatures.
-     * Extracts claim parameters from calldata, validates the claim using the provided
-     * sponsor domain, and executes operations for multiple recipients. Uses the message
-     * hash itself as the qualification message.
-     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
-     * @param calldataPointer Pointer to the location of the associated struct in calldata.
-     * @param sponsorDomain   The domain separator for the sponsor's signature.
-     * @param typehash        The EIP-712 typehash used for the claim message.
-     * @param domainSeparator The local domain separator.
-     */
-    function processClaimWithSponsorDomain(
-        bytes32 claimHash,
-        uint256 calldataPointer,
-        bytes32 sponsorDomain,
-        bytes32 typehash,
-        bytes32 domainSeparator
-    ) internal {
-        claimHash.processClaimWithComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
     }
 
     /**
