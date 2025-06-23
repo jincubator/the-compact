@@ -1461,161 +1461,191 @@ contract DepositAndRegisterForTest is Setup {
         address erc1271Signer = vm.addr(erc1271SignerPrivateKey);
         MockERC1271Wallet erc1271Sponsor = new MockERC1271Wallet(erc1271Signer);
 
-        // Setup test parameters
-        TestParams memory params;
-        params.resetPeriod = ResetPeriod.TenMinutes;
-        params.scope = Scope.Multichain;
-        params.amount = 1e18;
-        params.nonce = 0;
-        params.deadline = block.timestamp + 1000;
-        params.recipient = 0x1111111111111111111111111111111111111111;
+        // Setup test parameters in a separate function to reduce stack depth
+        (TestParams memory params, address arbiter, address depositMaker, bytes12 lockTag) =
+            _setupBatchEIP1271TestParams();
 
-        // Additional parameters
-        address arbiter = 0x2222222222222222222222222222222222222222;
-        address depositMaker = makeAddr("depositMaker");
+        // Prepare batch data in a separate function
+        (uint256[2][] memory idsAndAmounts, bytes32 witness) = _prepareBatchData(lockTag, params.amount);
 
-        // Register allocator and setup tokens
-        uint256 id;
-        bytes12 lockTag;
-        uint256 id2;
-        {
-            uint96 allocatorId;
-            (allocatorId, lockTag) = _registerAllocator(allocator);
+        // Execute deposit and register
+        bytes32 registeredClaimHash = _executeBatchDepositAndRegister(
+            depositMaker, address(erc1271Sponsor), idsAndAmounts, arbiter, params, witness
+        );
 
-            id = address(token).asUint256() | lockTag.asUint256();
-            id2 = address(anotherToken).asUint256() | lockTag.asUint256();
+        // Verify the claim hash
+        bytes32 claimHash =
+            _verifyBatchClaimHash(address(erc1271Sponsor), arbiter, params, idsAndAmounts, witness, registeredClaimHash);
 
-            vm.prank(swapper);
-            token.transfer(depositMaker, params.amount);
+        // Prepare and execute the batch claim
+        _executeBatchClaim(address(erc1271Sponsor), arbiter, claimHash, params, idsAndAmounts, witness);
 
-            vm.prank(depositMaker);
-            token.approve(address(theCompact), params.amount);
+        // Verify final balances and registration consumption
+        _verifyFinalState(address(erc1271Sponsor), claimHash, params.recipient, idsAndAmounts);
+    }
 
-            vm.prank(swapper);
-            anotherToken.transfer(depositMaker, params.amount);
+    function _setupBatchEIP1271TestParams()
+        private
+        returns (TestParams memory params, address arbiter, address depositMaker, bytes12 lockTag)
+    {
+        params = TestParams({
+            resetPeriod: ResetPeriod.TenMinutes,
+            scope: Scope.Multichain,
+            amount: 1e18,
+            nonce: 0,
+            deadline: block.timestamp + 1000,
+            recipient: 0x1111111111111111111111111111111111111111,
+            id: 0 // Not used directly in this setup
+         });
 
-            vm.prank(depositMaker);
-            anotherToken.approve(address(theCompact), params.amount);
-        }
+        arbiter = 0x2222222222222222222222222222222222222222;
+        depositMaker = makeAddr("depositMaker");
 
-        // Create witness and deposit/register
-        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
-        bytes32 registeredClaimHash;
-        bytes32 witness;
-        {
-            uint256 witnessArgument = 234;
-            witness = keccak256(abi.encode(witnessTypehash, witnessArgument));
+        uint96 allocatorId;
+        (allocatorId, lockTag) = _registerAllocator(allocator);
 
-            idsAndAmounts[0][0] = id;
-            idsAndAmounts[0][1] = params.amount;
+        vm.prank(swapper);
+        token.transfer(depositMaker, params.amount);
+        vm.prank(depositMaker);
+        token.approve(address(theCompact), params.amount);
 
-            idsAndAmounts[1][0] = id2;
-            idsAndAmounts[1][1] = params.amount;
+        vm.prank(swapper);
+        anotherToken.transfer(depositMaker, params.amount);
+        vm.prank(depositMaker);
+        anotherToken.approve(address(theCompact), params.amount);
+    }
 
-            uint256[] memory registeredAmounts;
-            vm.prank(depositMaker);
-            (registeredClaimHash, registeredAmounts) = theCompact.batchDepositAndRegisterFor(
-                address(erc1271Sponsor),
-                idsAndAmounts,
-                arbiter,
-                params.nonce,
-                params.deadline,
-                batchCompactWithWitnessTypehash,
-                witness
-            );
-            vm.snapshotGasLastCall("batchDepositAndRegisterForWithEIP1271");
+    function _prepareBatchData(bytes12 lockTag, uint256 amount)
+        private
+        view
+        returns (uint256[2][] memory idsAndAmounts, bytes32 witness)
+    {
+        uint256 id = address(token).asUint256() | lockTag.asUint256();
+        uint256 id2 = address(anotherToken).asUint256() | lockTag.asUint256();
 
-            assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), params.amount);
-            assertEq(token.balanceOf(address(theCompact)), params.amount);
-            assertEq(theCompact.balanceOf(address(erc1271Sponsor), id2), params.amount);
-            assertEq(anotherToken.balanceOf(address(theCompact)), params.amount);
-            assertEq(registeredAmounts.length, 2);
-            assertEq(registeredAmounts[0], idsAndAmounts[0][1]);
-            assertEq(registeredAmounts[1], idsAndAmounts[1][1]);
-        }
+        idsAndAmounts = new uint256[2][](2);
+        idsAndAmounts[0][0] = id;
+        idsAndAmounts[0][1] = amount;
+        idsAndAmounts[1][0] = id2;
+        idsAndAmounts[1][1] = amount;
 
-        // Verify claim hash
-        bytes32 claimHash;
-        {
-            CreateBatchClaimHashWithWitnessArgs memory args;
-            args.typehash = batchCompactWithWitnessTypehash;
-            args.arbiter = arbiter;
-            args.sponsor = address(erc1271Sponsor);
-            args.nonce = params.nonce;
-            args.expires = params.deadline;
-            args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
-            args.witness = witness;
+        uint256 witnessArgument = 234;
+        witness = keccak256(abi.encode(witnessTypehash, witnessArgument));
+    }
 
-            claimHash = _createBatchClaimHashWithWitness(args);
-            assertEq(registeredClaimHash, claimHash);
-        }
+    function _executeBatchDepositAndRegister(
+        address depositMaker,
+        address erc1271Sponsor,
+        uint256[2][] memory idsAndAmounts,
+        address arbiter,
+        TestParams memory params,
+        bytes32 witness
+    ) private returns (bytes32 registeredClaimHash) {
+        uint256[] memory registeredAmounts;
+        vm.prank(depositMaker);
+        (registeredClaimHash, registeredAmounts) = theCompact.batchDepositAndRegisterFor(
+            erc1271Sponsor,
+            idsAndAmounts,
+            arbiter,
+            params.nonce,
+            params.deadline,
+            batchCompactWithWitnessTypehash,
+            witness
+        );
+        vm.snapshotGasLastCall("batchDepositAndRegisterForWithEIP1271");
 
-        // Prepare claim
-        BatchClaim memory claim;
-        {
-            // Create digest and get allocator signature
-            bytes memory allocatorSignature;
-            {
-                bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+        assertEq(theCompact.balanceOf(erc1271Sponsor, idsAndAmounts[0][0]), params.amount);
+        assertEq(token.balanceOf(address(theCompact)), params.amount);
+        assertEq(theCompact.balanceOf(erc1271Sponsor, idsAndAmounts[1][0]), params.amount);
+        assertEq(anotherToken.balanceOf(address(theCompact)), params.amount);
+        assertEq(registeredAmounts.length, 2);
+        assertEq(registeredAmounts[0], idsAndAmounts[0][1]);
+        assertEq(registeredAmounts[1], idsAndAmounts[1][1]);
+    }
 
-                bytes32 r;
-                bytes32 vs;
-                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-                allocatorSignature = abi.encodePacked(r, vs);
-            }
+    function _verifyBatchClaimHash(
+        address erc1271Sponsor,
+        address arbiter,
+        TestParams memory params,
+        uint256[2][] memory idsAndAmounts,
+        bytes32 witness,
+        bytes32 registeredClaimHash
+    ) private pure returns (bytes32 claimHash) {
+        CreateBatchClaimHashWithWitnessArgs memory args;
+        args.typehash = batchCompactWithWitnessTypehash;
+        args.arbiter = arbiter;
+        args.sponsor = erc1271Sponsor;
+        args.nonce = params.nonce;
+        args.expires = params.deadline;
+        args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+        args.witness = witness;
 
-            // Create recipients
-            Component[] memory recipients;
-            {
-                recipients = new Component[](1);
+        claimHash = _createBatchClaimHashWithWitness(args);
+        assertEq(registeredClaimHash, claimHash);
+    }
 
-                uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), params.recipient)));
+    function _executeBatchClaim(
+        address erc1271Sponsor,
+        address arbiter,
+        bytes32 claimHash,
+        TestParams memory params,
+        uint256[2][] memory idsAndAmounts,
+        bytes32 witness
+    ) private {
+        // Create digest and get allocator signature
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
 
-                recipients[0] = Component({ claimant: claimantId, amount: params.amount });
-            }
+        // Create recipients
+        Component[] memory recipients = new Component[](1);
+        uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(idsAndAmounts[0][0])), params.recipient)));
+        recipients[0] = Component({ claimant: claimantId, amount: params.amount });
 
-            BatchClaimComponent[] memory components = new BatchClaimComponent[](2);
-            components[0].id = id;
-            components[0].allocatedAmount = params.amount;
-            components[0].portions = recipients;
+        BatchClaimComponent[] memory components = new BatchClaimComponent[](2);
+        components[0].id = idsAndAmounts[0][0];
+        components[0].allocatedAmount = params.amount;
+        components[0].portions = recipients;
+        components[1].id = idsAndAmounts[1][0];
+        components[1].allocatedAmount = params.amount;
+        components[1].portions = recipients;
 
-            components[1].id = id2;
-            components[1].allocatedAmount = params.amount;
-            components[1].portions = recipients;
-
-            // Build the claim (using registration, so no sponsor signature needed)
-            claim = BatchClaim(
-                allocatorSignature,
-                "", // sponsorSignature
-                address(erc1271Sponsor),
-                params.nonce,
-                params.deadline,
-                witness,
-                witnessTypestring,
-                components
-            );
-        }
+        // Build the claim
+        BatchClaim memory batchClaim = BatchClaim(
+            allocatorSignature,
+            "", // sponsorSignature (using registration)
+            erc1271Sponsor,
+            params.nonce,
+            params.deadline,
+            witness,
+            witnessTypestring,
+            components
+        );
 
         // Execute claim
-        {
-            vm.prank(arbiter);
-            bytes32 returnedClaimHash = theCompact.batchClaim(claim);
-            assertEq(returnedClaimHash, claimHash);
-        }
+        vm.prank(arbiter);
+        bytes32 returnedClaimHash = theCompact.batchClaim(batchClaim);
+        assertEq(returnedClaimHash, claimHash);
+    }
 
-        // Verify balances
-        assertEq(token.balanceOf(address(theCompact)), params.amount);
-        assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), 0);
-        assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
-        assertEq(anotherToken.balanceOf(address(theCompact)), params.amount);
-        assertEq(theCompact.balanceOf(address(erc1271Sponsor), id2), 0);
-        assertEq(theCompact.balanceOf(params.recipient, id2), params.amount);
+    function _verifyFinalState(
+        address erc1271Sponsor,
+        bytes32 claimHash,
+        address recipient,
+        uint256[2][] memory idsAndAmounts
+    ) private view {
+        uint256 id1 = idsAndAmounts[0][0];
+        uint256 amount1 = idsAndAmounts[0][1];
+        uint256 id2 = idsAndAmounts[1][0];
 
-        // Verify registration was consumed
-        {
-            bool isRegistered =
-                theCompact.isRegistered(address(erc1271Sponsor), claimHash, batchCompactWithWitnessTypehash);
-            assertFalse(isRegistered);
-        }
+        assertEq(token.balanceOf(address(theCompact)), amount1);
+        assertEq(theCompact.balanceOf(erc1271Sponsor, id1), 0);
+        assertEq(theCompact.balanceOf(recipient, id1), amount1);
+        assertEq(anotherToken.balanceOf(address(theCompact)), amount1);
+        assertEq(theCompact.balanceOf(erc1271Sponsor, id2), 0);
+        assertEq(theCompact.balanceOf(recipient, id2), amount1);
+
+        bool isRegistered = theCompact.isRegistered(erc1271Sponsor, claimHash, batchCompactWithWitnessTypehash);
+        assertFalse(isRegistered);
     }
 }
