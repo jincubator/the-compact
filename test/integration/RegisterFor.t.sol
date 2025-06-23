@@ -8,6 +8,10 @@ import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
 
+// Add imports for EIP-1271 support
+import { MockERC1271Wallet } from "../../lib/solady/test/utils/mocks/MockERC1271Wallet.sol";
+import { AlwaysOkayERC1271 } from "../../src/test/AlwaysOkayERC1271.sol";
+
 contract RegisterForTest is Setup {
     using IdLib for address;
     using IdLib for uint96;
@@ -187,6 +191,197 @@ contract RegisterForTest is Setup {
 
         // Verify registration status
         bool isRegistered = theCompact.isRegistered(swapper, claimHash, multichainTypehash);
+        assertTrue(isRegistered);
+    }
+
+    function test_registerForWithEIP1271Sponsor() public {
+        // Create EIP-1271 wallet that will act as the sponsor
+        (, uint256 erc1271SignerPrivateKey) = makeAddrAndKey("erc1271Signer");
+        address erc1271Signer = vm.addr(erc1271SignerPrivateKey);
+        MockERC1271Wallet erc1271Sponsor = new MockERC1271Wallet(erc1271Signer);
+
+        // Give the EIP-1271 sponsor some tokens and make a deposit
+        vm.deal(address(erc1271Sponsor), 2e18);
+        vm.prank(address(erc1271Sponsor));
+        uint256 erc1271Id = theCompact.depositNative{ value: amount }(lockTag, address(erc1271Sponsor));
+
+        // Create claim hash for EIP-1271 sponsor
+        CreateClaimHashWithWitnessArgs memory args = CreateClaimHashWithWitnessArgs({
+            typehash: compactWithWitnessTypehash,
+            arbiter: arbiter,
+            sponsor: address(erc1271Sponsor),
+            nonce: nonce,
+            expires: expires,
+            id: erc1271Id,
+            amount: amount,
+            witness: witness
+        });
+        bytes32 claimHash = _createClaimHashWithWitness(args);
+
+        // Create digest and get EIP-1271 sponsor signature
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+        (bytes32 r, bytes32 vs) = vm.signCompact(erc1271SignerPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        // Call registerFor with EIP-1271 sponsor
+        bytes32 returnedClaimHash = theCompact.registerFor(
+            compactWithWitnessTypehash,
+            arbiter,
+            address(erc1271Sponsor),
+            nonce,
+            expires,
+            lockTag,
+            address(0),
+            amount,
+            witness,
+            sponsorSignature
+        );
+        vm.snapshotGasLastCall("registerForWithEIP1271");
+
+        // Verify the claim hash
+        assertEq(returnedClaimHash, claimHash);
+
+        // Verify registration status
+        bool isRegistered = theCompact.isRegistered(address(erc1271Sponsor), claimHash, compactWithWitnessTypehash);
+        assertTrue(isRegistered);
+    }
+
+    function test_registerBatchForWithEIP1271Sponsor() public {
+        // Create EIP-1271 wallet that will act as the sponsor
+        (, uint256 erc1271SignerPrivateKey) = makeAddrAndKey("erc1271Signer");
+        address erc1271Signer = vm.addr(erc1271SignerPrivateKey);
+        MockERC1271Wallet erc1271Sponsor = new MockERC1271Wallet(erc1271Signer);
+
+        // Give the EIP-1271 sponsor some tokens and make deposits
+        vm.deal(address(erc1271Sponsor), 2e18);
+        token.mint(address(erc1271Sponsor), amount);
+        vm.startPrank(address(erc1271Sponsor));
+        uint256 erc1271Id1 = theCompact.depositNative{ value: amount }(lockTag, address(erc1271Sponsor));
+        token.approve(address(theCompact), amount);
+        uint256 erc1271Id2 = theCompact.depositERC20(address(token), lockTag, amount, address(erc1271Sponsor));
+        vm.stopPrank();
+
+        // Create idsAndAmounts array
+        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+        idsAndAmounts[0] = [erc1271Id1, amount];
+        idsAndAmounts[1] = [erc1271Id2, amount];
+
+        // Create batch claim hash
+        bytes32 batchTypehash = keccak256(
+            "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
+        );
+        bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+
+        CreateBatchClaimHashWithWitnessArgs memory args = CreateBatchClaimHashWithWitnessArgs({
+            typehash: batchTypehash,
+            arbiter: arbiter,
+            sponsor: address(erc1271Sponsor),
+            nonce: nonce,
+            expires: expires,
+            idsAndAmountsHash: idsAndAmountsHash,
+            witness: witness
+        });
+        bytes32 claimHash = _createBatchClaimHashWithWitness(args);
+
+        // Create digest and get EIP-1271 sponsor signature
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+        (bytes32 r, bytes32 vs) = vm.signCompact(erc1271SignerPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        // Call registerBatchFor with EIP-1271 sponsor
+        bytes32 returnedClaimHash = theCompact.registerBatchFor(
+            batchTypehash,
+            arbiter,
+            address(erc1271Sponsor),
+            nonce,
+            expires,
+            idsAndAmountsHash,
+            witness,
+            sponsorSignature
+        );
+        vm.snapshotGasLastCall("registerBatchForWithEIP1271");
+
+        // Verify the claim hash
+        assertEq(returnedClaimHash, claimHash);
+
+        // Verify registration status
+        bool isRegistered = theCompact.isRegistered(address(erc1271Sponsor), claimHash, batchTypehash);
+        assertTrue(isRegistered);
+    }
+
+    function test_registerMultichainForWithEIP1271Sponsor() public {
+        // Create EIP-1271 wallet that will act as the sponsor
+        (, uint256 erc1271SignerPrivateKey) = makeAddrAndKey("erc1271Signer");
+        address erc1271Signer = vm.addr(erc1271SignerPrivateKey);
+        MockERC1271Wallet erc1271Sponsor = new MockERC1271Wallet(erc1271Signer);
+
+        // Give the EIP-1271 sponsor some tokens and make a deposit
+        vm.deal(address(erc1271Sponsor), 2e18);
+        vm.prank(address(erc1271Sponsor));
+        uint256 erc1271Id = theCompact.depositNative{ value: amount }(lockTag, address(erc1271Sponsor));
+
+        // Setup for multichain test
+        uint256 notarizedChainId = block.chainid;
+        uint256 anotherChainId = 7171717;
+
+        bytes32 multichainTypehash = keccak256(
+            "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
+        );
+
+        bytes32 elementsHash;
+        bytes32 claimHash;
+        bytes memory sponsorSignature;
+        {
+            // Create elements for multichain compact
+            bytes32 elementTypehash = keccak256(
+                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
+            );
+
+            // Create idsAndAmounts array for this chain
+            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+            idsAndAmounts[0] = [erc1271Id, amount];
+            bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+
+            // Create element hash for this chain
+            bytes32 elementHash =
+                keccak256(abi.encode(elementTypehash, arbiter, notarizedChainId, idsAndAmountsHash, witness));
+
+            // Create element hash for another chain
+            bytes32 anotherElementHash =
+                keccak256(abi.encode(elementTypehash, arbiter, anotherChainId, idsAndAmountsHash, witness));
+
+            // Create elements hash and claim hash
+            bytes32[] memory elements = new bytes32[](2);
+            elements[0] = elementHash;
+            elements[1] = anotherElementHash;
+            elementsHash = keccak256(abi.encodePacked(elements));
+
+            // Create multichain claim hash
+            claimHash = keccak256(abi.encode(multichainTypehash, address(erc1271Sponsor), nonce, expires, elementsHash));
+
+            // Create digest and get EIP-1271 sponsor signature
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+            (bytes32 r, bytes32 vs) = vm.signCompact(erc1271SignerPrivateKey, digest);
+            sponsorSignature = abi.encodePacked(r, vs);
+        }
+
+        // Call registerMultichainFor with EIP-1271 sponsor
+        bytes32 returnedClaimHash = theCompact.registerMultichainFor(
+            multichainTypehash,
+            address(erc1271Sponsor),
+            nonce,
+            expires,
+            elementsHash,
+            notarizedChainId,
+            sponsorSignature
+        );
+        vm.snapshotGasLastCall("registerMultichainForWithEIP1271");
+
+        // Verify the claim hash
+        assertEq(returnedClaimHash, claimHash);
+
+        // Verify registration status
+        bool isRegistered = theCompact.isRegistered(address(erc1271Sponsor), claimHash, multichainTypehash);
         assertTrue(isRegistered);
     }
 

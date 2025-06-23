@@ -18,6 +18,9 @@ import {
 
 import { EfficiencyLib } from "../../src/lib/EfficiencyLib.sol";
 
+import { MockERC1271Wallet } from "../../lib/solady/test/utils/mocks/MockERC1271Wallet.sol";
+import { AlwaysOkayERC1271 } from "../../src/test/AlwaysOkayERC1271.sol";
+
 contract DepositAndRegisterForTest is Setup {
     using EfficiencyLib for address;
     using EfficiencyLib for bytes12;
@@ -1181,6 +1184,438 @@ contract DepositAndRegisterForTest is Setup {
         {
             bool isRegistered = theCompact.isRegistered(swapper, claimHash, COMPACT_TYPEHASH);
             assert(isRegistered);
+        }
+    }
+
+    function test_depositNativeAndRegisterForAndClaimWithEIP1271Sponsor() public {
+        // Create EIP-1271 wallet that will act as the sponsor
+        (, uint256 erc1271SignerPrivateKey) = makeAddrAndKey("erc1271Signer");
+        address erc1271Signer = vm.addr(erc1271SignerPrivateKey);
+        MockERC1271Wallet erc1271Sponsor = new MockERC1271Wallet(erc1271Signer);
+
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        address depositMaker = makeAddr("depositMaker");
+
+        // Register allocator and setup tokens
+        uint256 id;
+        bytes12 lockTag;
+        {
+            uint96 allocatorId;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+            vm.deal(depositMaker, params.amount);
+        }
+
+        // Create witness and deposit/register
+        bytes32 registeredClaimHash;
+        bytes32 witness;
+        uint256 witnessArgument = 234;
+        {
+            witness = keccak256(abi.encode(witnessTypehash, witnessArgument));
+
+            vm.prank(depositMaker);
+            (id, registeredClaimHash) = theCompact.depositNativeAndRegisterFor{ value: params.amount }(
+                address(erc1271Sponsor),
+                lockTag,
+                arbiter,
+                params.nonce,
+                params.deadline,
+                compactWithWitnessTypehash,
+                witness
+            );
+            vm.snapshotGasLastCall("depositNativeAndRegisterForWithEIP1271");
+
+            assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), params.amount);
+            assertEq(address(theCompact).balance, params.amount);
+        }
+
+        // Verify claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = address(erc1271Sponsor);
+            args.nonce = params.nonce;
+            args.expires = params.deadline;
+            args.id = id;
+            args.amount = params.amount;
+            args.witness = witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+            assertEq(registeredClaimHash, claimHash);
+
+            {
+                bool isRegistered =
+                    theCompact.isRegistered(address(erc1271Sponsor), claimHash, compactWithWitnessTypehash);
+                assert(isRegistered);
+            }
+        }
+
+        // Prepare claim with EIP-1271 sponsor signature
+        Claim memory claim;
+        {
+            // Create digest and get allocator signature
+            bytes memory allocatorSignature;
+            {
+                bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                allocatorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create recipients
+            Component[] memory recipients;
+            {
+                recipients = new Component[](1);
+
+                uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), params.recipient)));
+
+                recipients[0] = Component({ claimant: claimantId, amount: params.amount });
+            }
+
+            // Build the claim (use registration, so no sponsor signature needed)
+            claim = Claim(
+                allocatorSignature,
+                "", // sponsorSignature
+                address(erc1271Sponsor),
+                params.nonce,
+                params.deadline,
+                witness,
+                witnessTypestring,
+                id,
+                params.amount,
+                recipients
+            );
+        }
+
+        // Execute claim
+        {
+            vm.prank(arbiter);
+            bytes32 returnedClaimHash = theCompact.claim(claim);
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, params.amount);
+        assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), 0);
+        assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(address(erc1271Sponsor), claimHash, compactWithWitnessTypehash);
+            assertFalse(isRegistered, "Registration should be consumed");
+        }
+    }
+
+    function test_depositERC20AndRegisterForAndClaimWithEIP1271Sponsor() public {
+        // Create EIP-1271 wallet that will act as the sponsor
+        AlwaysOkayERC1271 erc1271Sponsor = new AlwaysOkayERC1271();
+
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+
+        // Additional parameters
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        address depositMaker = makeAddr("depositMaker");
+
+        // Register allocator and setup tokens
+        uint256 id;
+        bytes12 lockTag;
+        {
+            uint96 allocatorId;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+
+            vm.prank(swapper);
+            token.transfer(depositMaker, params.amount);
+
+            vm.prank(depositMaker);
+            token.approve(address(theCompact), params.amount);
+        }
+
+        // Create witness and deposit/register
+        bytes32 registeredClaimHash;
+        bytes32 witness;
+        uint256 witnessArgument = 234;
+        {
+            witness = keccak256(abi.encode(witnessTypehash, witnessArgument));
+
+            vm.prank(depositMaker);
+            (id, registeredClaimHash,) = theCompact.depositERC20AndRegisterFor(
+                address(erc1271Sponsor),
+                address(token),
+                lockTag,
+                params.amount,
+                arbiter,
+                params.nonce,
+                params.deadline,
+                compactWithWitnessTypehash,
+                witness
+            );
+            vm.snapshotGasLastCall("depositERC20AndRegisterForWithEIP1271");
+
+            assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), params.amount);
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+        }
+
+        // Verify claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = address(erc1271Sponsor);
+            args.nonce = params.nonce;
+            args.expires = params.deadline;
+            args.id = id;
+            args.amount = params.amount;
+            args.witness = witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+            assertEq(registeredClaimHash, claimHash);
+
+            {
+                bool isRegistered =
+                    theCompact.isRegistered(address(erc1271Sponsor), claimHash, compactWithWitnessTypehash);
+                assert(isRegistered);
+            }
+        }
+
+        // Prepare claim
+        Claim memory claim;
+        {
+            // Create digest and get allocator signature
+            bytes memory allocatorSignature;
+            {
+                bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                allocatorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create recipients
+            Component[] memory recipients;
+            {
+                recipients = new Component[](1);
+
+                uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), params.recipient)));
+
+                recipients[0] = Component({ claimant: claimantId, amount: params.amount });
+            }
+
+            // Build the claim (use registration, so no sponsor signature needed)
+            claim = Claim(
+                allocatorSignature,
+                "", // sponsorSignature
+                address(erc1271Sponsor),
+                params.nonce,
+                params.deadline,
+                witness,
+                witnessTypestring,
+                id,
+                params.amount,
+                recipients
+            );
+        }
+
+        // Execute claim
+        {
+            vm.prank(arbiter);
+            bytes32 returnedClaimHash = theCompact.claim(claim);
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), params.amount);
+        assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), 0);
+        assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered = theCompact.isRegistered(address(erc1271Sponsor), claimHash, compactWithWitnessTypehash);
+            assertFalse(isRegistered, "Registration should be consumed");
+        }
+    }
+
+    function test_batchDepositAndRegisterForAndBatchClaimWithEIP1271Sponsor() public {
+        // Create EIP-1271 wallet that will act as the sponsor
+        (, uint256 erc1271SignerPrivateKey) = makeAddrAndKey("erc1271Signer");
+        address erc1271Signer = vm.addr(erc1271SignerPrivateKey);
+        MockERC1271Wallet erc1271Sponsor = new MockERC1271Wallet(erc1271Signer);
+
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+
+        // Additional parameters
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        address depositMaker = makeAddr("depositMaker");
+
+        // Register allocator and setup tokens
+        uint256 id;
+        bytes12 lockTag;
+        uint256 id2;
+        {
+            uint96 allocatorId;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+
+            id = address(token).asUint256() | lockTag.asUint256();
+            id2 = address(anotherToken).asUint256() | lockTag.asUint256();
+
+            vm.prank(swapper);
+            token.transfer(depositMaker, params.amount);
+
+            vm.prank(depositMaker);
+            token.approve(address(theCompact), params.amount);
+
+            vm.prank(swapper);
+            anotherToken.transfer(depositMaker, params.amount);
+
+            vm.prank(depositMaker);
+            anotherToken.approve(address(theCompact), params.amount);
+        }
+
+        // Create witness and deposit/register
+        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+        bytes32 registeredClaimHash;
+        bytes32 witness;
+        {
+            uint256 witnessArgument = 234;
+            witness = keccak256(abi.encode(witnessTypehash, witnessArgument));
+
+            idsAndAmounts[0][0] = id;
+            idsAndAmounts[0][1] = params.amount;
+
+            idsAndAmounts[1][0] = id2;
+            idsAndAmounts[1][1] = params.amount;
+
+            uint256[] memory registeredAmounts;
+            vm.prank(depositMaker);
+            (registeredClaimHash, registeredAmounts) = theCompact.batchDepositAndRegisterFor(
+                address(erc1271Sponsor),
+                idsAndAmounts,
+                arbiter,
+                params.nonce,
+                params.deadline,
+                batchCompactWithWitnessTypehash,
+                witness
+            );
+            vm.snapshotGasLastCall("batchDepositAndRegisterForWithEIP1271");
+
+            assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), params.amount);
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+            assertEq(theCompact.balanceOf(address(erc1271Sponsor), id2), params.amount);
+            assertEq(anotherToken.balanceOf(address(theCompact)), params.amount);
+            assertEq(registeredAmounts.length, 2);
+            assertEq(registeredAmounts[0], idsAndAmounts[0][1]);
+            assertEq(registeredAmounts[1], idsAndAmounts[1][1]);
+        }
+
+        // Verify claim hash
+        bytes32 claimHash;
+        {
+            CreateBatchClaimHashWithWitnessArgs memory args;
+            args.typehash = batchCompactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = address(erc1271Sponsor);
+            args.nonce = params.nonce;
+            args.expires = params.deadline;
+            args.idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+            args.witness = witness;
+
+            claimHash = _createBatchClaimHashWithWitness(args);
+            assertEq(registeredClaimHash, claimHash);
+        }
+
+        // Prepare claim
+        BatchClaim memory claim;
+        {
+            // Create digest and get allocator signature
+            bytes memory allocatorSignature;
+            {
+                bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                allocatorSignature = abi.encodePacked(r, vs);
+            }
+
+            // Create recipients
+            Component[] memory recipients;
+            {
+                recipients = new Component[](1);
+
+                uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), params.recipient)));
+
+                recipients[0] = Component({ claimant: claimantId, amount: params.amount });
+            }
+
+            BatchClaimComponent[] memory components = new BatchClaimComponent[](2);
+            components[0].id = id;
+            components[0].allocatedAmount = params.amount;
+            components[0].portions = recipients;
+
+            components[1].id = id2;
+            components[1].allocatedAmount = params.amount;
+            components[1].portions = recipients;
+
+            // Build the claim (using registration, so no sponsor signature needed)
+            claim = BatchClaim(
+                allocatorSignature,
+                "", // sponsorSignature
+                address(erc1271Sponsor),
+                params.nonce,
+                params.deadline,
+                witness,
+                witnessTypestring,
+                components
+            );
+        }
+
+        // Execute claim
+        {
+            vm.prank(arbiter);
+            bytes32 returnedClaimHash = theCompact.batchClaim(claim);
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), params.amount);
+        assertEq(theCompact.balanceOf(address(erc1271Sponsor), id), 0);
+        assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+        assertEq(anotherToken.balanceOf(address(theCompact)), params.amount);
+        assertEq(theCompact.balanceOf(address(erc1271Sponsor), id2), 0);
+        assertEq(theCompact.balanceOf(params.recipient, id2), params.amount);
+
+        // Verify registration was consumed
+        {
+            bool isRegistered =
+                theCompact.isRegistered(address(erc1271Sponsor), claimHash, batchCompactWithWitnessTypehash);
+            assertFalse(isRegistered);
         }
     }
 }

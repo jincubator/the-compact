@@ -1,7 +1,10 @@
 {
+  "batchDepositAndRegisterForWithEIP1271": "132250",
   "batchDepositRegisterFor": "79758",
   "depositERC20AndRegisterForNoWitness": "78668",
+  "depositERC20AndRegisterForWithEIP1271": "78658",
   "depositNativeAndRegisterFor": "50799",
   "depositNativeAndRegisterForNoWitness": "50793",
+  "depositNativeAndRegisterForWithEIP1271": "50799",
   "depositRegisterFor": "78674"
 }
