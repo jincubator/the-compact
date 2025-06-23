@@ -32,3 +32,20 @@ struct ExogenousMultichainClaim {
     uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
 }
+
+using MultichainClaimsLib for MultichainClaim global;
+using MultichainClaimsLib for ExogenousMultichainClaim global;
+
+library MultichainClaimsLib {
+    function asRawPtr(MultichainClaim calldata claim) internal pure returns (uint256 rawClaimPtr) {
+        assembly {
+            rawClaimPtr := claim
+        }
+    }
+
+    function asRawPtr(ExogenousMultichainClaim calldata claim) internal pure returns (uint256 rawClaimPtr) {
+        assembly {
+            rawClaimPtr := claim
+        }
+    }
+}

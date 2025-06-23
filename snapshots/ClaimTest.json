@@ -1,10 +1,10 @@
 {
-  "cancelBatchClaimWithWitness": "49386",
-  "cancelClaim": "44160",
-  "claimAndConvert": "99978",
-  "claimAndTokenWithdrawalFailed": "96032",
-  "claimAndWithdraw": "118989",
-  "claimAndWithdrawWithERC1271": "116400",
-  "splitBatchClaimWithWitness": "150450",
-  "splitClaimWithWitness": "94692"
+  "cancelBatchClaimWithWitness": "49370",
+  "cancelClaim": "44144",
+  "claimAndConvert": "99962",
+  "claimAndTokenWithdrawalFailed": "96016",
+  "claimAndWithdraw": "118973",
+  "claimAndWithdrawWithERC1271": "116384",
+  "splitBatchClaimWithWitness": "150434",
+  "splitClaimWithWitness": "94676"
 }
