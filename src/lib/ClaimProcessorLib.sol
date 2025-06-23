@@ -92,47 +92,6 @@ library ClaimProcessorLib {
     }
 
     /**
-     * @notice Internal function for processing simple batch claims with local domain
-     * signatures. Extracts batch claim parameters from calldata, validates the claim,
-     * and executes operations for multiple resource locks to multiple recipients. Uses the
-     * message hash itself as the qualification message and a zero sponsor domain separator.
-     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
-     * @param calldataPointer Pointer to the location of the associated struct in calldata.
-     * @param typehash        The EIP-712 typehash used for the claim message.
-     * @param domainSeparator The local domain separator.
-     */
-    function processSimpleBatchClaim(
-        bytes32 claimHash,
-        uint256 calldataPointer,
-        bytes32 typehash,
-        bytes32 domainSeparator
-    ) internal {
-        claimHash.processClaimWithBatchComponents(calldataPointer, 0, typehash, domainSeparator, validate);
-    }
-
-    /**
-     * @notice Internal function for processing batch claims with sponsor domain
-     * signatures. Extracts batch claim parameters from calldata, validates the claim
-     * using the provided sponsor domain, and executes operations for multiple resource
-     * locks to multiple recipients. Uses the message hash itself as the qualification
-     * message.
-     * @param claimHash       The EIP-712 hash of the compact for which the claim is being processed.
-     * @param calldataPointer Pointer to the location of the associated struct in calldata.
-     * @param sponsorDomain   The domain separator for the sponsor's signature.
-     * @param typehash        The EIP-712 typehash used for the claim message.
-     * @param domainSeparator The local domain separator.
-     */
-    function processBatchClaimWithSponsorDomain(
-        bytes32 claimHash,
-        uint256 calldataPointer,
-        bytes32 sponsorDomain,
-        bytes32 typehash,
-        bytes32 domainSeparator
-    ) internal {
-        claimHash.processClaimWithBatchComponents(calldataPointer, sponsorDomain, typehash, domainSeparator, validate);
-    }
-
-    /**
      * @notice Private view function to validate that a sponsor has authorized a given claim.
      * @dev Extracts the sponsor signature from calldata and validates authorization through
      * ECDSA, direct registration, EIP1271, or emissary.
