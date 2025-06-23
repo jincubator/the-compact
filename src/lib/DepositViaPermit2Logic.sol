@@ -302,10 +302,7 @@ contract DepositViaPermit2Logic is DepositLogic {
                 assembly ("memory-safe") {
                     // Derive the total memory offset for the witness.
                     let totalWitnessMemoryOffset :=
-                        and(
-                            add(0x153, add(witness.length, iszero(iszero(witness.length)))),
-                            not(0x1f)
-                        )
+                        and(add(0x153, add(witness.length, iszero(iszero(witness.length)))), not(0x1f))
 
                     // Derive the signature offset value.
                     signatureOffsetValue :=
