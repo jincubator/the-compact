@@ -27,7 +27,6 @@ import { EmissaryStatus } from "../types/EmissaryStatus.sol";
  * get the current status of an emissary assignment.
  */
 contract EmissaryLogic {
-    using IdLib for address;
     using IdLib for uint96;
     using IdLib for bytes12;
     using EmissaryLib for bytes12;
@@ -78,7 +77,7 @@ contract EmissaryLogic {
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
     function _assignEmissary(bytes12 lockTag, address emissary) internal returns (bool) {
-        // Extract allocatorId from locktag and ensure that the allocator is registered.
+        // Extract allocatorId from lockTag and ensure that the allocator is registered.
         address allocator = lockTag.toAllocatorId().toRegisteredAllocator();
 
         // Ensure allocator is not the emissary as it would grant the entity unilateral control.
