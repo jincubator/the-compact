@@ -7,7 +7,7 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { DomainLib } from "./DomainLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
-import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
+import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
 
 import { ConstructorLogic } from "./ConstructorLogic.sol";
 
