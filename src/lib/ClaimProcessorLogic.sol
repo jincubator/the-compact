@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Claim } from "../types/Claims.sol";
-import { BatchClaim } from "../types/BatchClaims.sol";
-import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
-import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
+import { Claim, ClaimsLib } from "../types/Claims.sol";
+import { BatchClaim, BatchClaimsLib } from "../types/BatchClaims.sol";
+import { MultichainClaim, ExogenousMultichainClaim, MultichainClaimsLib } from "../types/MultichainClaims.sol";
+import {
+    BatchMultichainClaim,
+    ExogenousBatchMultichainClaim,
+    BatchMultichainClaimsLib
+} from "../types/BatchMultichainClaims.sol";
 
 import { ComponentLib } from "./ComponentLib.sol";
 import { ClaimHashLib } from "./ClaimHashLib.sol";
@@ -24,6 +28,12 @@ import { ConstructorLogic } from "./ConstructorLogic.sol";
  */
 contract ClaimProcessorLogic is ConstructorLogic {
     using ComponentLib for bytes32;
+    using ClaimsLib for Claim;
+    using BatchClaimsLib for BatchClaim;
+    using MultichainClaimsLib for MultichainClaim;
+    using MultichainClaimsLib for ExogenousMultichainClaim;
+    using BatchMultichainClaimsLib for BatchMultichainClaim;
+    using BatchMultichainClaimsLib for ExogenousBatchMultichainClaim;
     using ClaimHashLib for Claim;
     using ClaimHashLib for BatchClaim;
     using ClaimHashLib for MultichainClaim;

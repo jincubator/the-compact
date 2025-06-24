@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { AllocatedTransfer, Claim } from "../types/Claims.sol";
+import { AllocatedTransfer, Claim, ClaimsLib } from "../types/Claims.sol";
 
-import { AllocatedBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
+import { AllocatedBatchTransfer, BatchClaim, BatchClaimsLib } from "../types/BatchClaims.sol";
 
-import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
+import { MultichainClaim, ExogenousMultichainClaim, MultichainClaimsLib } from "../types/MultichainClaims.sol";
 
-import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
+import {
+    BatchMultichainClaim,
+    ExogenousBatchMultichainClaim,
+    BatchMultichainClaimsLib
+} from "../types/BatchMultichainClaims.sol";
 
 import { BatchClaimComponent } from "../types/Components.sol";
 
@@ -33,6 +37,12 @@ library ClaimHashLib {
     using HashLib for BatchClaimComponent[];
     using HashLib for AllocatedTransfer;
     using HashLib for AllocatedBatchTransfer;
+    using ClaimsLib for Claim;
+    using BatchClaimsLib for BatchClaim;
+    using MultichainClaimsLib for MultichainClaim;
+    using MultichainClaimsLib for ExogenousMultichainClaim;
+    using BatchMultichainClaimsLib for BatchMultichainClaim;
+    using BatchMultichainClaimsLib for ExogenousBatchMultichainClaim;
 
     ///// CATEGORY 1: Transfer claim hashes /////
     function toClaimHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 claimHash) {

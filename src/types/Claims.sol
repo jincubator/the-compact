@@ -24,9 +24,12 @@ struct Claim {
     Component[] claimants; // The claim recipients and amounts; specified by the arbiter.
 }
 
-using ClaimsLib for Claim global;
-
 library ClaimsLib {
+    /**
+     * @notice Returns the raw calldata pointer to the claim.
+     * @param claim The claim to get the raw pointer of.
+     * @return rawClaimPtr The raw pointer to the claim.
+     */
     function asRawPtr(Claim calldata claim) internal pure returns (uint256 rawClaimPtr) {
         assembly {
             rawClaimPtr := claim

@@ -33,16 +33,23 @@ struct ExogenousMultichainClaim {
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
 }
 
-using MultichainClaimsLib for MultichainClaim global;
-using MultichainClaimsLib for ExogenousMultichainClaim global;
-
 library MultichainClaimsLib {
+    /**
+     * @notice Returns the raw calldata pointer to the multichain claim.
+     * @param claim The multichain claim to get the raw pointer of.
+     * @return rawClaimPtr The raw pointer to the multichain claim.
+     */
     function asRawPtr(MultichainClaim calldata claim) internal pure returns (uint256 rawClaimPtr) {
         assembly {
             rawClaimPtr := claim
         }
     }
 
+    /**
+     * @notice Returns the raw calldata pointer to the exogenous multichain claim.
+     * @param claim The exogenous multichain claim to get the raw pointer of.
+     * @return rawClaimPtr The raw pointer to the exogenous multichain claim.
+     */
     function asRawPtr(ExogenousMultichainClaim calldata claim) internal pure returns (uint256 rawClaimPtr) {
         assembly {
             rawClaimPtr := claim
