@@ -7,6 +7,8 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { DomainLib } from "./DomainLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
+import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
+
 import { ConstructorLogic } from "./ConstructorLogic.sol";
 
 /**
@@ -54,7 +56,9 @@ contract RegistrationLogic is ConstructorLogic {
         internal
         returns (bytes32 claimHash)
     {
-        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x120, _domainSeparator(), sponsorSignature);
+        return _deriveClaimHashAndRegisterCompact(
+            sponsor, typehash, typehash == COMPACT_TYPEHASH ? 0x100 : 0x120, _domainSeparator(), sponsorSignature
+        );
     }
 
     /**
@@ -68,7 +72,9 @@ contract RegistrationLogic is ConstructorLogic {
         internal
         returns (bytes32 claimHash)
     {
-        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0xe0, _domainSeparator(), sponsorSignature);
+        return _deriveClaimHashAndRegisterCompact(
+            sponsor, typehash, typehash == BATCH_COMPACT_TYPEHASH ? 0xc0 : 0xe0, _domainSeparator(), sponsorSignature
+        );
     }
 
     /**
