@@ -56,9 +56,7 @@ contract RegistrationLogic is ConstructorLogic {
         internal
         returns (bytes32 claimHash)
     {
-        return _deriveClaimHashAndRegisterCompact(
-            sponsor, typehash, typehash == COMPACT_TYPEHASH ? 0x100 : 0x120, _domainSeparator(), sponsorSignature
-        );
+        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x120, _domainSeparator(), sponsorSignature);
     }
 
     /**
@@ -72,9 +70,7 @@ contract RegistrationLogic is ConstructorLogic {
         internal
         returns (bytes32 claimHash)
     {
-        return _deriveClaimHashAndRegisterCompact(
-            sponsor, typehash, typehash == BATCH_COMPACT_TYPEHASH ? 0xc0 : 0xe0, _domainSeparator(), sponsorSignature
-        );
+        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0xe0, _domainSeparator(), sponsorSignature);
     }
 
     /**
@@ -117,6 +113,9 @@ contract RegistrationLogic is ConstructorLogic {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
+
+            preimageLength :=
+                sub(preimageLength, mul(0x20, or(eq(typehash, COMPACT_TYPEHASH), eq(typehash, BATCH_COMPACT_TYPEHASH))))
 
             // Copy relevant arguments from calldata to prepare hash preimage.
             // Note that provided arguments may have dirty upper bits, which will
