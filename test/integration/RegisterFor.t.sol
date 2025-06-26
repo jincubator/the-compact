@@ -3,9 +3,14 @@ pragma solidity ^0.8.13;
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 import { Setup } from "./Setup.sol";
-import { CreateClaimHashWithWitnessArgs, CreateBatchClaimHashWithWitnessArgs } from "./TestHelperStructs.sol";
+import {
+    CreateClaimHashWithWitnessArgs,
+    CreateBatchClaimHashWithWitnessArgs,
+    CreateMultichainClaimHashWithWitnessArgs
+} from "./TestHelperStructs.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
+import { Lock, Element } from "../../src/types/EIP712Types.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
 
 // Add imports for EIP-1271 support
@@ -471,47 +476,41 @@ contract RegisterForTest is Setup {
         uint256 erc1271SignerPrivateKey,
         uint256 erc1271Id
     ) private view returns (bytes32 claimHash, bytes memory sponsorSignature, bytes32 elementsHash) {
-        // Create the elements hash in a dedicated helper to reduce stack depth
-        elementsHash = _createMultichainElementsHash(erc1271Id);
+        uint256 notarizedChainId = block.chainid;
+        uint256 anotherChainId = 7171717;
+
+        // Create Lock array for the commitment
+        Lock[] memory commitments = new Lock[](1);
+        commitments[0] =
+            Lock({ lockTag: bytes12(bytes32(erc1271Id)), token: address(uint160(erc1271Id)), amount: amount });
+
+        // Create Element array
+        Element[] memory elements = new Element[](2);
+        elements[0] = Element({ arbiter: arbiter, chainId: notarizedChainId, commitments: commitments });
+        elements[1] = Element({ arbiter: arbiter, chainId: anotherChainId, commitments: commitments });
+
+        // Create witness hashes array
+        bytes32[] memory witnessHashes = new bytes32[](2);
+        witnessHashes[0] = witness;
+        witnessHashes[1] = witness;
+
+        // Use existing helper to create elements hash
+        elementsHash = _createMultichainElementsHash(multichainElementsWithWitnessTypehash, elements, witnessHashes);
 
         // Create multichain claim hash
-        claimHash = keccak256(
-            abi.encode(multichainCompactWithWitnessTypehash, address(erc1271Sponsor), nonce, expires, elementsHash)
+        claimHash = _createMultichainClaimHashWithWitness(
+            CreateMultichainClaimHashWithWitnessArgs({
+                typehash: multichainCompactWithWitnessTypehash,
+                sponsor: address(erc1271Sponsor),
+                nonce: nonce,
+                expires: expires,
+                elementsHash: elementsHash
+            })
         );
 
         // Create digest and get EIP-1271 sponsor signature
         bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
         (bytes32 r, bytes32 vs) = vm.signCompact(erc1271SignerPrivateKey, digest);
         sponsorSignature = abi.encodePacked(r, vs);
-    }
-
-    function _createMultichainElementsHash(uint256 erc1271Id) private view returns (bytes32 elementsHash) {
-        // Setup for multichain test
-        uint256 notarizedChainId = block.chainid;
-        uint256 anotherChainId = 7171717;
-
-        // Create elements for multichain compact
-        bytes32 elementTypehash = keccak256(
-            "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-        );
-
-        // Create idsAndAmounts array for this chain
-        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-        idsAndAmounts[0] = [erc1271Id, amount];
-        bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
-
-        // Create element hash for this chain
-        bytes32 elementHash =
-            keccak256(abi.encode(elementTypehash, arbiter, notarizedChainId, idsAndAmountsHash, witness));
-
-        // Create element hash for another chain
-        bytes32 anotherElementHash =
-            keccak256(abi.encode(elementTypehash, arbiter, anotherChainId, idsAndAmountsHash, witness));
-
-        // Create elements hash and claim hash
-        bytes32[] memory elements = new bytes32[](2);
-        elements[0] = elementHash;
-        elements[1] = anotherElementHash;
-        elementsHash = keccak256(abi.encodePacked(elements));
     }
 }
