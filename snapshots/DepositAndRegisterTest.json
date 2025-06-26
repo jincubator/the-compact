@@ -1,5 +1,5 @@
 {
-  "batchDepositAndRegisterMultiple": "51118",
-  "depositERC20AndRegister": "85019",
+  "batchDepositAndRegisterMultiple": "51102",
+  "depositERC20AndRegister": "85003",
   "depositNativeAndRegister": "49110"
 }

@@ -7,6 +7,8 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { DomainLib } from "./DomainLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
+import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
+
 import { ConstructorLogic } from "./ConstructorLogic.sol";
 
 /**
@@ -111,6 +113,9 @@ contract RegistrationLogic is ConstructorLogic {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
+
+            preimageLength :=
+                sub(preimageLength, mul(0x20, or(eq(typehash, COMPACT_TYPEHASH), eq(typehash, BATCH_COMPACT_TYPEHASH))))
 
             // Copy relevant arguments from calldata to prepare hash preimage.
             // Note that provided arguments may have dirty upper bits, which will

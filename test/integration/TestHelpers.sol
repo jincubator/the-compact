@@ -185,6 +185,20 @@ contract TestHelpers is Test {
         return keccak256(abi.encode(typeHash, arbiter, chainId, keccak256(abi.encode(lockHashes)), witnessHash));
     }
 
+    function _createMultichainElementHash(
+        bytes32 typeHash,
+        address arbiter,
+        uint256 chainId,
+        bytes32 commitmentsHash,
+        bytes32 witnessHash
+    ) internal pure returns (bytes32) {
+        if (witnessHash == "") {
+            return keccak256(abi.encode(typeHash, arbiter, chainId, commitmentsHash));
+        } else {
+            return keccak256(abi.encode(typeHash, arbiter, chainId, commitmentsHash, witnessHash));
+        }
+    }
+
     function _createDigest(bytes32 domainSeparator, bytes32 hashValue) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(bytes2(0x1901), domainSeparator, hashValue));
     }

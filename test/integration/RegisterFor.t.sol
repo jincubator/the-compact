@@ -94,6 +94,39 @@ contract RegisterForTest is Setup {
         assertTrue(isRegistered);
     }
 
+    function test_registerFor_noWitness() public {
+        // Create claim hash
+        CreateClaimHashWithWitnessArgs memory args = CreateClaimHashWithWitnessArgs({
+            typehash: compactTypehash,
+            arbiter: arbiter,
+            sponsor: swapper,
+            nonce: nonce,
+            expires: expires,
+            id: id,
+            amount: amount,
+            witness: ""
+        });
+        bytes32 claimHash = _createClaimHash(args);
+
+        // Create digest and get sponsor signature
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        // Call registerFor
+        bytes32 returnedClaimHash = theCompact.registerFor(
+            compactTypehash, arbiter, swapper, nonce, expires, lockTag, address(0), amount, "", sponsorSignature
+        );
+        vm.snapshotGasLastCall("registerForNoWitness");
+
+        // Verify the claim hash
+        assertEq(returnedClaimHash, claimHash);
+
+        // Verify registration status
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, compactTypehash);
+        assertTrue(isRegistered);
+    }
+
     function test_registerBatchFor() public {
         // Create multiple deposits
         uint256 id2 = _makeDeposit(swapper, address(token), amount, lockTag);
@@ -104,6 +137,8 @@ contract RegisterForTest is Setup {
         idsAndAmounts[1] = [id2, amount];
 
         // Create batch claim hash
+        bytes32 batchTypehash = batchCompactWithWitnessTypehash;
+
         bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
 
         CreateBatchClaimHashWithWitnessArgs memory args = CreateBatchClaimHashWithWitnessArgs({
@@ -143,19 +178,61 @@ contract RegisterForTest is Setup {
         assertTrue(isRegistered);
     }
 
+    function test_registerBatchFor_noWitness() public {
+        // Create multiple deposits
+        uint256 id2 = _makeDeposit(swapper, address(token), amount, lockTag);
+
+        // Create idsAndAmounts array
+        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
+        idsAndAmounts[0] = [id, amount];
+        idsAndAmounts[1] = [id2, amount];
+
+        // Create batch claim hash
+        bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+
+        CreateBatchClaimHashWithWitnessArgs memory args = CreateBatchClaimHashWithWitnessArgs({
+            typehash: batchCompactTypehash,
+            arbiter: arbiter,
+            sponsor: swapper,
+            nonce: nonce,
+            expires: expires,
+            idsAndAmountsHash: idsAndAmountsHash,
+            witness: ""
+        });
+        bytes32 claimHash = _createBatchClaimHash(args);
+
+        // Create digest and get sponsor signature
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        // Call registerBatchFor
+        bytes32 returnedClaimHash = theCompact.registerBatchFor(
+            batchCompactTypehash, arbiter, swapper, nonce, expires, idsAndAmountsHash, "", sponsorSignature
+        );
+        vm.snapshotGasLastCall("registerBatchForNoWitness");
+
+        // Verify the claim hash
+        assertEq(returnedClaimHash, claimHash);
+
+        // Verify registration status
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, batchCompactTypehash);
+        assertTrue(isRegistered);
+    }
+
     function test_registerMultichainFor() public {
         // Setup for multichain test
         uint256 notarizedChainId = block.chainid;
         uint256 anotherChainId = 7171717;
+
+        bytes32 multichainTypehash = multichainCompactWithWitnessTypehash;
 
         bytes32 elementsHash;
         bytes32 claimHash;
         bytes memory sponsorSignature;
         {
             // Create elements for multichain compact
-            bytes32 elementTypehash = keccak256(
-                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
-            );
+            bytes32 elementTypehash = multichainElementsWithWitnessTypehash;
 
             // Create idsAndAmounts array for this chain
             uint256[2][] memory idsAndAmounts = new uint256[2][](1);
@@ -164,11 +241,11 @@ contract RegisterForTest is Setup {
 
             // Create element hash for this chain
             bytes32 elementHash =
-                keccak256(abi.encode(elementTypehash, arbiter, notarizedChainId, idsAndAmountsHash, witness));
+                _createMultichainElementHash(elementTypehash, arbiter, notarizedChainId, idsAndAmountsHash, witness);
 
             // Create element hash for another chain
             bytes32 anotherElementHash =
-                keccak256(abi.encode(elementTypehash, arbiter, anotherChainId, idsAndAmountsHash, witness));
+                _createMultichainElementHash(elementTypehash, arbiter, anotherChainId, idsAndAmountsHash, witness);
 
             // Create elements hash and claim hash
             bytes32[] memory elements = new bytes32[](2);
@@ -308,6 +385,61 @@ contract RegisterForTest is Setup {
         // Verify registration status
         bool isRegistered =
             theCompact.isRegistered(address(erc1271Sponsor), claimHash, multichainCompactWithWitnessTypehash);
+        assertTrue(isRegistered);
+    }
+
+    function test_registerMultichainFor_noWitness() public {
+        // Setup for multichain test
+        uint256 notarizedChainId = block.chainid;
+        uint256 anotherChainId = 7171717;
+        bytes32 multichainTypehash = multichainCompactTypehash;
+
+        bytes32 elementsHash;
+        bytes32 claimHash;
+        bytes memory sponsorSignature;
+        {
+            // Create elements for multichain compact
+            bytes32 elementTypehash = multichainElementsTypehash;
+
+            // Create idsAndAmounts array for this chain
+            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+            idsAndAmounts[0] = [id, amount];
+            bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
+
+            // Create element hash for this chain
+            bytes32 elementHash =
+                _createMultichainElementHash(elementTypehash, arbiter, notarizedChainId, idsAndAmountsHash, "");
+
+            // Create element hash for another chain
+            bytes32 anotherElementHash =
+                _createMultichainElementHash(elementTypehash, arbiter, anotherChainId, idsAndAmountsHash, "");
+
+            // Create elements hash and claim hash
+            bytes32[] memory elements = new bytes32[](2);
+            elements[0] = elementHash;
+            elements[1] = anotherElementHash;
+            elementsHash = keccak256(abi.encodePacked(elements));
+
+            // Create multichain claim hash
+            claimHash = keccak256(abi.encode(multichainTypehash, swapper, nonce, expires, elementsHash));
+
+            // Create digest and get sponsor signature
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+            (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+            sponsorSignature = abi.encodePacked(r, vs);
+        }
+
+        // Call registerMultichainFor
+        bytes32 returnedClaimHash = theCompact.registerMultichainFor(
+            multichainTypehash, swapper, nonce, expires, elementsHash, notarizedChainId, sponsorSignature
+        );
+        vm.snapshotGasLastCall("registerMultichainForNoWitness");
+
+        // Verify the claim hash
+        assertEq(returnedClaimHash, claimHash);
+
+        // Verify registration status
+        bool isRegistered = theCompact.isRegistered(swapper, claimHash, multichainTypehash);
         assertTrue(isRegistered);
     }
 
