@@ -5,6 +5,7 @@ import { AllocatedTransfer } from "../types/Claims.sol";
 import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
 import { Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 
+import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
@@ -75,16 +76,13 @@ library ComponentLib {
      * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash               The EIP-712 typehash used for the claim message.
      * @param domainSeparator        The local domain separator.
-     * @param validation             Function pointer to the _validate function.
      */
     function processClaimWithComponents(
         bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
-        bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
-            validation
+        bytes32 domainSeparator
     ) internal {
         // Declare variables for parameters that will be extracted from calldata.
         uint256 id;
@@ -110,7 +108,7 @@ library ComponentLib {
         idsAndAmounts[0] = [id, allocatedAmount];
 
         // Validate the claim and extract the sponsor address.
-        address sponsor = validation(
+        address sponsor = ClaimProcessorLib.validate(
             claimHash,
             id.toAllocatorId(),
             calldataPointer,
@@ -138,16 +136,13 @@ library ComponentLib {
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
-     * @param validation               Function pointer to the _validate function.
      */
     function processClaimWithBatchComponents(
         bytes32 claimHash,
         uint256 calldataPointer,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
-        bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
-            validation
+        bytes32 domainSeparator
     ) internal {
         // Declare variable for BatchClaimComponent array that will be extracted from calldata.
         BatchClaimComponent[] calldata claims;
@@ -163,7 +158,7 @@ library ComponentLib {
             _buildIdsAndAmountsWithConsistentAllocatorIdCheck(claims, sponsorDomainSeparator);
 
         // Validate the claim and extract the sponsor address.
-        address sponsor = validation(
+        address sponsor = ClaimProcessorLib.validate(
             claimHash,
             firstAllocatorId,
             calldataPointer,

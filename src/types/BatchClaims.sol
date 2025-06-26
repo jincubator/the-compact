@@ -20,3 +20,16 @@ struct BatchClaim {
     string witnessTypestring; // Witness typestring appended to existing typestring.
     BatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
+
+library BatchClaimsLib {
+    /**
+     * @notice Returns the raw calldata pointer to the batch claim.
+     * @param claim The batch claim to get the raw pointer of.
+     * @return rawClaimPtr The raw pointer to the batch claim.
+     */
+    function asRawPtr(BatchClaim calldata claim) internal pure returns (uint256 rawClaimPtr) {
+        assembly {
+            rawClaimPtr := claim
+        }
+    }
+}
