@@ -436,7 +436,7 @@ contract DepositAndRegisterForTest is Setup {
                 compactWithWitnessTypehash,
                 witness
             );
-            vm.snapshotGasLastCall("depositRegisterFor");
+            vm.snapshotGasLastCall("depositERC20AndRegisterFor");
 
             assertEq(theCompact.balanceOf(swapper, id), params.amount);
             assertEq(token.balanceOf(address(theCompact)), params.amount);
@@ -574,7 +574,7 @@ contract DepositAndRegisterForTest is Setup {
                 batchCompactWithWitnessTypehash,
                 witness
             );
-            vm.snapshotGasLastCall("batchDepositRegisterFor");
+            vm.snapshotGasLastCall("batchDepositRegisterForLengthOne");
 
             assertEq(theCompact.balanceOf(swapper, id), params.amount);
             assertEq(token.balanceOf(address(theCompact)), params.amount);
@@ -1100,7 +1100,7 @@ contract DepositAndRegisterForTest is Setup {
                 COMPACT_TYPEHASH,
                 bytes32(0) // witness
             );
-            vm.snapshotGasLastCall("depositERC20AndRegisterForNoWitness");
+            vm.snapshotGasLastCall("depositERC20AndRegisterForNoWitnessZeroReplaced");
 
             assertEq(theCompact.balanceOf(swapper, id), params.amount);
             assertEq(token.balanceOf(address(theCompact)), params.amount * 2); // 2x because address(0) and the user will have that balance

@@ -1,5 +1,8 @@
 {
-  "registerBatchFor": "28944",
-  "registerFor": "28852",
-  "registerMultichainFor": "29209"
+  "registerBatchFor": "28965",
+  "registerBatchForNoWitness": "28953",
+  "registerFor": "28873",
+  "registerForNoWitness": "28861",
+  "registerMultichainFor": "29230",
+  "registerMultichainForNoWitness": "29230"
 }
