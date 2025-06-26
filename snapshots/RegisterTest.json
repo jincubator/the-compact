@@ -1,7 +1,7 @@
 {
-  "claim": "89319",
+  "claim": "89277",
   "register": "24457",
-  "registerAndClaimWithEIP1271": "64053",
+  "registerAndClaimWithEIP1271": "64011",
   "registerMultiple": "25358",
   "registerMultipleWithEIP1271": "49434",
   "registerWithEIP1271": "24457"

@@ -136,9 +136,6 @@ contract RegisterForTest is Setup {
         idsAndAmounts[0] = [id, amount];
         idsAndAmounts[1] = [id2, amount];
 
-        // Create batch claim hash
-        bytes32 batchTypehash = batchCompactWithWitnessTypehash;
-
         bytes32 idsAndAmountsHash = _hashOfHashes(idsAndAmounts);
 
         CreateBatchClaimHashWithWitnessArgs memory args = CreateBatchClaimHashWithWitnessArgs({
@@ -224,8 +221,6 @@ contract RegisterForTest is Setup {
         // Setup for multichain test
         uint256 notarizedChainId = block.chainid;
         uint256 anotherChainId = 7171717;
-
-        bytes32 multichainTypehash = multichainCompactWithWitnessTypehash;
 
         bytes32 elementsHash;
         bytes32 claimHash;
