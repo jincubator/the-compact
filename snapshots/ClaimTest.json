@@ -1,10 +1,12 @@
 {
-  "cancelBatchClaimWithWitness": "49386",
-  "cancelClaim": "44160",
-  "claimAndConvert": "99978",
-  "claimAndTokenWithdrawalFailed": "96032",
-  "claimAndWithdraw": "118989",
-  "claimAndWithdrawWithERC1271": "116400",
-  "splitBatchClaimWithWitness": "150450",
-  "splitClaimWithWitness": "94692"
+  "batchClaimWithEIP1271SponsorSignature": "102502",
+  "cancelBatchClaimWithWitness": "49265",
+  "cancelClaim": "44039",
+  "claimAndConvert": "99857",
+  "claimAndTokenWithdrawalFailed": "95911",
+  "claimAndWithdraw": "118868",
+  "claimAndWithdrawWithERC1271": "116279",
+  "claimWithEIP1271SponsorSignature": "123211",
+  "splitBatchClaimWithWitness": "150329",
+  "splitClaimWithWitness": "94571"
 }
