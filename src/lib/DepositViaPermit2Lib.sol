@@ -142,8 +142,7 @@ library DepositViaPermit2Lib {
     ) internal pure returns (bytes32 activationTypehash, bytes32 compactTypehash) {
         assembly ("memory-safe") {
             // Internal assembly function for writing the witness and typehashes.
-            // Used to enable leaving the inline assembly scope early when the
-            // witness is empty (no-witness case).
+            // Use a faux loop to support breaking early when no witness is present.
             for { } 1 { } {
                 // Derive memory offset for the witness typestring data.
                 let memoryOffset := add(memoryLocation, 0x20)

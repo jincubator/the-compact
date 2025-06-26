@@ -3,6 +3,13 @@ pragma solidity ^0.8.27;
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
+/**
+ * @title Tstorish
+ * @notice Inheritable contract implementing logic for determining whether or not
+ * transient storage is available in the current EVM environment and utilizing it
+ * if it has been confirmed to be available (either at time of deployment or by
+ * explicitly activating it at a later point).
+ */
 contract Tstorish {
     using EfficiencyLib for bool;
     using EfficiencyLib for address;
@@ -41,10 +48,10 @@ contract Tstorish {
     error TloadTestContractDeploymentFailed();
 
     /**
-     * @dev Determine TSTORE availability during deployment. This involves
-     *      attempting to deploy a contract that utilizes TLOAD as part of the
-     *      contract construction bytecode, and configuring initial support for
-     *      using TSTORE in place of SSTORE based on the result.
+     * @notice Determine TSTORE availability during deployment. This involves
+     * attempting to deploy a contract that utilizes TLOAD as part of the contract
+     * construction bytecode, and configuring initial support for using TSTORE in
+     * place of SSTORE based on the result.
      */
     constructor() {
         // Deploy the contract testing TLOAD support and store the address.
@@ -63,10 +70,9 @@ contract Tstorish {
     }
 
     /**
-     * @dev External function to activate TSTORE usage. Does not need to be
-     *      called if TSTORE is supported from deployment, and only needs to be
-     *      called once. Reverts if TSTORE has already been activated or if the
-     *      opcode is not available.
+     * @notice External function to activate TSTORE usage. Does not need to be called
+     * if TSTORE is supported from deployment, and only needs to be called once.
+     * Reverts if TSTORE has already been activated or if the opcode is not available.
      */
     function __activateTstore() external {
         // Determine if TSTORE can potentially be activated.
@@ -91,10 +97,19 @@ contract Tstorish {
         }
     }
 
+    /**
+     * @notice Internal function to write a value to a given slot using either transient
+     * storage or standard storage depending on the activation status.
+     *
+     * @param slot  The slot to write the value to.
+     * @param value The value to write to the given slot.
+     */
     function _setTstorish(uint256 slot, uint256 value) internal {
+        // Retrieve initial support status from the immutable variable and place it on the stack.
         bool tstoreInitialSupport = _tstoreInitialSupport;
 
         assembly ("memory-safe") {
+            // Use a faux loop to support breaking early.
             for { } 1 { } {
                 if iszero(tstoreInitialSupport) {
                     // Load the storage slot tracking the tstore activation block number.
@@ -115,10 +130,19 @@ contract Tstorish {
         }
     }
 
+    /**
+     * @notice Internal view function to read the value of a given slot using either transient
+     * storage or standard storage depending on the activation status.
+     *
+     * @param slot   The slot to read the value from.
+     * @return value The value at the given slot.
+     */
     function _getTstorish(uint256 slot) internal view returns (uint256 value) {
+        // Retrieve initial support status from the immutable variable and place it on the stack.
         bool tstoreInitialSupport = _tstoreInitialSupport;
 
         assembly ("memory-safe") {
+            // Use a faux loop to support breaking early.
             for { } 1 { } {
                 if iszero(tstoreInitialSupport) {
                     // Load the storage slot tracking the tstore activation block number.
@@ -140,10 +164,10 @@ contract Tstorish {
     }
 
     /**
-     * @dev Internal view function to determine if TSTORE/TLOAD are supported by
-     *      the current EVM implementation by attempting to call the test
-     *      contract, which utilizes TLOAD as part of its fallback logic.
-     *      Marked as *internal virtual* to facilitate overriding as part of tests.
+     * @notice Internal view function to determine if TSTORE/TLOAD are supported by
+     * the current EVM implementation by attempting to call the test contract, which
+     * utilizes TLOAD as part of its fallback logic. The function is marked as
+     * *internal virtual* to facilitate overriding as part of tests.
      */
     function _testTload(address tloadTestContract) internal view virtual returns (bool ok) {
         // Call the test contract, which will perform a TLOAD test. If the call
@@ -156,8 +180,8 @@ contract Tstorish {
     }
 
     /**
-     * @dev Private function to deploy a test contract that utilizes TLOAD as
-     *      part of its fallback logic.
+     * @notice Private function to deploy a test contract that utilizes TLOAD as
+     * part of its fallback logic.
      */
     function _deployTloadTest() private returns (address contractAddress) {
         // Utilize assembly to deploy a contract testing TLOAD support.
