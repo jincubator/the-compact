@@ -364,7 +364,7 @@ $ forge coverage
 -   **Permit2 Tests**: Comprehensive tests for Permit2 integration including witness data handling.
 
 **Development Notes:**
--   The contract uses Solady's ERC6909 implementation for gas efficiency.
+-   The contract uses Solady's ERC6909 implementation for gas efficiency. Note that storage conventions between The Compact and Solady have subtle differences and so care must be taken to avoid potential storage collisions when making future changes to the codebase.
 -   All external functions include comprehensive NatSpec documentation.
 -   The codebase follows strict gas optimization patterns with extensive use of assembly.
 -   The protocol uses custom errors for better gas efficiency and clearer debugging.
