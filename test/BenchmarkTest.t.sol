@@ -281,11 +281,26 @@ contract BenchmarkTest is Test {
             uint160(uint256(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), address(benchmark), bytes1(0x01)))))
         );
 
-        // Warm up the token account
-        BenchmarkERC20(benchmarkToken).name();
+        WarmTokenAccountTest warmTokenAccountTest = new WarmTokenAccountTest(theCompact, BenchmarkERC20(benchmarkToken));
 
         // Call the __benchmark function
         vm.expectRevert(abi.encodeWithSelector(TransferBenchmarker.InvalidBenchmark.selector), benchmark);
+        warmTokenAccountTest.__benchmark{ value: 2 wei }(salt);
+    }
+}
+
+contract WarmTokenAccountTest {
+    BenchmarkERC20 public benchmarkToken;
+    TheCompact public theCompact;
+    constructor (TheCompact _theCompact, BenchmarkERC20 _benchmarkToken) {
+        theCompact = _theCompact;
+        benchmarkToken = _benchmarkToken;
+    }
+
+    function __benchmark(bytes32 salt) external payable {
+        // Warm up the token account
+        benchmarkToken.name();
+
         theCompact.__benchmark{ value: 2 wei }(salt);
     }
 }
