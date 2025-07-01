@@ -106,5 +106,5 @@ contract TstoreMockActivation is Test {
         assertTrue(tstorishContract.checkMockValue());
         assertFalse(tstorishContract.checkSstoreSlot());
         assertTrue(tstorishContract.checkTstoreSlot());
-    }   
+    }
 }

@@ -292,7 +292,8 @@ contract BenchmarkTest is Test {
 contract WarmTokenAccountTest {
     BenchmarkERC20 public benchmarkToken;
     TheCompact public theCompact;
-    constructor (TheCompact _theCompact, BenchmarkERC20 _benchmarkToken) {
+
+    constructor(TheCompact _theCompact, BenchmarkERC20 _benchmarkToken) {
         theCompact = _theCompact;
         benchmarkToken = _benchmarkToken;
     }
