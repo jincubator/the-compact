@@ -9,7 +9,7 @@
   "license": "MIT",
   "main": "src/TheCompact.sol",
   "scripts": {
-    "test": "forge test && hardhat test",
+    "test": "forge test --isolate && hardhat test",
     "compile": "forge build"
   },
   "directories": {

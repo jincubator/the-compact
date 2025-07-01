@@ -54,6 +54,14 @@ contract DepositViaPermit2LogicTest is Permit2Test {
         // Setup test tokens.
         testToken = new MockERC20("Test Token", "TEST", 18);
         secondToken = new MockERC20("Second Token", "SECOND", 18);
+
+        // Ensure token addresses are ordered alphanumerically
+        if (uint160(address(secondToken)) < uint160(address(testToken))) {
+            address secondTokenOriginal = address(secondToken);
+            secondToken = testToken;
+            testToken = MockERC20(secondTokenOriginal);
+        }
+
         testToken.mint(depositor, 1 ether);
         secondToken.mint(depositor, 1 ether);
 
