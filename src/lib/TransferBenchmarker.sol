@@ -223,7 +223,7 @@ contract TransferBenchmarker {
                 let success2 := mload(add(m, 0x60))
 
                 // Get gas after second call.
-                let gasCheckpointThree := mload(add(m, 0x60))
+                let gasCheckpointThree := mload(add(m, 0x80))
 
                 // Determine cost of transfer to uncreated and created accounts.
                 transferToWarmUncreatedAccountCost := sub(gasCheckpointOne, gasCheckpointTwo)

@@ -1,11 +1,11 @@
 {
-  "registerBatchFor": "53885",
-  "registerBatchForNoWitness": "53441",
-  "registerBatchForWithEIP1271": "62703",
-  "registerFor": "53893",
+  "registerBatchFor": "53873",
+  "registerBatchForNoWitness": "53477",
+  "registerBatchForWithEIP1271": "62715",
+  "registerFor": "53869",
   "registerForNoWitness": "53485",
   "registerForWithEIP1271": "62723",
-  "registerMultichainFor": "53422",
-  "registerMultichainForNoWitness": "53410",
+  "registerMultichainFor": "53398",
+  "registerMultichainForNoWitness": "53422",
   "registerMultichainForWithEIP1271": "62255"
 }
