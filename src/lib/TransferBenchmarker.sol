@@ -208,7 +208,7 @@ contract TransferBenchmarker {
                 mstore(0, target)
 
                 // Measure transfer benchmarks, providing 2 wei.
-                transferBenchmarkCallSuccess := call(gas(), nativeTransferBenchmarker, 2, m, 0xa0, 0, 0x20)
+                transferBenchmarkCallSuccess := call(gas(), nativeTransferBenchmarker, 2, 0, 0x20, m, 0xa0)
 
                 // Get gas before first call.
                 let gasCheckpointOne := mload(m)
@@ -237,7 +237,7 @@ contract TransferBenchmarker {
             mstore(0, salt)
 
             // Measure warm vs cold account access benchmarks.
-            let warmVsColdBenchmarkCallSuccess := staticcall(gas(), warmVsColdBenchmarker, m, 0x60, 0, 0x20)
+            let warmVsColdBenchmarkCallSuccess := staticcall(gas(), warmVsColdBenchmarker, 0, 0x20, m, 0x60)
 
             let coldAccountAccessCost
 
@@ -324,7 +324,7 @@ contract TransferBenchmarker {
                 mstore(0, token)
 
                 // Measure warm vs cold account access benchmarks.
-                let warmVsColdBenchmarkCallSuccess := staticcall(gas(), warmVsColdBenchmarker, m, 0x60, 0, 0x20)
+                let warmVsColdBenchmarkCallSuccess := staticcall(gas(), warmVsColdBenchmarker, 0, 0x20, m, 0x60)
 
                 // Get gas before first account access.
                 let firstStart := mload(m)
