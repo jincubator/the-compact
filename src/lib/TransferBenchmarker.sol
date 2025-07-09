@@ -46,78 +46,78 @@ contract TransferBenchmarker {
          *    - gasCheckpointTwo
          *    - successTwo
          *    - gasCheckpointThree
-         * 
+         *
          * 0x5a3d383d3860013d355af15a3d383d3860013d355af15a6080526060526040526020523d52593df3
-         * 
-         * [00]	GAS	
-         * [01]	RETURNDATASIZE	
-         * [02]	CODESIZE	
-         * [03]	RETURNDATASIZE	
-         * [04]	CODESIZE	
+         *
+         * [00]	GAS
+         * [01]	RETURNDATASIZE
+         * [02]	CODESIZE
+         * [03]	RETURNDATASIZE
+         * [04]	CODESIZE
          * [05]	PUSH1	01
-         * [07]	RETURNDATASIZE	
-         * [08]	CALLDATALOAD	
-         * [09]	GAS	
-         * [0a]	CALL	
-         * [0b]	GAS	
-         * [0c]	RETURNDATASIZE	
-         * [0d]	CODESIZE	
-         * [0e]	RETURNDATASIZE	
-         * [0f]	CODESIZE	
+         * [07]	RETURNDATASIZE
+         * [08]	CALLDATALOAD
+         * [09]	GAS
+         * [0a]	CALL
+         * [0b]	GAS
+         * [0c]	RETURNDATASIZE
+         * [0d]	CODESIZE
+         * [0e]	RETURNDATASIZE
+         * [0f]	CODESIZE
          * [10]	PUSH1	01
-         * [12]	RETURNDATASIZE	
-         * [13]	CALLDATALOAD	
-         * [14]	GAS	
-         * [15]	CALL	
-         * [16]	GAS	
+         * [12]	RETURNDATASIZE
+         * [13]	CALLDATALOAD
+         * [14]	GAS
+         * [15]	CALL
+         * [16]	GAS
          * [17]	PUSH1	80
-         * [19]	MSTORE	
+         * [19]	MSTORE
          * [1a]	PUSH1	60
-         * [1c]	MSTORE	
+         * [1c]	MSTORE
          * [1d]	PUSH1	40
-         * [1f]	MSTORE	
+         * [1f]	MSTORE
          * [20]	PUSH1	20
-         * [22]	MSTORE	
-         * [23]	RETURNDATASIZE	
-         * [24]	MSTORE	
-         * [25]	MSIZE	
-         * [26]	RETURNDATASIZE	
+         * [22]	MSTORE
+         * [23]	RETURNDATASIZE
+         * [24]	MSTORE
+         * [25]	MSIZE
+         * [26]	RETURNDATASIZE
          * [27]	RETURN
-         * 
+         *
          * 2) warmVsColdBenchmarker —> cold vs warm access cost
          *  Takes one word (salt "address" or token address)
          *  Returns three words:
          *   - gasCheckpointOne
          *   - gasCheckpointTwo
          *   - gasCheckpointThree
-         * 
+         *
          * 0x5a3d35315a3d35315a60405250602052503d52593df3
-         * 
-         * [00]	GAS	
-         * [01]	RETURNDATASIZE	
-         * [02]	CALLDATALOAD	
-         * [03]	BALANCE	
-         * [04]	GAS	
-         * [05]	RETURNDATASIZE	
-         * [06]	CALLDATALOAD	
-         * [07]	BALANCE	
-         * [08]	GAS	
+         *
+         * [00]	GAS
+         * [01]	RETURNDATASIZE
+         * [02]	CALLDATALOAD
+         * [03]	BALANCE
+         * [04]	GAS
+         * [05]	RETURNDATASIZE
+         * [06]	CALLDATALOAD
+         * [07]	BALANCE
+         * [08]	GAS
          * [09]	PUSH1	40
-         * [0b]	MSTORE	
-         * [0c]	POP	
+         * [0b]	MSTORE
+         * [0c]	POP
          * [0d]	PUSH1	20
-         * [0f]	MSTORE	
-         * [10]	POP	
-         * [11]	RETURNDATASIZE	
-         * [12]	MSTORE	
-         * [13]	MSIZE	
-         * [14]	RETURNDATASIZE	
+         * [0f]	MSTORE
+         * [10]	POP
+         * [11]	RETURNDATASIZE
+         * [12]	MSTORE
+         * [13]	MSIZE
+         * [14]	RETURNDATASIZE
          * [15]	RETURN
-         * 
+         *
          * Both helpers use the "universal minimal constructor":
-         * 
+         *
          * 0x600b5981380380925939f3
-         * 
+         *
          * [00]	PUSH1	0b
          * [02]	MSIZE
          * [03]	DUP2
@@ -136,7 +136,7 @@ contract TransferBenchmarker {
             mstore(0x13, 0xf15a6080526060526040526020523d52593df3)
             mstore(0, 0x600b5981380380925939f35a3d383d3860013d355af15a3d383d3860013d355a)
             nativeTokenBenchmarker := create(0, 0, 0x33)
-            
+
             // Deploy the warm vs. cold access benchmarker.
             mstore(0, 0x600b5981380380925939f35a3d35315a3d35315a60405250602052503d52593d)
             mstore8(0x20, 0xf3)
@@ -233,8 +233,6 @@ contract TransferBenchmarker {
                 eitherTransferFailed := iszero(and(success1, success2))
             }
 
-
-
             // Prepare the salt as the sole argument to the transfer benchmark call.
             mstore(0, salt)
 
@@ -267,7 +265,10 @@ contract TransferBenchmarker {
                 eitherTransferFailed,
                 or(
                     iszero(gt(transferToWarmUncreatedAccountCost, transferToWarmCreatedAccountCost)),
-                    or(iszero(coldAccountAccessCost), or(iszero(transferBenchmarkCallSuccess), iszero(warmVsColdBenchmarkCallSuccess)))
+                    or(
+                        iszero(coldAccountAccessCost),
+                        or(iszero(transferBenchmarkCallSuccess), iszero(warmVsColdBenchmarkCallSuccess))
+                    )
                 )
             ) {
                 // revert InvalidBenchmark()

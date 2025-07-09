@@ -1,11 +1,11 @@
 {
-  "batchDepositAndRegisterForWithEIP1271": "138365",
-  "batchDepositRegisterForLengthOne": "83362",
-  "depositERC20AndRegisterFor": "82376",
-  "depositERC20AndRegisterForNoWitness": "82370",
-  "depositERC20AndRegisterForNoWitnessZeroReplaced": "58470",
-  "depositERC20AndRegisterForWithEIP1271": "82376",
-  "depositNativeAndRegisterFor": "51715",
-  "depositNativeAndRegisterForNoWitness": "51709",
-  "depositNativeAndRegisterForWithEIP1271": "51715"
+  "batchDepositAndRegisterForWithEIP1271": "163963",
+  "batchDepositRegisterForLengthOne": "108243",
+  "depositERC20AndRegisterFor": "107007",
+  "depositERC20AndRegisterForNoWitness": "106617",
+  "depositERC20AndRegisterForNoWitnessZeroReplaced": "89293",
+  "depositERC20AndRegisterForWithEIP1271": "107007",
+  "depositNativeAndRegisterFor": "76175",
+  "depositNativeAndRegisterForNoWitness": "75785",
+  "depositNativeAndRegisterForWithEIP1271": "76175"
 }
