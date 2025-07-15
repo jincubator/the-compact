@@ -14,6 +14,12 @@ contract TransferBenchmarker {
     // Declare an immutable argument for the account of the benchmark ERC20 token.
     address private immutable _BENCHMARK_ERC20;
 
+    // Declare an immutable argument for the account of the native transfer benchmarker.
+    address private immutable _NATIVE_TRANSFER_BENCHMARKER;
+
+    // Declare an immutable argument for the account of the warm vs cold benchmarker.
+    address private immutable _WARM_VS_COLD_BENCHMARKER;
+
     // Storage scope for erc20 token benchmark transaction uniqueness.
     // slot: _ERC20_TOKEN_BENCHMARK_SENTINEL => block.number
     uint32 private constant _ERC20_TOKEN_BENCHMARK_SENTINEL = 0x83ceba49;
@@ -27,6 +33,125 @@ contract TransferBenchmarker {
         // that benchmark cannot be evaluated as part of contract creation as it requires
         // that the token account is not already warm as part of deriving the benchmark.
         _BENCHMARK_ERC20 = address(new BenchmarkERC20());
+
+        address nativeTokenBenchmarker;
+        address warmVsColdBenchmarker;
+
+        /**
+         * 1) nativeTokenBenchmarker —> eth transfers
+         *   takes one word (target address) and 2 wei
+         *   returns five words:
+         *    - gasCheckpointOne
+         *    - success1
+         *    - gasCheckpointTwo
+         *    - successTwo
+         *    - gasCheckpointThree
+         *
+         * 0x5a3d383d3860013d355af15a3d383d3860013d355af15a6080526060526040526020523d52593df3
+         *
+         * [00]	GAS
+         * [01]	RETURNDATASIZE
+         * [02]	CODESIZE
+         * [03]	RETURNDATASIZE
+         * [04]	CODESIZE
+         * [05]	PUSH1	01
+         * [07]	RETURNDATASIZE
+         * [08]	CALLDATALOAD
+         * [09]	GAS
+         * [0a]	CALL
+         * [0b]	GAS
+         * [0c]	RETURNDATASIZE
+         * [0d]	CODESIZE
+         * [0e]	RETURNDATASIZE
+         * [0f]	CODESIZE
+         * [10]	PUSH1	01
+         * [12]	RETURNDATASIZE
+         * [13]	CALLDATALOAD
+         * [14]	GAS
+         * [15]	CALL
+         * [16]	GAS
+         * [17]	PUSH1	80
+         * [19]	MSTORE
+         * [1a]	PUSH1	60
+         * [1c]	MSTORE
+         * [1d]	PUSH1	40
+         * [1f]	MSTORE
+         * [20]	PUSH1	20
+         * [22]	MSTORE
+         * [23]	RETURNDATASIZE
+         * [24]	MSTORE
+         * [25]	MSIZE
+         * [26]	RETURNDATASIZE
+         * [27]	RETURN
+         *
+         * 2) warmVsColdBenchmarker —> cold vs warm access cost
+         *  Takes one word (salt "address" or token address)
+         *  Returns three words:
+         *   - gasCheckpointOne
+         *   - gasCheckpointTwo
+         *   - gasCheckpointThree
+         *
+         * 0x5a3d35315a3d35315a60405250602052503d52593df3
+         *
+         * [00]	GAS
+         * [01]	RETURNDATASIZE
+         * [02]	CALLDATALOAD
+         * [03]	BALANCE
+         * [04]	GAS
+         * [05]	RETURNDATASIZE
+         * [06]	CALLDATALOAD
+         * [07]	BALANCE
+         * [08]	GAS
+         * [09]	PUSH1	40
+         * [0b]	MSTORE
+         * [0c]	POP
+         * [0d]	PUSH1	20
+         * [0f]	MSTORE
+         * [10]	POP
+         * [11]	RETURNDATASIZE
+         * [12]	MSTORE
+         * [13]	MSIZE
+         * [14]	RETURNDATASIZE
+         * [15]	RETURN
+         *
+         * Both helpers use the "universal minimal constructor":
+         *
+         * 0x600b5981380380925939f3
+         *
+         * [00]	PUSH1	0b
+         * [02]	MSIZE
+         * [03]	DUP2
+         * [04]	CODESIZE
+         * [05]	SUB
+         * [06]	DUP1
+         * [07]	SWAP3
+         * [08]	MSIZE
+         * [09]	CODECOPY
+         * [0a]	RETURN
+         * ... runtime code
+         */
+        ///
+        assembly ("memory-safe") {
+            // Deploy the native token benchmarker.
+            mstore(0x13, 0xf15a6080526060526040526020523d52593df3)
+            mstore(0, 0x600b5981380380925939f35a3d383d3860013d355af15a3d383d3860013d355a)
+            nativeTokenBenchmarker := create(0, 0, 0x33)
+
+            // Deploy the warm vs. cold access benchmarker.
+            mstore(0, 0x600b5981380380925939f35a3d35315a3d35315a60405250602052503d52593d)
+            mstore8(0x20, 0xf3)
+            warmVsColdBenchmarker := create(0, 0, 0x21)
+
+            // Ensure that both helper contracts were successfully deployed.
+            if or(iszero(nativeTokenBenchmarker), iszero(warmVsColdBenchmarker)) {
+                // revert InvalidBenchmark()
+                mstore(0, 0x9f608b8a)
+                revert(0x1c, 4)
+            }
+        }
+
+        _NATIVE_TRANSFER_BENCHMARKER = nativeTokenBenchmarker;
+        _WARM_VS_COLD_BENCHMARKER = warmVsColdBenchmarker;
     }
 
     /**
@@ -51,6 +176,10 @@ contract TransferBenchmarker {
      * @return benchmark The measured gas cost of the native token transfer.
      */
     function _getNativeTokenBenchmark(bytes32 salt) internal returns (uint256 benchmark) {
+        // Place helper contract account immutable values onto the stack.
+        address nativeTransferBenchmarker = _NATIVE_TRANSFER_BENCHMARKER;
+        address warmVsColdBenchmarker = _WARM_VS_COLD_BENCHMARKER;
+
         assembly ("memory-safe") {
             // Derive the target for native token transfer using address.this & salt.
             mstore(0, address())
@@ -66,51 +195,80 @@ contract TransferBenchmarker {
                 revert(0x1c, 4)
             }
 
-            // Get gas before first call.
-            let gasCheckpointOne := gas()
+            let transferToWarmUncreatedAccountCost
+            let transferToWarmCreatedAccountCost
+            let eitherTransferFailed
+            let transferBenchmarkCallSuccess
 
-            // Perform the first call, sending 1 wei.
-            let success1 := call(gas(), target, 1, codesize(), 0, codesize(), 0)
+            // Retrieve the free memory pointer; memory will be left dirtied.
+            let m := mload(0x40)
 
-            // Get gas before second call.
-            let gasCheckpointTwo := gas()
+            {
+                // Prepare the target as the sole argument to the transfer benchmark call.
+                mstore(0, target)
 
-            // Perform the second call, sending 1 wei.
-            let success2 := call(gas(), target, 1, codesize(), 0, codesize(), 0)
+                // Measure transfer benchmarks, providing 2 wei.
+                transferBenchmarkCallSuccess := call(gas(), nativeTransferBenchmarker, 2, 0, 0x20, m, 0xa0)
 
-            // Get gas after second call.
-            let gasCheckpointThree := gas()
+                // Get gas before first call.
+                let gasCheckpointOne := mload(m)
 
-            // Derive a second address directly from the salt where a simple balance
-            // check can be performed to assess the cost of warming an account.
-            let balanceOne := balance(salt)
+                // Get success status of the first call.
+                let success1 := mload(add(m, 0x20))
 
-            // Get gas after the first balance check.
-            let gasCheckpointFour := gas()
+                // Get gas before second call.
+                let gasCheckpointTwo := mload(add(m, 0x40))
 
-            // Check balance again now that the account is warm.
-            let balanceTwo := balance(salt)
+                // Get success status of the second call.
+                let success2 := mload(add(m, 0x60))
 
-            // Get gas after second balance check.
-            let gasCheckpointFive := gas()
+                // Get gas after second call.
+                let gasCheckpointThree := mload(add(m, 0x80))
 
-            // Determine the cost of the first transfer to the uncreated account.
-            let transferToWarmUncreatedAccountCost := sub(gasCheckpointOne, gasCheckpointTwo)
+                // Determine cost of transfer to uncreated and created accounts.
+                transferToWarmUncreatedAccountCost := sub(gasCheckpointOne, gasCheckpointTwo)
+                transferToWarmCreatedAccountCost := sub(gasCheckpointTwo, gasCheckpointThree)
 
-            // Determine the difference between the cost of the first balance check
-            // and the cost of the second balance check.
-            let coldAccountAccessCost :=
-                sub(sub(gasCheckpointThree, gasCheckpointFour), sub(gasCheckpointFour, gasCheckpointFive))
+                // Determine if either transfer failed.
+                eitherTransferFailed := iszero(and(success1, success2))
+            }
+
+            // Prepare the salt as the sole argument to the transfer benchmark call.
+            mstore(0, salt)
+
+            // Measure warm vs cold account access benchmarks.
+            let warmVsColdBenchmarkCallSuccess := staticcall(gas(), warmVsColdBenchmarker, 0, 0x20, m, 0x60)
+
+            let coldAccountAccessCost
+
+            {
+                // Get gas before the first balance check.
+                let gasCheckpointFour := mload(m)
+
+                // Get gas after the first balance check.
+                let gasCheckpointFive := mload(add(m, 0x20))
+
+                // Get gas after second balance check.
+                let gasCheckpointSix := mload(add(m, 0x40))
+
+                // Determine the difference between the cost of the first balance check
+                // and the cost of the second balance check.
+                coldAccountAccessCost :=
+                    sub(sub(gasCheckpointFour, gasCheckpointFive), sub(gasCheckpointFive, gasCheckpointSix))
+            }
 
             // Ensure that both calls succeeded and that the cost of the first call
             // exceeded that of the second, indicating that the account was created.
-            // Also ensure the first balance check cost exceeded the second, and use
-            // the balances to ensure the checks are not removed during optimization.
+            // Also ensure the first balance check cost exceeded the second and that
+            // both benchmark attempts were successfully executed.
             if or(
-                iszero(and(success1, success2)),
+                eitherTransferFailed,
                 or(
-                    iszero(gt(transferToWarmUncreatedAccountCost, sub(gasCheckpointTwo, gasCheckpointThree))),
-                    or(iszero(coldAccountAccessCost), xor(balanceOne, balanceTwo))
+                    iszero(gt(transferToWarmUncreatedAccountCost, transferToWarmCreatedAccountCost)),
+                    or(
+                        iszero(coldAccountAccessCost),
+                        or(iszero(transferBenchmarkCallSuccess), iszero(warmVsColdBenchmarkCallSuccess))
+                    )
                 )
             ) {
                 // revert InvalidBenchmark()
@@ -132,6 +290,9 @@ contract TransferBenchmarker {
     function _getERC20TokenBenchmark() internal returns (uint256 benchmark) {
         // Set the reference ERC20 as the token.
         address token = _BENCHMARK_ERC20;
+
+        // Place warm vs cold helper contract account immutable value onto the stack.
+        address warmVsColdBenchmarker = _WARM_VS_COLD_BENCHMARKER;
 
         // Set the caller as the target (TheCompact in case of benchmarking).
         address target = msg.sender;
@@ -156,35 +317,38 @@ contract TransferBenchmarker {
             let secondCallCost
 
             {
-                // Get gas before first account access.
-                let firstStart := gas()
+                // Retrieve the free memory pointer; memory will be left dirtied.
+                let m := mload(0x40)
 
-                // First account access.
-                let balanceOne := balance(token)
+                // Prepare the token as the sole argument to the transfer benchmark call.
+                mstore(0, token)
+
+                // Measure warm vs cold account access benchmarks.
+                let warmVsColdBenchmarkCallSuccess := staticcall(gas(), warmVsColdBenchmarker, 0, 0x20, m, 0x60)
+
+                // Get gas before first account access.
+                let firstStart := mload(m)
 
                 // Get gas before second access.
-                let secondStart := gas()
-
-                // Perform the second access.
-                let balanceTwo := balance(token)
+                let secondStart := mload(add(m, 0x20))
 
                 // Get gas after second access.
-                let secondEnd := gas()
+                let secondEnd := mload(add(m, 0x40))
 
                 // Derive the benchmark cost of account access.
                 firstCallCost := sub(firstStart, secondStart)
                 secondCallCost := sub(secondStart, secondEnd)
 
-                // Ensure that the cost of the first call exceeded that of the second, indicating that the account was not warm.
-                // Use the balances to ensure the checks are not removed during optimization
-                if or(iszero(gt(firstCallCost, secondCallCost)), xor(balanceOne, balanceTwo)) {
+                // Ensure that the cost of the first call exceeded that of the second, indicating that the
+                // account was not warm. Also ensure that the benchmark attempt was successfully executed.
+                if or(iszero(gt(firstCallCost, secondCallCost)), iszero(warmVsColdBenchmarkCallSuccess)) {
                     // revert InvalidBenchmark()
                     mstore(0, 0x9f608b8a)
                     revert(0x1c, 4)
                 }
             }
 
-            // Place `transfer(address,uint256)` calldata into memory before `thirdStart` to ensure accurate gas measurement
+            // Place `transfer(address,uint256)` calldata into memory before measuring `thirdStart`.
             mstore(0x14, target) // Store target `to` argument in memory.
             mstore(0x34, 1) // Store an `amount` argument of 1 in memory.
             mstore(0x00, shl(96, 0xa9059cbb)) // `transfer(address,uint256)`.

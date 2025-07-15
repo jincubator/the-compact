@@ -65,6 +65,14 @@ contract TstorishTest is Test {
     }
 
     function test_tstoreMockActivation() public {
+        TstoreMockActivation tstoreMockActivation = new TstoreMockActivation();
+
+        tstoreMockActivation.runTstoreMockActivationTests();
+    }
+}
+
+contract TstoreMockActivation is Test {
+    function runTstoreMockActivationTests() public {
         // mock contract starts in an "tstore disabled" state
         TstorishMock tstorishContract = new TstorishMock();
 

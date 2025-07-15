@@ -105,18 +105,17 @@ library DepositViaPermit2Lib {
             // Store the length of the `details` array.
             mstore(detailsOffset, totalTokensLessInitialNative)
 
-            // Derive start, next, & end locations for iterating through `details` array.
-            let starting := add(detailsOffset, 0x20)
-            let next := add(detailsOffset, 0x40)
-            let end := tokenChunk // Equivalent to shl(6, totalTokensLessInitialNative)
+            // Copy the entire provided transfer ids and amounts array from calldata.
+            calldatacopy(add(detailsOffset, 0x40), add(permittedCalldataLocation, 0x20), tokenChunk)
 
-            // Iterate through `details` array and copy data from calldata to memory.
-            for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
+            // Derive start and end location for iterating through `details` array.
+            let start := add(detailsOffset, 0x20)
+            let end := add(start, tokenChunk)
+
+            // Iterate over array and insert this contract as recipient on each permit2 transfer.
+            for { let i := start } lt(i, end) { i := add(i, 0x40) } {
                 // Copy this contract as the recipient address.
-                mstore(add(starting, i), address())
-
-                // Copy full token amount as the requested amount.
-                mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
+                mstore(i, address())
             }
 
             // Derive memory location of the witness typestring.

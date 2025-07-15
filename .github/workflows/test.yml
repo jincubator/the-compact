@@ -50,7 +50,7 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          forge test --isolate -vvv
         id: forge-test
         env:
           FORGE_SNAPSHOT_CHECK: true
