@@ -5,35 +5,56 @@ import { IAllocator } from "./IAllocator.sol";
 import { Lock } from "../types/EIP712Types.sol";
 
 interface IOnChainAllocation is IAllocator {
+    error InvalidPreparation();
+    error InvalidRegistration(address sponsor, bytes32 claimHash);
+
+    /// @notice Emitted when a tokens are successfully allocated
+    /// @param sponsor The address of the sponsor
+    /// @param commitments The commitments of the allocations
+    /// @param nonce The nonce of the allocation
+    /// @param expires The expiration of the allocation
+    /// @param claimHash The hash of the allocation
+    event Allocated(address indexed sponsor, Lock[] commitments, uint256 nonce, uint256 expires, bytes32 claimHash);
+
     /**
-     * @notice Allocate tokens for a given sponsor.
-     * @dev The implementation must ensure the users intentions are met by either verifying the signature
-     *      or by ensuring the claimHash is directly registered with the compact.
-     * @param sponsor The account to source the tokens from.
-     * @param commitments The commitments to allocate.
+     * @notice Allows to create an allocation on behalf of a recipient without the contract being in control over the funds.
+     * @notice Will typically be used in combination with `batchDepositAndRegisterFor` on the compact.
+     * @dev Must be called before `executeAllocation` to ensure a valid balance change has occurred for the recipient.
+     * @param recipient The account to receive the tokens.
+     * @param idsAndAmounts The ids and amounts to allocate.
      * @param arbiter The account tasked with verifying and submitting the claim.
      * @param expires The time at which the claim expires.
      * @param typehash The typehash of the claim.
      * @param witness The witness of the claim.
-     * @param signature The signature of the claim.
-     * @return claimHash The claim hash.
-     * @return claimNonce The claim nonce.
+     * @return nonce The next valid nonce. It is only guaranteed that the nonce is valid within the same transaction..
      */
-    function allocateFor(
-        address sponsor,
-        Lock[] calldata commitments,
+    function prepareAllocation(
+        address recipient,
+        uint256[2][] calldata idsAndAmounts,
         address arbiter,
-        uint32 expires,
+        uint256 expires,
         bytes32 typehash,
         bytes32 witness,
-        bytes calldata signature
-    ) external returns (bytes32 claimHash, uint256 claimNonce);
+        bytes calldata orderData
+    ) external returns (uint256 nonce);
 
     /**
-     * @notice Request a nonce for a given sponsor.
-     * @dev Returns the next valid nonce. It is only guaranteed that the nonce is valid within the same transaction.
-     * @param sponsor The account the nonce is scoped to.
-     * @return The nonce.
+     * @notice Executes an allocation on behalf of a recipient.
+     * @dev Must be called after `prepareAllocation` to ensure a valid balance change has occurred for the recipient.
+     * @param recipient The account to receive the tokens.
+     * @param idsAndAmounts The ids and amounts to allocate.
+     * @param arbiter The account tasked with verifying and submitting the claim.
+     * @param expires The time at which the claim expires.
+     * @param typehash The typehash of the claim.
+     * @param witness The witness of the claim.
      */
-    function requestNonce(address sponsor) external view returns (uint256);
+    function executeAllocation(
+        address recipient,
+        uint256[2][] calldata idsAndAmounts,
+        address arbiter,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness,
+        bytes calldata orderData
+    ) external;
 }
