@@ -146,10 +146,19 @@ library EmissaryLib {
         bytes calldata signature
     ) internal view {
         // Retrieve the emissary for the sponsor and lock tag from storage.
-        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
+        address emissary = _getEmissaryConfig(sponsor, lockTag).emissary;
+
+        // Revert if no emissary is assigned.
+        assembly ("memory-safe") {
+            if iszero(emissary) {
+                // revert InvalidSignature();
+                mstore(0, 0x8baa579f)
+                revert(0x1c, 0x04)
+            }
+        }
 
         // Delegate the verification process to the assigned emissary contract.
-        _callVerifyClaim(emissaryConfig.emissary, sponsor, digest, claimHash, signature, lockTag);
+        _callVerifyClaim(emissary, sponsor, digest, claimHash, signature, lockTag);
     }
 
     /**
