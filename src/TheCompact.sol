@@ -25,6 +25,10 @@ import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
  * @custom:coauthor ccashwell (ccashwell.eth)
  * @custom:coauthor reednaa (reednaa.eth)
  * @custom:coauthor zeroknots (zeroknots.eth)
+ * @custom:contributor Vladimir Kumalagov (@KumaCrypto)
+ * @custom:contributor philogy (philogy.eth)
+ * @custom:contributor kaden (kaden.eth)
+ * @custom:contributor hickup (HickupHH3)
  * @custom:security-contact security@uniswap.org
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  *         formation and mediation of reusable "resource locks."
@@ -361,6 +365,16 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
      * @param amount The amount of tokens being transferred.
      */
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual override {
+        _setReentrancyGuard();
         _ensureAttested(from, to, id, amount);
+    }
+
+    /**
+     * @notice Hook that is called after any standard ERC6909 token transfer. Note that this hook
+     *         is not called when performing allocated transfers or when processing claims, nor are
+     *         standard token approvals required.
+     */
+    function _afterTokenTransfer(address, address, uint256, uint256) internal virtual override {
+        _clearReentrancyGuard();
     }
 }
