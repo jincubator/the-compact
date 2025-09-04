@@ -17,13 +17,12 @@
     "test": "test"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-foundry": "^1.1.3",
-    "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
-    "@nomicfoundation/hardhat-viem": "^2.0.6",
-    "@types/chai": "^5.2.2",
-    "chai": "^5.2.0",
-    "hardhat": "^2.24.0",
-    "hardhat-gas-reporter": "^2.2.3",
+    "@nomicfoundation/hardhat-foundry": "^1.2.0",
+    "@nomicfoundation/hardhat-toolbox-viem": "^4.1.0",
+    "@types/chai": "^4.2.0",
+    "chai": "^4.2.0",
+    "hardhat": "^2.26.0",
+    "hardhat-gas-reporter": "^2.3.0",
     "viem": "^2.29.2"
   }
 }
