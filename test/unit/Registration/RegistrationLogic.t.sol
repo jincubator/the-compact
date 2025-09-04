@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.30;
 
-import { Test, console } from "forge-std/Test.sol";
+/// forge-lint: disable-start
+
+import { Test } from "forge-std/Test.sol";
 import { Setup } from "test/integration/Setup.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { Scope } from "src/types/Scope.sol";
@@ -9,7 +11,6 @@ import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "src/types/EIP712Types.
 import "src/lib/HashLib.sol";
 import "src/lib/RegistrationLib.sol";
 import "./MockRegistrationLogic.sol";
-import { console2 } from "forge-std/console2.sol";
 
 contract RegistrationLogicTest is Setup {
     using RegistrationLib for address;
@@ -308,3 +309,5 @@ contract RegistrationLogicTest is Setup {
         messageHash = keccak256(packedData);
     }
 }
+
+/// forge-lint: disable-end

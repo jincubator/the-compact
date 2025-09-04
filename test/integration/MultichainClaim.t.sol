@@ -1,24 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { Component, BatchClaimComponent } from "../../src/types/Components.sol";
-import { Claim } from "../../src/types/Claims.sol";
-import { BatchClaim } from "../../src/types/BatchClaims.sol";
 import { MultichainClaim, ExogenousMultichainClaim } from "../../src/types/MultichainClaims.sol";
-import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/types/BatchMultichainClaims.sol";
 import { ConsumerLib } from "../../src/lib/ConsumerLib.sol";
 import { Setup } from "./Setup.sol";
 
-import {
-    TestParams,
-    CreateClaimHashWithWitnessArgs,
-    CreateBatchClaimHashWithWitnessArgs,
-    BatchMultichainClaimArgs
-} from "./TestHelperStructs.sol";
+import { TestParams, BatchMultichainClaimArgs } from "./TestHelperStructs.sol";
 
 contract MultichainClaimTest is Setup {
     function test_multichainClaimWithWitness() public {

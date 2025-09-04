@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import "src/lib/TheCompactLogic.sol";
 import "src/lib/RegistrationLogic.sol";
@@ -55,3 +57,5 @@ contract MockRegistrationLogic is TheCompactLogic {
         );
     }
 }
+
+/// forge-lint: disable-end

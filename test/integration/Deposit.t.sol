@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
-
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
@@ -775,3 +776,5 @@ contract DepositTest is Setup {
         theCompact.depositERC20(address(0), lockTag, amount, swapper);
     }
 }
+
+/// forge-lint: disable-end

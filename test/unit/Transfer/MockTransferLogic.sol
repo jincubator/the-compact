@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import "src/lib/TheCompactLogic.sol";
 import "src/lib/TransferLogic.sol";
@@ -54,3 +56,5 @@ contract MockTransferLogic is TheCompactLogic {
         _ensureAttested(from, to, id, amount);
     }
 }
+
+/// forge-lint: disable-end

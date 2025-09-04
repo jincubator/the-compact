@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { Test, console } from "forge-std/Test.sol";
 import { ITheCompact } from "src/interfaces/ITheCompact.sol";
@@ -520,3 +522,5 @@ contract DummyContract is MockERC20 {
         allocator.register();
     }
 }
+
+/// forge-lint: disable-end

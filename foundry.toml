@@ -7,8 +7,7 @@ bytecode_hash = 'none'
 src = "src"
 out = "out"
 libs = ["lib"]
-# NOTE: uncomment to view yul IR output
-# extra_output_files = ["irOptimized"]
+extra_output_files = ["irOptimized"] # NOTE: comment this line to speed up compile times when yul IR output is not required
 fuzz.runs = 10_000
 dynamic_test_linking = true
 
@@ -18,4 +17,5 @@ tab_width = 4
 bracket_spacing = true
 
 [lint]
-exclude_lints = ["mixed-case-function"]
+exclude_lints = ["mixed-case-function", "mixed-case-variable", "asm-keccak256", "unused-import", "unaliased-plain-import", "screaming-snake-case-const", "screaming-snake-case-immutable", "unsafe-typecast"]
+# note that unsafe-typecast is included in this list; remove it to review the respective warnings as part of build

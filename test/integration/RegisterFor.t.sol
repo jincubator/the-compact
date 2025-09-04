@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 import { Setup } from "./Setup.sol";
@@ -641,3 +643,5 @@ contract RegisterForTest is Setup {
         sponsorSignature = abi.encodePacked(r, vs);
     }
 }
+
+/// forge-lint: disable-end

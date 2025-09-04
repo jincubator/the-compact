@@ -1,35 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
 
 import { TheCompact } from "../../src/TheCompact.sol";
 import { MockERC20 } from "../../lib/solady/test/utils/mocks/MockERC20.sol";
-import { Compact, BatchCompact, Element } from "../../src/types/EIP712Types.sol";
-import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
-import { Scope } from "../../src/types/Scope.sol";
-import { CompactCategory } from "../../src/types/CompactCategory.sol";
-import { DepositDetails } from "../../src/types/DepositDetails.sol";
-import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-import { HashLib } from "../../src/lib/HashLib.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
 
-import { AlwaysOKAllocator } from "../../src/test/AlwaysOKAllocator.sol";
-import { AlwaysOKEmissary } from "../../src/test/AlwaysOKEmissary.sol";
-import { SimpleAllocator } from "../../src/examples/allocator/SimpleAllocator.sol";
-import { QualifiedAllocator } from "../../src/examples/allocator/QualifiedAllocator.sol";
-
-import { AllocatedTransfer, Claim } from "../../src/types/Claims.sol";
-import { AllocatedBatchTransfer, BatchClaim } from "../../src/types/BatchClaims.sol";
-
-import { MultichainClaim, ExogenousMultichainClaim } from "../../src/types/MultichainClaims.sol";
-
-import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/types/BatchMultichainClaims.sol";
-
-import { Component, TransferComponent, ComponentsById, BatchClaimComponent } from "../../src/types/Components.sol";
-
 import { Setup } from "./Setup.sol";
-
-import { CreateClaimHashWithWitnessArgs } from "./TestHelperStructs.sol";
 
 contract TheCompactTest is Setup {
     using IdLib for uint96;

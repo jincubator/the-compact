@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { Test } from "forge-std/Test.sol";
 import { MetadataRenderer } from "../../src/lib/MetadataRenderer.sol";
@@ -475,3 +477,5 @@ contract MetadataRendererTest is Test {
         theCompact.name(nativeErc6909Id);
     }
 }
+
+/// forge-lint: disable-end

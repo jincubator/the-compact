@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.30;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { Scope } from "src/types/Scope.sol";
-import { AllocatorLogic } from "src/lib/AllocatorLogic.sol";
 import { ITheCompact } from "src/interfaces/ITheCompact.sol";
 import "src/test/AlwaysOKAllocator.sol";
 import "src/lib/IdLib.sol";
 import "src/lib/EfficiencyLib.sol";
 import "src/lib/ConsumerLib.sol";
 import "./MockAllocatorLogic.sol";
-import { console2 } from "forge-std/console2.sol";
 
 contract AllocatorLogicTest is Test {
     using IdLib for address;

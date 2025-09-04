@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 import { AllocatedBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
 import { AllocatedTransfer, Claim } from "../types/Claims.sol";

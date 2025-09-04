@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.30;
 
-import { Test, console } from "forge-std/Test.sol";
-import { ResetPeriod } from "src/types/ResetPeriod.sol";
-import { Scope } from "src/types/Scope.sol";
+/// forge-lint: disable-start
+
+import { Test } from "forge-std/Test.sol";
 import { AllocatedTransfer } from "src/types/Claims.sol";
 import { AllocatedBatchTransfer } from "src/types/BatchClaims.sol";
 import { Component, ComponentsById } from "src/types/Components.sol";
@@ -419,3 +419,5 @@ contract TransferLogicTest is Test {
         vm.stopPrank();
     }
 }
+
+/// forge-lint: disable-end
