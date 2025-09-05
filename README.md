@@ -59,6 +59,8 @@ The Compact effectively "activates" any deposited tokens to be instantly spent o
  - Sponsors are confident that the arbiter is sound and will not process claims where the conditions were not successfully met.
  - Claimants are confident that the arbiter is sound and will not *fail* to process claims where the conditions *were* successfully met.
 
+> ❗ The Compact V1 contains significant modifications to interfaces and other functionality from V0 — existing integrations should carefully review the relevant changes and modify their implementations appropriately.
+
 ## Key Concepts
 
 ### Resource Locks
@@ -577,7 +579,7 @@ Interface for emissaries, providing fallback claim verification.
 -   `verifyClaim(address sponsor, bytes32 digest, bytes32 claimHash, bytes calldata signature, bytes12 lockTag) external view returns (bytes4)`: Called by The Compact during claim processing _only if all other sponsor verification methods fail_. Must return `IEmissary.verifyClaim.selector`.
 
 ## Contract Layout
-The Compact V1 is deployed as a single contract (`src/TheCompact.sol`), with the exception of a metadata renderer that surfaces metadata for resource locks (`src/lib/MetadataRenderer.sol`). The deployed contract is comprised of multiple inherited logic contracts which in turn make extensive use of specialized libraries (see `src/lib/TheCompactLogic.sol`). A shared set of struct and enum types are utilized throughout the codebase and as a component in many function interfaces.
+The Compact V1 is deployed as a single contract (`src/TheCompact.sol`), with the exception of a metadata renderer that surfaces metadata for resource locks (`src/lib/MetadataRenderer.sol`) and a utility contract for benchmarking the gas cost of native and generic ERC20 token transfers (`src/lib/TransferBenchmarker.sol`). The contract is comprised of multiple inherited logic contracts which in turn make extensive use of specialized libraries (see `src/lib/TheCompactLogic.sol`). A shared set of struct and enum types are utilized throughout the codebase and as a component in many function interfaces.
 
 ## Credits
 The Compact was developed by [@0age](https://github.com/0age), [@ccashwell](https://github.com/ccashwell) and [@mgretzke](https://github.com/mgretzke) ([Uniswap Labs](https://uniswap.org)), with significant contributions from [@zeroknots](https://github.com/zeroknots) ([Rhinestone](https://rhinestone.wtf)) and [@reednaa](https://github.com/reednaa) ([LI.FI](https://li.fi)).
