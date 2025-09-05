@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 import { EmissaryStatus } from "../../src/types/EmissaryStatus.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
-import { EmissaryLib } from "../../src/lib/EmissaryLib.sol";
-import { EmissaryLogic } from "../../src/lib/EmissaryLogic.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
 import { Setup } from "./Setup.sol";
 import { AlwaysOKEmissary } from "../../src/test/AlwaysOKEmissary.sol";

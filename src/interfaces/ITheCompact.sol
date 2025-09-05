@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.0;
 
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { EmissaryStatus } from "../types/EmissaryStatus.sol";

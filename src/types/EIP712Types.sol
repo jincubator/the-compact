@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 // Message signed by the sponsor that specifies the conditions under which their
 // tokens can be claimed; the specified arbiter verifies that those conditions

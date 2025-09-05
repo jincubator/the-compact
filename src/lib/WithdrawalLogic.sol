@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";

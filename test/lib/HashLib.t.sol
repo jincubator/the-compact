@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { Test, console, stdError } from "forge-std/Test.sol";
 import { Setup } from "test/integration/Setup.sol";
@@ -634,3 +636,5 @@ contract HashLibTester {
         );
     }
 }
+
+/// forge-lint: disable-end

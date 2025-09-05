@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { Test, console } from "forge-std/Test.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
@@ -271,3 +273,5 @@ contract DepositViaPermit2LogicTest is Permit2Test {
         assertEq(secondToken.balanceOf(address(logic)), amounts[2]);
     }
 }
+
+/// forge-lint: disable-end

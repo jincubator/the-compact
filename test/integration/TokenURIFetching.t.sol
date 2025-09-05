@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { TheCompact } from "../../src/TheCompact.sol";
 import { MockERC20 } from "../../lib/solady/test/utils/mocks/MockERC20.sol";
@@ -596,3 +598,5 @@ contract MockERC20WithoutMetadata {
         }
     }
 }
+
+/// forge-lint: disable-end

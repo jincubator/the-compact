@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
-
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { Component, ComponentsById } from "../../src/types/Components.sol";
 import { AllocatedTransfer } from "../../src/types/Claims.sol";
 import { AllocatedBatchTransfer } from "../../src/types/BatchClaims.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";
-
 import { QualifiedAllocator } from "../../src/examples/allocator/QualifiedAllocator.sol";
 import { AlwaysRevertingAllocator } from "../../src/test/AlwaysRevertingAllocator.sol";
 import { AlwaysDenyingAllocator } from "../../src/test/AlwaysDenyingAllocator.sol";
-
 import { Setup } from "./Setup.sol";
-
 import { TestParams } from "./TestHelperStructs.sol";
 
 contract AllocatedTransferTest is Setup {
@@ -506,3 +504,5 @@ contract AllocatedTransferTest is Setup {
         theCompact.allocatedTransfer(transfer);
     }
 }
+
+/// forge-lint: disable-end

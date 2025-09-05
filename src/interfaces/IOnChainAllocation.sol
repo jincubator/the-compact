@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.0;
 
 import { IAllocator } from "./IAllocator.sol";
 import { Lock } from "../types/EIP712Types.sol";

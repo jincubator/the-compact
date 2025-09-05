@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.30;
 
 import "forge-std/Test.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
-import { DepositDetails } from "src/types/DepositDetails.sol";
 import { EfficiencyLib } from "src/lib/EfficiencyLib.sol";
 
 address constant PERMIT2 = address(0x000000000022D473030F116dDEE9F6B43aC78BA3);

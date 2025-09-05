@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.30;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { Tstorish } from "../../src/lib/Tstorish.sol";
 import { TstorishMock } from "../../src/test/TstorishMock.sol";
 

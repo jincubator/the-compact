@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 import { IAllocator } from "../interfaces/IAllocator.sol";
 import { IERC1271 } from "permit2/src/interfaces/IERC1271.sol";

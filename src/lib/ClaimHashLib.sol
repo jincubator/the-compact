@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 import { AllocatedTransfer, Claim, ClaimsLib } from "../types/Claims.sol";
 

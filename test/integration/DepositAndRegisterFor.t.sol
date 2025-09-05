@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
-
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { Component, BatchClaimComponent } from "../../src/types/Components.sol";
 import { Claim } from "../../src/types/Claims.sol";
 import { BatchClaim } from "../../src/types/BatchClaims.sol";
 import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "src/types/EIP712Types.sol";
-
 import { Setup } from "./Setup.sol";
-
 import {
     TestParams, CreateClaimHashWithWitnessArgs, CreateBatchClaimHashWithWitnessArgs
 } from "./TestHelperStructs.sol";
-
 import { EfficiencyLib } from "../../src/lib/EfficiencyLib.sol";
-
 import { MockERC1271Wallet } from "../../lib/solady/test/utils/mocks/MockERC1271Wallet.sol";
 import { AlwaysOkayERC1271 } from "../../src/test/AlwaysOkayERC1271.sol";
 
@@ -1649,3 +1646,5 @@ contract DepositAndRegisterForTest is Setup {
         assertFalse(isRegistered);
     }
 }
+
+/// forge-lint: disable-end

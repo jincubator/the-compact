@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
+
+/// forge-lint: disable-start
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
-
 import { CompactCategory } from "../../src/types/CompactCategory.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
@@ -13,7 +14,6 @@ import { BatchClaim } from "../../src/types/BatchClaims.sol";
 import { Element, Lock } from "../../src/types/EIP712Types.sol";
 import { DepositViaPermit2Lib } from "../../src/lib/DepositViaPermit2Lib.sol";
 import { EIP712, Setup } from "./Setup.sol";
-
 import {
     LockDetails,
     TestParams,
@@ -1167,3 +1167,5 @@ contract Permit2DepositAndRegisterTest is Setup {
         }
     }
 }
+
+/// forge-lint: disable-end

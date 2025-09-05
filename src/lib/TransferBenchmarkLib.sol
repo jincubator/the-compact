@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 // Storage scope for native token benchmarks:
 // slot: _NATIVE_TOKEN_BENCHMARK_SCOPE => benchmark.

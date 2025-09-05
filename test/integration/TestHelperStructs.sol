@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.30;
 
 import { Compact, BatchCompact, Element } from "../../src/types/EIP712Types.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
