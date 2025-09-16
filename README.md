@@ -347,10 +347,10 @@ $ git clone git@github.com:Uniswap/the-compact.git && cd the-compact
 $ forge install
 
 # run the tests & gas snapshots
-$ forge test -v
+$ forge test -v --isolate
 
 # run coverage & generate report
-$ forge coverage
+$ COVERAGE=true forge coverage --report lcov
 ```
 
 ## Development and Testing

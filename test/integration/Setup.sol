@@ -122,7 +122,10 @@ contract Setup is TestHelpers {
         theCompact = TheCompact(
             ImmutableCreate2Factory(immutableCreate2Factory).safeCreate2(salt, type(TheCompact).creationCode)
         );
-        assertEq(address(theCompact), targetAddress);
+
+        if (!vm.envOr("COVERAGE", false)) {
+            assertEq(address(theCompact), targetAddress);
+        }
 
         // // to deploy using standard create:
         // theCompact = new TheCompact();
