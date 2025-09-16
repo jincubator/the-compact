@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.30;
 
+import { console2 } from "forge-std/console2.sol";
+
 import { TheCompact } from "../../src/TheCompact.sol";
 import { MockERC20 } from "../../lib/solady/test/utils/mocks/MockERC20.sol";
 import { Lock } from "../../src/types/EIP712Types.sol";
@@ -32,6 +34,8 @@ contract Setup is TestHelpers {
     using IdLib for uint96;
 
     bool deployPermit2 = true;
+
+    address constant targetAddress = address(0x00000000000000171ede64904551eeDF3C6C9788);
 
     TheCompact public theCompact;
     MockERC20 public token;
@@ -116,11 +120,11 @@ contract Setup is TestHelpers {
         vm.etch(immutableCreate2Factory, immutableCreate2FactoryRuntimeCode);
 
         // deploy using create2 (need to rederive salt and target address when changing code):
-        bytes32 salt = bytes32(0x00000000000000000000000000000000000000008a0f466a78cd1102ce3d82f7);
+        bytes32 salt = bytes32(0x0000000000000000000000000000000000000000b2b9e37543ed52144ec37e0c);
         theCompact = TheCompact(
             ImmutableCreate2Factory(immutableCreate2Factory).safeCreate2(salt, type(TheCompact).creationCode)
         );
-        // assertEq(address(theCompact), targetAddress);
+        assertEq(address(theCompact), targetAddress);
 
         // // to deploy using standard create:
         // theCompact = new TheCompact();

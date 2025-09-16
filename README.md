@@ -61,6 +61,8 @@ The Compact effectively "activates" any deposited tokens to be instantly spent o
 
 > ❗ The Compact V1 contains significant modifications to interfaces and other functionality from V0 — existing integrations should carefully review the relevant changes and modify their implementations appropriately.
 
+The Compact is deployed to `0x00000000000000171ede64904551eeDF3C6C9788` on [Mainnet](https://etherscan.io/address/0x00000000000000171ede64904551eedf3c6c9788#code), [Unichain](https://uniscan.xyz/address/0x00000000000000171ede64904551eedf3c6c9788#code), and [Base](https://basescan.org/address/0x00000000000000171ede64904551eedf3c6c9788#code), and can be freely deployed to new EVM chains by replicating the `to` and `data` fields on the deployment transaction.
+
 ## Key Concepts
 
 ### Resource Locks
