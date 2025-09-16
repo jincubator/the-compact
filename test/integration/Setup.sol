@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.30;
 
-import { console2 } from "forge-std/console2.sol";
-
 import { TheCompact } from "../../src/TheCompact.sol";
 import { MockERC20 } from "../../lib/solady/test/utils/mocks/MockERC20.sol";
 import { Lock } from "../../src/types/EIP712Types.sol";
