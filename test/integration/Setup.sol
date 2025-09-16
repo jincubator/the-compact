@@ -33,6 +33,8 @@ contract Setup is TestHelpers {
 
     bool deployPermit2 = true;
 
+    address constant targetAddress = address(0x00000000000000171ede64904551eeDF3C6C9788);
+
     TheCompact public theCompact;
     MockERC20 public token;
     MockERC20 public anotherToken;
@@ -116,11 +118,14 @@ contract Setup is TestHelpers {
         vm.etch(immutableCreate2Factory, immutableCreate2FactoryRuntimeCode);
 
         // deploy using create2 (need to rederive salt and target address when changing code):
-        bytes32 salt = bytes32(0x00000000000000000000000000000000000000008a0f466a78cd1102ce3d82f7);
+        bytes32 salt = bytes32(0x0000000000000000000000000000000000000000b2b9e37543ed52144ec37e0c);
         theCompact = TheCompact(
             ImmutableCreate2Factory(immutableCreate2Factory).safeCreate2(salt, type(TheCompact).creationCode)
         );
-        // assertEq(address(theCompact), targetAddress);
+
+        if (!vm.envOr("COVERAGE", false)) {
+            assertEq(address(theCompact), targetAddress);
+        }
 
         // // to deploy using standard create:
         // theCompact = new TheCompact();

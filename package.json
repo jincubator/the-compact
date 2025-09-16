@@ -10,7 +10,8 @@
   "main": "src/TheCompact.sol",
   "scripts": {
     "test": "forge test --isolate && hardhat test",
-    "compile": "forge build"
+    "compile": "forge build",
+    "coverage": "COVERAGE=true forge coverage --report lcov"
   },
   "directories": {
     "lib": "lib",

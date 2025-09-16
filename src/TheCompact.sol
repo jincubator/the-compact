@@ -34,10 +34,12 @@ import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
  *         formation and mediation of reusable "resource locks."
  */
 contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
+    /// @inheritdoc ITheCompact
     function depositNative(bytes12 lockTag, address recipient) external payable returns (uint256) {
         return _performCustomNativeTokenDeposit(lockTag, recipient);
     }
 
+    /// @inheritdoc ITheCompact
     function depositERC20(address token, bytes12 lockTag, uint256 amount, address recipient)
         external
         returns (uint256 id)
@@ -45,12 +47,14 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         (id,) = _performCustomERC20Deposit(token, lockTag, amount, recipient);
     }
 
+    /// @inheritdoc ITheCompact
     function batchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
         _processBatchDeposit(idsAndAmounts, recipient, false);
 
         return true;
     }
 
+    /// @inheritdoc ITheCompact
     function depositERC20ViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
         address, // depositor
@@ -61,6 +65,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositViaPermit2(permit.permitted.token, recipient, signature);
     }
 
+    /// @inheritdoc ITheCompact
     function batchDepositViaPermit2(
         address, // depositor
         ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -71,24 +76,29 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositBatchViaPermit2(permitted, recipient, signature);
     }
 
+    /// @inheritdoc ITheCompact
     function allocatedTransfer(AllocatedTransfer calldata transfer) external returns (bool) {
         return _processTransfer(transfer);
     }
 
+    /// @inheritdoc ITheCompact
     function allocatedBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool) {
         return _processBatchTransfer(transfer);
     }
 
+    /// @inheritdoc ITheCompact
     function register(bytes32 claimHash, bytes32 typehash) external returns (bool) {
         _register(msg.sender, claimHash, typehash);
 
         return true;
     }
 
+    /// @inheritdoc ITheCompact
     function registerMultiple(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
         return _registerBatch(claimHashesAndTypehashes);
     }
 
+    /// @inheritdoc ITheCompact
     function registerFor(
         bytes32 typehash,
         address, // arbiter
@@ -104,6 +114,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerFor(sponsor, typehash, sponsorSignature);
     }
 
+    /// @inheritdoc ITheCompact
     function registerBatchFor(
         bytes32 typehash,
         address, // arbiter
@@ -117,6 +128,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerBatchFor(sponsor, typehash, sponsorSignature);
     }
 
+    /// @inheritdoc ITheCompact
     function registerMultichainFor(
         bytes32 typehash,
         address sponsor,
@@ -129,6 +141,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerMultichainFor(sponsor, typehash, notarizedChainId, sponsorSignature);
     }
 
+    /// @inheritdoc ITheCompact
     function depositNativeAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
         external
         payable
@@ -139,6 +152,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _register(msg.sender, claimHash, typehash);
     }
 
+    /// @inheritdoc ITheCompact
     function depositNativeAndRegisterFor(
         address recipient,
         bytes12 lockTag,
@@ -153,6 +167,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimHash = _registerUsingCompact(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
+    /// @inheritdoc ITheCompact
     function depositERC20AndRegister(
         address token,
         bytes12 lockTag,
@@ -165,6 +180,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _register(msg.sender, claimHash, typehash);
     }
 
+    /// @inheritdoc ITheCompact
     function depositERC20AndRegisterFor(
         address recipient,
         address token,
@@ -181,6 +197,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimHash = _registerUsingCompact(recipient, id, registeredAmount, arbiter, nonce, expires, typehash, witness);
     }
 
+    /// @inheritdoc ITheCompact
     function batchDepositAndRegisterMultiple(
         uint256[2][] calldata idsAndAmounts,
         bytes32[2][] calldata claimHashesAndTypehashes
@@ -190,6 +207,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerBatch(claimHashesAndTypehashes);
     }
 
+    /// @inheritdoc ITheCompact
     function batchDepositAndRegisterFor(
         address recipient,
         uint256[2][] calldata idsAndAmounts,
@@ -206,6 +224,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         );
     }
 
+    /// @inheritdoc ITheCompact
     function depositERC20AndRegisterViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor, // also recipient
@@ -218,6 +237,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositAndRegisterViaPermit2(permit.permitted.token, depositor, claimHash, witness, signature);
     }
 
+    /// @inheritdoc ITheCompact
     function batchDepositAndRegisterViaPermit2(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -230,42 +250,51 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositBatchAndRegisterViaPermit2(depositor, permitted, witness, signature);
     }
 
+    /// @inheritdoc ITheCompact
     function enableForcedWithdrawal(uint256 id) external returns (uint256) {
         return _enableForcedWithdrawal(id);
     }
 
+    /// @inheritdoc ITheCompact
     function disableForcedWithdrawal(uint256 id) external returns (bool) {
         _disableForcedWithdrawal(id);
 
         return true;
     }
 
+    /// @inheritdoc ITheCompact
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) {
         _processForcedWithdrawal(id, recipient, amount);
 
         return true;
     }
 
+    /// @inheritdoc ITheCompact
     function assignEmissary(bytes12 lockTag, address emissary) external returns (bool) {
         return _assignEmissary(lockTag, emissary);
     }
 
+    /// @inheritdoc ITheCompact
     function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256 emissaryAssignmentAvailableAt) {
         return _scheduleEmissaryAssignment(lockTag);
     }
 
+    /// @inheritdoc ITheCompact
     function consume(uint256[] calldata nonces) external returns (bool) {
         return _consume(nonces);
     }
 
+    /// @inheritdoc ITheCompact
     function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96) {
         return _registerAllocator(allocator, proof);
     }
 
+    /// @inheritdoc ITheCompact
     function __benchmark(bytes32 /* salt */ ) external payable {
         _benchmark();
     }
 
+    /// @inheritdoc ITheCompact
     function getRequiredWithdrawalFallbackStipends()
         external
         view
@@ -274,6 +303,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getRequiredWithdrawalFallbackStipends();
     }
 
+    /// @inheritdoc ITheCompact
     function getForcedWithdrawalStatus(address account, uint256 id)
         external
         view
@@ -282,10 +312,12 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getForcedWithdrawalStatus(account, id);
     }
 
+    /// @inheritdoc ITheCompact
     function isRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive) {
         isActive = _isRegistered(sponsor, claimHash, typehash);
     }
 
+    /// @inheritdoc ITheCompact
     function getEmissaryStatus(address sponsor, bytes12 lockTag)
         external
         view
@@ -294,14 +326,17 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getEmissaryStatus(sponsor, lockTag);
     }
 
+    /// @inheritdoc ITheCompact
     function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope, bytes12) {
         return _getLockDetails(id);
     }
 
+    /// @inheritdoc ITheCompact
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool) {
         return _hasConsumedAllocatorNonce(nonce, allocator);
     }
 
+    /// @inheritdoc ITheCompact
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return _domainSeparator();
     }
