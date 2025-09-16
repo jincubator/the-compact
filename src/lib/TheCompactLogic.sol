@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity 0.8.30;
 
 import { AllocatorLogic } from "./AllocatorLogic.sol";
 import { ClaimProcessor } from "./ClaimProcessor.sol";
@@ -9,9 +9,20 @@ import { Extsload } from "./Extsload.sol";
 import { RegistrationLogic } from "./RegistrationLogic.sol";
 import { TransferLogic } from "./TransferLogic.sol";
 import { WithdrawalLogic } from "./WithdrawalLogic.sol";
+import { EmissaryLogic } from "./EmissaryLogic.sol";
 
 /**
  * @title TheCompactLogic
  * @notice Inherited contract that aggregates a number of other inherited contracts.
  */
-contract TheCompactLogic is AllocatorLogic, ClaimProcessor, DepositViaPermit2Logic, DirectDepositLogic, Extsload, RegistrationLogic, TransferLogic, WithdrawalLogic { }
+contract TheCompactLogic is
+    AllocatorLogic,
+    ClaimProcessor,
+    DepositViaPermit2Logic,
+    DirectDepositLogic,
+    Extsload,
+    RegistrationLogic,
+    TransferLogic,
+    WithdrawalLogic,
+    EmissaryLogic
+{ }
