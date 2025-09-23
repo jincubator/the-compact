@@ -6,8 +6,10 @@
 [![CI](https://github.com/Uniswap/the-compact/actions/workflows/test.yml/badge.svg?branch=v1)](https://github.com/Uniswap/the-compact/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/uniswap/the-compact/branch/v1/graph/badge.svg?token=BPcWGQYU53)](https://codecov.io/gh/uniswap/the-compact/tree/v1)
 [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](./README.md)
+> 🕵 The Compact V1 has undergone two independent security reviews by [OpenZeppelin](https://openzeppelin.com) and [Spearbit Cantina](https://cantina.xyz), and will soon become part of the [Uniswap Labs Bug Bounty Program on Cantina](https://cantina.xyz/code/f9df94db-c7b1-434b-bb06-d1360abdd1be/overview). 
+>
+> Full audit reports are available in [the `audits/` folder](./audits).
 
-> 🕵 The Compact V1 has undergone two independent security reviews (by [OpenZeppelin](https://openzeppelin.com) and [Spearbit Cantina](https://cantina.xyz)), and this codebase includes fixes from audit findings. Full audit reports will be published shortly.
 
 ## Table of Contents
 1. [Summary](#summary)
